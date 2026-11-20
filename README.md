@@ -16,6 +16,7 @@ Open http://127.0.0.1:3100 → Chat → provider **Mock** (default; no keys, no 
 npm test               # backend tests (guard, harness, sandbox, agents; Docker tests auto-skip without Docker)
 npm run demo:cap       # a call being refused by the cap guard
 npm run demo:p2        # Phase 2: sub-agents, verified edits + rollback, sandbox, fail-closed, guard halt
+npm run demo:p3        # Phase 3: ACP client (scripted fake agent) + probe of installed real agents  [-- --live claude = 1 tiny real prompt]
 npm run build:sandbox  # (once) build the Docker sandbox image agent-studio-sandbox:1
 npm run check:mcp      # launch the default-on MCP servers for real and list their tools
 npm run dev:desktop    # + Electron window (first: npm --prefix electron install)
@@ -34,6 +35,7 @@ backend/app/harness/     sandbox.py (Docker, fail-closed), files.py (path jail +
 backend/app/mcp_registry.py  curated MCP servers (pinned) + ADK McpToolset builder
 backend/app/skills.py    SKILL.md registry (built-in skills/ + agent-authored data/skills)
 backend/app/mock_llm.py  scriptable offline model for zero-spend demos/tests
+backend/app/acp_agents.py ACP client: runs external agents (Claude Code, Cursor, Antigravity, Grok Build) on a dedicated event loop
 docker/sandbox/          sandbox image (python + git + ripgrep + node + ruff + pytest, non-root)
 frontend/                Next.js (static export): Chat, Agent Studio, Billing, Settings
 electron/                shell structure (dev loads Next; packaged spawns PyInstaller sidecar) - later phase
@@ -61,3 +63,30 @@ Because it reserves worst case, a cap is only fully usable if `max_output_tokens
 - **Sandbox**: shell/lint run in a Docker container (non-root, caps dropped, no-new-privileges, mem/cpu/pid limits, network off by default,
   only the workspace mounted). Docker or image missing => refused, never run on the host.
 - **MCP**: filesystem/fetch/git/memory default-on; GitHub (remote), Playwright, Brave, Context7 one-click in Settings. They run on the host.
+
+## Phase 3: external agents over ACP
+Agent Studio is an **ACP client** ([Agent Client Protocol](https://agentclientprotocol.com): JSON-RPC over stdio). It starts an agent CLI as a
+subprocess, streams its text / thinking / tool calls to **External agents**, and answers what the agent asks: permissions, questions, plan approvals,
+and file reads/writes (the latter path-jailed to the workspace).
+
+| Agent | Launch command (editable in Settings) | One-time setup |
+|---|---|---|
+| Claude Code | `npx -y @agentclientprotocol/claude-agent-acp@0.101.0` | `claude` login, or `ANTHROPIC_API_KEY` in its env |
+| Cursor | `agent acp` | install Cursor CLI, `agent login` |
+| Antigravity | `agy acp` | `agy acp --login` |
+| Grok Build | `grok agent stdio` | install Grok Build, sign in |
+
+Any other ACP-over-stdio CLI can be added in Settings.
+
+**Read this before using them**
+- **The per-provider spend caps do NOT apply.** These agents call their own models on their own accounts. Agent Studio records what they *report*
+  (Billing -> External agents) and caps turns per session (default 30). Set real limits with each vendor. A fresh Claude Code session carries ~36k tokens of
+  context (~$0.15 for a one-word answer when I measured it).
+- Permission policy per run: *ask for everything* (default) | *auto-allow reads, ask the rest* | *read-only* (auto-reject anything that is not a read).
+  Network fetches are never auto-allowed. Agent modes such as Claude's `bypassPermissions` remove the prompts entirely; the UI warns when selected.
+- The agent's own shell and tools run **as your user, unsandboxed** (as they would in a terminal). Only file access it delegates to us is jailed.
+- Agent processes get a minimal environment (no Agent Studio provider keys); only the env you store for that agent is added. Keys are never returned by the API.
+- Per-agent facts that were not live-tested here (no CLI installed): Cursor, Antigravity, Grok Build. Claude was tested live end to end.
+
+Implementation notes: all ACP work runs on its own event loop thread (Windows `ProactorEventLoop`), because `uvicorn --reload` on Windows uses a loop that cannot
+spawn subprocesses. Cursor's `cursor/ask_question` and `cursor/create_plan` extension requests are supported (rendered as cards); other `cursor/*` notifications are shown as notes.

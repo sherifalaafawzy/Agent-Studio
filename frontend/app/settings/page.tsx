@@ -83,15 +83,87 @@ function McpRow({ m, onSaved }: { m: Mcp; onSaved: () => void }) {
   );
 }
 
+
+type AcpCfg = { id: string; label: string; command: string; args: string[]; enabled: boolean; builtin: boolean; max_turns: number; notes: string;
+  installed: boolean; resolved_path: string | null; env_keys: string[]; env_set: Record<string, boolean> };
+
+function AcpRow({ a, onSaved }: { a: AcpCfg; onSaved: () => void }) {
+  const [cmd, setCmd] = useState(a.command);
+  const [args, setArgs] = useState(a.args.join("\n"));
+  const [turns, setTurns] = useState(String(a.max_turns));
+  const [env, setEnv] = useState<Record<string, string>>({});
+  const [probe, setProbe] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const dirty = cmd !== a.command || args !== a.args.join("\n") || turns !== String(a.max_turns) || Object.values(env).some(Boolean);
+  const save = async (patch: any) => {
+    try { await api(`/api/acp/agents/${a.id}`, { method: "PUT", body: JSON.stringify(patch) }); setEnv({}); setMsg("Saved"); onSaved(); }
+    catch (e) { setMsg("⚠ " + (e as Error).message); }
+  };
+  const doProbe = async () => { setBusy(true); setProbe(null); try { setProbe(await api(`/api/acp/agents/${a.id}/probe`, { method: "POST" })); } catch (e) { setProbe({ ok: false, error: (e as Error).message }); } setBusy(false); };
+  return (
+    <div className="card">
+      <div className="row">
+        <b>{a.label}</b>
+        <span className={`pill ${a.installed ? "ok" : "bad"}`}>{a.installed ? "installed" : "not found on PATH"}</span>
+        <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><input type="checkbox" checked={a.enabled} onChange={(e) => save({ enabled: e.target.checked })} /> enabled</label>
+        <span className="mut small grow">{a.notes}</span>
+        <button onClick={doProbe} disabled={busy || !a.installed}>{busy ? "Starting…" : "Test connection"}</button>
+        {!a.builtin && <button onClick={async () => { await api(`/api/acp/agents/${a.id}`, { method: "DELETE" }); onSaved(); }}>Delete</button>}
+      </div>
+      <div className="grid" style={{ marginTop: 10 }}>
+        <label>Command<input value={cmd} onChange={(e) => setCmd(e.target.value)} /></label>
+        <label>Arguments (one per line)<textarea rows={2} value={args} onChange={(e) => setArgs(e.target.value)} /></label>
+        <label>Max turns per session<input type="number" min={1} value={turns} onChange={(e) => setTurns(e.target.value)} /></label>
+        {a.env_keys.map((k) => (
+          <label key={k}>{k} {a.env_set[k] && <span className="pill ok">stored</span>}
+            <input type="password" placeholder={a.env_set[k] ? "(unchanged)" : "optional"} value={env[k] ?? ""} onChange={(e) => setEnv({ ...env, [k]: e.target.value })} /></label>))}
+      </div>
+      <div className="row" style={{ marginTop: 10 }}>
+        <button className="pri" disabled={!dirty} onClick={() => save({ command: cmd, args: args.split("\n").map((x) => x.trim()).filter(Boolean), max_turns: Number(turns),
+          env: Object.fromEntries(Object.entries(env).filter(([, v]) => v)) })}>Save</button>
+        <span className="small mut">{msg}</span>
+        {a.resolved_path && <span className="small mut">→ {a.resolved_path}</span>}
+      </div>
+      {probe && <div className="small" style={{ marginTop: 8 }}>
+        {probe.ok ? <span className="pill ok">connected</span> : <span className="pill bad">failed</span>}{" "}
+        {probe.ok ? <>{probe.title ?? probe.name} {probe.version} · ACP v{probe.protocol} · modes: {(probe.modes?.available ?? []).map((m: any) => m.id).join(", ") || "none"}
+          {probe.auth_methods?.length ? ` · auth: ${probe.auth_methods.map((m: any) => m.id).join(", ")}` : ""}</> : <span className="err">{probe.error}</span>}</div>}
+    </div>
+  );
+}
+
+function AddAcp({ onSaved }: { onSaved: () => void }) {
+  const [f, setF] = useState({ id: "", label: "", command: "", args: "" });
+  const [msg, setMsg] = useState("");
+  return (
+    <div className="card">
+      <b>Add a custom ACP agent</b> <span className="mut small">any CLI that speaks ACP over stdio (it will run as your user)</span>
+      <div className="grid" style={{ marginTop: 8 }}>
+        <label>Id<input value={f.id} placeholder="my-agent" onChange={(e) => setF({ ...f, id: e.target.value })} /></label>
+        <label>Label<input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} /></label>
+        <label>Command<input value={f.command} placeholder="my-agent-cli" onChange={(e) => setF({ ...f, command: e.target.value })} /></label>
+        <label>Arguments (one per line)<textarea rows={2} value={f.args} onChange={(e) => setF({ ...f, args: e.target.value })} /></label>
+      </div>
+      <div className="row" style={{ marginTop: 8 }}>
+        <button className="pri" disabled={!f.id || !f.command} onClick={async () => {
+          try { await api("/api/acp/agents", { method: "POST", body: JSON.stringify({ ...f, args: f.args.split("\n").map((x) => x.trim()).filter(Boolean) }) }); setF({ id: "", label: "", command: "", args: "" }); setMsg(""); onSaved(); }
+          catch (e) { setMsg("⚠ " + (e as Error).message); } }}>Add</button><span className="small err">{msg}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [ps, setPs] = useState<Provider[]>([]);
   const [mcp, setMcp] = useState<Mcp[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [hs, setHs] = useState<any>(null);
   const [sb, setSb] = useState<any>(null);
+  const [acp, setAcp] = useState<AcpCfg[]>([]);
   const [err, setErr] = useState("");
-  const load = () => Promise.all([api<Provider[]>("/api/providers"), api<Mcp[]>("/api/mcp"), api<Skill[]>("/api/skills"), api("/api/settings"), api("/api/sandbox/status")])
-    .then(([p, m, s, h, b]) => { setPs(p); setMcp(m); setSkills(s); setHs(h); setSb(b); setErr(""); }).catch((e) => setErr("Backend offline: " + e.message));
+  const load = () => Promise.all([api<Provider[]>("/api/providers"), api<Mcp[]>("/api/mcp"), api<Skill[]>("/api/skills"), api("/api/settings"), api("/api/sandbox/status"), api<AcpCfg[]>("/api/acp/agents")])
+    .then(([p, m, s, h, b, x]) => { setPs(p); setMcp(m); setSkills(s); setHs(h); setSb(b); setAcp(x); setErr(""); }).catch((e) => setErr("Backend offline: " + e.message));
   useEffect(() => { load(); }, []);
   const putSettings = async (patch: any) => { setHs(await api("/api/settings", { method: "PUT", body: JSON.stringify(patch) })); };
   return (
@@ -121,6 +193,11 @@ export default function SettingsPage() {
       <h3>MCP connections</h3>
       <p className="mut small">Servers run on your machine (not in the sandbox) at pinned versions. Filesystem/Git are scoped to the workspace. Agent-proposed servers stay disabled until you approve them here.</p>
       {mcp.map((m) => <McpRow key={m.id} m={m} onSaved={load} />)}
+
+      <h3>External agents (ACP)</h3>
+      <p className="mut small">Agent Studio launches these CLIs as ACP agents and streams them in <b>External agents</b>. They use their own logins and make their own model calls, so the spend caps above do <b>not</b> apply to them; usage they report is shown in Billing. Each runs as your user with the access you give it (its own shell is not sandboxed by Agent Studio); permission requests are shown to you unless you pick an auto policy. Install and sign in to each CLI first.</p>
+      {acp.map((a) => <AcpRow key={a.id + a.command + a.args.join()} a={a} onSaved={load} />)}
+      <AddAcp onSaved={load} />
 
       <h3>Skills</h3>
       <div className="card">

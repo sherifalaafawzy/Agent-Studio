@@ -77,6 +77,31 @@ CREATE TABLE IF NOT EXISTS mcp_servers(
   status TEXT NOT NULL DEFAULT 'active',     -- active | pending_approval (agent-proposed)
   builtin INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS acp_agents(
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  command TEXT NOT NULL,
+  args TEXT NOT NULL DEFAULT '[]',
+  env TEXT NOT NULL DEFAULT '{}',            -- secrets live here, never returned by the API
+  enabled INTEGER NOT NULL DEFAULT 1,
+  builtin INTEGER NOT NULL DEFAULT 0,
+  max_turns INTEGER NOT NULL DEFAULT 30,     -- per live session (billing guard does NOT cover these agents)
+  notes TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS acp_usage(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts REAL NOT NULL,
+  agent TEXT NOT NULL,
+  session TEXT NOT NULL,
+  stop_reason TEXT,
+  input_tokens INTEGER,                      -- NULL = the agent did not report usage
+  output_tokens INTEGER,
+  total_tokens INTEGER,
+  cost REAL,                                 -- as reported by the agent (NULL = not reported)
+  cost_currency TEXT,
+  duration_s REAL
+);
+CREATE INDEX IF NOT EXISTS acp_usage_a ON acp_usage(agent, ts);
 CREATE TABLE IF NOT EXISTS reservations(
   id TEXT PRIMARY KEY,
   ts REAL NOT NULL,

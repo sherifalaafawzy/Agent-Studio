@@ -7,12 +7,14 @@ type Summary = { providers: ProviderBilling[]; by_model: any[]; total_spent_usd:
 export default function BillingPage() {
   const [s, setS] = useState<Summary | null>(null);
   const [ledger, setLedger] = useState<any[]>([]);
+  const [ext, setExt] = useState<any[]>([]);
   const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     try {
       setS(await api("/api/billing/summary"));
       setLedger(await api("/api/billing/ledger?limit=50"));
+      setExt(await api("/api/acp/usage"));
       setErr("");
     } catch (e) { setErr("Backend offline: " + (e as Error).message); }
   }, []);
@@ -42,6 +44,12 @@ export default function BillingPage() {
         <div className="card"><table><thead><tr><th>Provider</th><th>Model</th><th>Calls</th><th>In tok</th><th>Out tok</th><th>Cost</th></tr></thead>
           <tbody>{s.by_model.map((r, i) => <tr key={i}><td>{r.provider}</td><td>{r.model}</td><td>{r.calls}</td><td>{r.input_tokens}</td><td>{r.output_tokens}</td><td>{usd(r.cost_usd)}</td></tr>)}
             {s.by_model.length === 0 && <tr><td colSpan={6} className="mut">No spend yet.</td></tr>}</tbody></table></div>
+        <h3>External agents (ACP) — reported by the agents, NOT capped</h3>
+        <div className="card"><p className="mut small" style={{ marginTop: 0 }}>These agents (Claude Code, Cursor, Antigravity, Grok Build…) bill on their own accounts. Agent Studio can only show what they report after each turn; set limits with the vendor.</p>
+          <table><thead><tr><th>Agent</th><th>Turns</th><th>In tok</th><th>Out tok</th><th>Reported cost</th><th>Turns w/o usage</th></tr></thead>
+          <tbody>{ext.map((r) => <tr key={r.agent}><td>{r.agent}</td><td>{r.turns}</td><td>{r.input_tokens ?? "—"}</td><td>{r.output_tokens ?? "—"}</td>
+            <td>{r.reported_cost != null ? `${r.currency ?? ""} ${Number(r.reported_cost).toFixed(4)}` : "not reported"}</td><td>{r.turns_without_usage}</td></tr>)}
+            {ext.length === 0 && <tr><td colSpan={6} className="mut">No external-agent turns yet.</td></tr>}</tbody></table></div>
         <h3>Ledger</h3>
         <div className="card"><table><thead><tr><th>Time</th><th>Provider/model</th><th>Result</th><th>Cost</th><th>Projected worst-case</th><th>Note</th></tr></thead>
           <tbody>{ledger.map((r) => <tr key={r.id}><td>{new Date(r.ts * 1000).toLocaleTimeString()}</td><td>{r.provider}/{r.model}</td>

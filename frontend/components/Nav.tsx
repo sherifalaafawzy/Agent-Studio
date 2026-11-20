@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  ["/", "Chat"], ["/agents/", "Agent Studio"], ["/billing/", "Billing"], ["/settings/", "Settings"],
+  ["/", "Chat"], ["/external/", "External agents"], ["/agents/", "Agent Studio"], ["/billing/", "Billing"], ["/settings/", "Settings"],
 ] as const;
 
 export default function Nav() {

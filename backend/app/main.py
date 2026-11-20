@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import json
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .budget import BudgetExceeded, BudgetGuard
+from .acp_agents import AcpError, AcpManager, AcpStore
 from .agents import AgentDef, AgentStore
 from .chat import ChatService
 from .db import Database
@@ -32,6 +37,7 @@ class State:
         self.mcp = McpStore(self.db)
         self.skills = SkillRegistry()
         self.chat = ChatService(self.guard, self.providers, self.agents, self.mcp, self.skills, self.db)
+        self.acp = AcpManager(self.db, AcpStore(self.db), self.chat.workspace_for)   # external ACP agents (Phase 3)
 
 
 class ProviderPatch(BaseModel):
@@ -78,6 +84,34 @@ class McpPatch(BaseModel):
     env: dict[str, str] | None = None
 
 
+class AcpChatIn(BaseModel):
+    agent: str
+    message: str = Field(min_length=1, max_length=200_000)
+    session_id: str | None = None
+    workspace: str | None = None
+    policy: str = "ask"            # ask | reads_auto | readonly
+    mode: str | None = None        # one of the modes the agent advertises (e.g. plan / ask)
+    timeout_s: int = Field(default=900, ge=10, le=3600)
+
+
+class AcpAgentPatch(BaseModel):
+    label: str | None = None
+    command: str | None = None
+    args: list[str] | None = None
+    env: dict[str, str] | None = None   # "" clears a key
+    enabled: bool | None = None
+    max_turns: int | None = Field(default=None, ge=1, le=1000)
+    notes: str | None = None
+
+
+class AcpAgentCreate(BaseModel):
+    id: str
+    label: str = ""
+    command: str
+    args: list[str] = []
+    notes: str = ""
+
+
 class SettingsPatch(BaseModel):
     workspace_dir: str | None = None
     sandbox_network: bool | None = None
@@ -85,7 +119,13 @@ class SettingsPatch(BaseModel):
 
 
 def create_app(state: State | None = None) -> FastAPI:
-    app = FastAPI(title="Agent Studio", version="0.1.0")
+    @contextlib.asynccontextmanager
+    async def lifespan(a: FastAPI):
+        yield
+        await a.state.s.acp.close_all()     # never leave agent subprocesses behind
+        a.state.s.acp.stop()
+
+    app = FastAPI(title="Agent Studio", version="0.3.0", lifespan=lifespan)
     app.state.s = state or State()
     # Local-only server: reject foreign Host headers (DNS-rebinding) and foreign origins.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
@@ -273,6 +313,110 @@ def create_app(state: State | None = None) -> FastAPI:
         if body.max_llm_calls_per_turn is not None:
             s.db.set_setting("max_llm_calls_per_turn", str(body.max_llm_calls_per_turn))
         return _settings(s)
+
+    # ---- external agents over ACP (Phase 3) ----
+    def _acp(fn):
+        try:
+            return fn()
+        except AcpError as e:
+            raise HTTPException(422, str(e))
+
+    @app.get("/api/acp/agents")
+    def acp_agents(s: State = Depends(S)):
+        return s.acp.store.list()
+
+    @app.post("/api/acp/agents")
+    def acp_create(body: AcpAgentCreate, s: State = Depends(S)):
+        return _acp(lambda: s.acp.store.create(body.id, body.label, body.command, body.args, body.notes))
+
+    @app.put("/api/acp/agents/{aid}")
+    def acp_update(aid: str, body: AcpAgentPatch, s: State = Depends(S)):
+        return _acp(lambda: s.acp.store.update(aid, body.model_dump(exclude_unset=True)))
+
+    @app.delete("/api/acp/agents/{aid}")
+    def acp_delete(aid: str, s: State = Depends(S)):
+        _acp(lambda: s.acp.store.delete(aid))
+        return {"ok": True}
+
+    @app.post("/api/acp/agents/{aid}/probe")
+    async def acp_probe(aid: str, s: State = Depends(S)):
+        try:
+            return await s.acp.probe(aid)
+        except AcpError as e:
+            return {"ok": False, "error": str(e)}
+
+    @app.get("/api/acp/sessions")
+    def acp_sessions(s: State = Depends(S)):
+        return [x.public() for x in s.acp.sessions.values()]
+
+    @app.delete("/api/acp/sessions/{sid}")
+    async def acp_close(sid: str, s: State = Depends(S)):
+        return {"closed": await s.acp.close(sid)}
+
+    @app.post("/api/acp/sessions/{sid}/cancel")
+    async def acp_cancel(sid: str, s: State = Depends(S)):
+        sess = s.acp.sessions.get(sid)
+        if not sess:
+            raise HTTPException(404, "no such session")
+        await s.acp.cancel(sess)
+        return {"ok": True}
+
+    @app.post("/api/acp/respond/{rid}")
+    def acp_respond(rid: str, body: dict, s: State = Depends(S)):
+        try:
+            return s.acp.respond(rid, body)
+        except AcpError as e:
+            raise HTTPException(404 if "no such pending" in str(e) else 422, str(e))
+
+    @app.get("/api/acp/usage")
+    def acp_usage(s: State = Depends(S)):
+        return s.acp.store.usage()
+
+    @app.post("/api/acp/chat")
+    async def acp_chat(body: AcpChatIn, request: Request, s: State = Depends(S)):
+        """Server-sent events: session | text | thought | tool_call | tool_update | plan | permission | question |
+        plan_approval | resolved | auto | fs_write | usage | mode | ext | done | error."""
+        q: asyncio.Queue = asyncio.Queue()
+        holder: dict = {}
+
+        async def work():
+            try:
+                sess = holder["sess"] = await s.acp.get_or_open(body.agent, body.session_id, body.workspace)
+                if body.mode:
+                    await s.acp.set_mode(sess, body.mode)
+                q.put_nowait({"type": "session", **sess.public()})
+                res = await s.acp.prompt(sess, body.message, q.put_nowait, policy=body.policy, timeout=body.timeout_s)
+                q.put_nowait({"type": "done", **res})
+            except AcpError as e:
+                q.put_nowait({"type": "error", "message": str(e)})
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # noqa: BLE001 - surface anything else as a stream error, not a dropped connection
+                q.put_nowait({"type": "error", "message": f"{type(e).__name__}: {e}"})
+            finally:
+                q.put_nowait(None)
+
+        task = asyncio.create_task(work())
+
+        async def stream():
+            try:
+                while True:
+                    try:
+                        ev = await asyncio.wait_for(q.get(), 15)
+                    except asyncio.TimeoutError:
+                        yield ": keepalive" + chr(10) * 2
+                        continue
+                    if ev is None:
+                        break
+                    yield "data: " + json.dumps(ev, default=str) + chr(10) * 2
+            finally:                                    # client went away mid-turn -> stop the agent
+                if not task.done():
+                    if holder.get("sess"):
+                        await s.acp.cancel(holder["sess"])
+                    task.cancel()
+
+        return StreamingResponse(stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @app.get("/api/sandbox/status")
     def sandbox_status():

@@ -8,3 +8,4 @@ pytest
 mcp==2.3.0
 pytest-asyncio
 httpx
+agent-client-protocol==1.0.0

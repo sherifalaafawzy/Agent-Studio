@@ -12,6 +12,7 @@
     "test": "cd backend && .venv\\Scripts\\python -m pytest -q -W ignore",
     "demo:cap": "backend\\.venv\\Scripts\\python scripts\\demo_cap_guard.py",
     "demo:p2": "backend\\.venv\\Scripts\\python scripts\\demo_phase2.py",
+    "demo:p3": "backend\\.venv\\Scripts\\python scripts\\demo_phase3.py",
     "check:mcp": "backend\\.venv\\Scripts\\python scripts\\check_mcp.py",
     "build:sandbox": "docker build -t agent-studio-sandbox:1 docker/sandbox"
   },
