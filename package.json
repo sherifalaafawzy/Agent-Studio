@@ -10,7 +10,10 @@
     "dev:web": "npm --prefix frontend run dev",
     "dev:desktop": "concurrently -k -n api,web,app -c yellow,cyan,magenta \"npm:dev:api\" \"npm:dev:web\" \"npm --prefix electron run dev\"",
     "test": "cd backend && .venv\\Scripts\\python -m pytest -q -W ignore",
-    "demo:cap": "backend\\.venv\\Scripts\\python scripts\\demo_cap_guard.py"
+    "demo:cap": "backend\\.venv\\Scripts\\python scripts\\demo_cap_guard.py",
+    "demo:p2": "backend\\.venv\\Scripts\\python scripts\\demo_phase2.py",
+    "check:mcp": "backend\\.venv\\Scripts\\python scripts\\check_mcp.py",
+    "build:sandbox": "docker build -t agent-studio-sandbox:1 docker/sandbox"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

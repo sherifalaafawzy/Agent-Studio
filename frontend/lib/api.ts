@@ -20,7 +20,7 @@ export type Provider = {
   id: string; kind: string; label: string; enabled: boolean;
   has_api_key: boolean; api_key_hint: string | null; api_base: string | null;
   vertex_project: string | null; vertex_location: string | null; vertex_credentials_path: string | null;
-  default_model: string | null; cap_usd: number; cap_period: "total" | "daily" | "monthly";
+  default_model: string | null; pro_model: string | null; flash_model: string | null; cap_usd: number; cap_period: "total" | "daily" | "monthly";
   max_output_tokens: number; catalog: { label: string; needs_key: boolean; note: string; default_model: string };
 };
 

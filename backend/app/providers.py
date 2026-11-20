@@ -24,6 +24,18 @@ CATALOG: dict[str, dict] = {
                  note="Offline test provider with artificially high prices - for demoing the cap guard."),
 }
 
+# Pro/Flash tiering defaults per kind (names come from LiteLLM's cost map on 2026-11-20 - verify in Settings).
+TIERS = {
+    "vertex_ai": ("gemini-3.1-pro-preview", "gemini-3.8-flash"),
+    "openai": ("gpt-5", "gpt-5-mini"),
+    "anthropic": ("claude-opus-5-5", "claude-haiku-5-5"),
+    "xai": ("grok-4", "grok-4"),
+    "groq": ("llama-3.3-70b-versatile", "llama-3.1-8b-instant"),
+    "openrouter": ("anthropic/claude-sonnet-5-5", "google/gemini-3.8-flash"),
+    "ollama": ("llama3.2", "llama3.2"),
+    "mock": ("mock-expensive", "mock-cheap"),
+}
+
 # One row per kind to start; ids are the kind (users may add more rows later).
 DEFAULT_CAP_USD = {"mock": 0.25, "ollama": 0.0}
 SAFE_DEFAULT_CAP_USD = 1.0  # new paid providers start with a small, safe cap
@@ -44,6 +56,8 @@ class Provider:
     cap_usd: float
     cap_period: str
     max_output_tokens: int
+    pro_model: str | None = None
+    flash_model: str | None = None
 
     @classmethod
     def from_row(cls, r) -> "Provider":
@@ -67,13 +81,16 @@ class ProviderStore:
     def seed(self) -> None:
         for kind, c in CATALOG.items():
             if self.db.one("SELECT 1 FROM providers WHERE id=?", (kind,)):
+                # Phase 2 migration: fill tier models on pre-existing rows
+                self.db.execute("UPDATE providers SET pro_model=COALESCE(pro_model,?), flash_model=COALESCE(flash_model,?) WHERE id=?",
+                                (*TIERS[kind], kind))
                 continue
             cap = DEFAULT_CAP_USD.get(kind, SAFE_DEFAULT_CAP_USD)
             self.db.execute(
-                "INSERT INTO providers(id,kind,label,enabled,default_model,cap_usd,cap_period,vertex_location,max_output_tokens)"
-                " VALUES(?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO providers(id,kind,label,enabled,default_model,cap_usd,cap_period,vertex_location,max_output_tokens,"
+                "pro_model,flash_model) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                 (kind, kind, c["label"], 1 if kind == "mock" else 0, c["default_model"], cap, "total",
-                 "global" if kind == "vertex_ai" else None, 64 if kind == "mock" else 2048),
+                 "global" if kind == "vertex_ai" else None, 64 if kind == "mock" else 2048, *TIERS[kind]),
             )
 
     def list(self) -> list[Provider]:
@@ -84,7 +101,7 @@ class ProviderStore:
         return Provider.from_row(r) if r else None
 
     EDITABLE = ("enabled", "api_key", "api_base", "vertex_project", "vertex_location",
-                "vertex_credentials_path", "default_model", "cap_usd", "cap_period", "max_output_tokens")
+                "vertex_credentials_path", "default_model", "pro_model", "flash_model", "cap_usd", "cap_period", "max_output_tokens")
 
     def update(self, pid: str, patch: dict) -> Provider:
         if not self.get(pid):
@@ -115,6 +132,13 @@ class ProviderStore:
         if sets:
             self.db.execute(f"UPDATE providers SET {','.join(sets)} WHERE id=?", (*vals, pid))
         return self.get(pid)  # type: ignore[return-value]
+
+
+def tier_model(p: Provider, tier: str, custom: str | None = None) -> str:
+    if tier == "custom" and custom:
+        return custom
+    m = p.pro_model if tier == "pro" else p.flash_model
+    return m or p.default_model or CATALOG[p.kind]["default_model"]
 
 
 def litellm_target(p: Provider, model: str | None = None) -> tuple[str, dict]:

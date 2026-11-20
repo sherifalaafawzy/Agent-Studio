@@ -47,6 +47,36 @@ CREATE TABLE IF NOT EXISTS ledger(
   note TEXT
 );
 CREATE INDEX IF NOT EXISTS ledger_pt ON ledger(provider, ts);
+CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS agents(
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  instruction TEXT NOT NULL DEFAULT '',
+  provider TEXT,                       -- NULL = inherit the provider chosen in chat
+  tier TEXT NOT NULL DEFAULT 'flash',  -- pro | flash | custom
+  model TEXT,                          -- used when tier = custom
+  tools TEXT NOT NULL DEFAULT '[]',
+  mcp TEXT NOT NULL DEFAULT '[]',
+  skills TEXT NOT NULL DEFAULT '[]',   -- ["*"] = all
+  sub_agents TEXT NOT NULL DEFAULT '[]',
+  builtin INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS mcp_servers(
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  transport TEXT NOT NULL DEFAULT 'stdio',   -- stdio | http
+  command TEXT,
+  args TEXT NOT NULL DEFAULT '[]',
+  url TEXT,
+  env TEXT NOT NULL DEFAULT '{}',            -- values (secrets live here, never returned by the API)
+  requires_env TEXT NOT NULL DEFAULT '[]',
+  enabled INTEGER NOT NULL DEFAULT 0,
+  default_on INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'active',     -- active | pending_approval (agent-proposed)
+  builtin INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS reservations(
   id TEXT PRIMARY KEY,
   ts REAL NOT NULL,
@@ -66,6 +96,10 @@ class Database:
         with self.lock:
             self.conn.execute("PRAGMA journal_mode=WAL")
             self.conn.executescript(SCHEMA)
+            cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(providers)")}
+            for c in ("pro_model", "flash_model"):  # Phase 2 migration
+                if c not in cols:
+                    self.conn.execute(f"ALTER TABLE providers ADD COLUMN {c} TEXT")
 
     def execute(self, sql: str, params: tuple | list = ()):
         with self.lock:
@@ -78,3 +112,10 @@ class Database:
     def one(self, sql: str, params: tuple | list = ()):
         with self.lock:
             return self.conn.execute(sql, params).fetchone()
+
+    def get_setting(self, key: str, default: str | None = None) -> str | None:
+        r = self.one("SELECT value FROM settings WHERE key=?", (key,))
+        return r["value"] if r else default
+
+    def set_setting(self, key: str, value: str) -> None:
+        self.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
