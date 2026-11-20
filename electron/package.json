@@ -1,0 +1,13 @@
+{
+  "name": "agent-studio-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "pack": "echo \"Packaging (electron-builder + PyInstaller sidecar) is a later phase\" && exit 1"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1"
+  }
+}

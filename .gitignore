@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+data/
+*.db
+*.db-journal
+.env
+.env.*
+!.env.example
+*.log
+sa-key*.json
