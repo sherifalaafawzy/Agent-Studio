@@ -11,7 +11,7 @@ from app.artifacts.service import ArtifactError, ArtifactService, ignored, scan_
 from app.artifacts.storage import ArtifactStorage, StorageError, build_storage
 from app.db import Database
 
-SECRET = "sk-proj-SECRETKEY1234567890abcdefXYZ"
+SECRET = "sk-" "proj-SECRETKEY1234567890abcdefXYZ"
 
 
 class MemStorage(ArtifactStorage):

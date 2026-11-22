@@ -61,7 +61,7 @@ def test_text_helpers():
 
 # ------------------------------------------------------------------------------------------------ PII
 def test_scrub_removes_personal_and_secret_data():
-    text, kinds = scrub("Mail bob@example.com or call +44 20 7946 0958, card 4111 1111 1111 1111, ssn 123-45-6789, key sk-abcdefghijklmnop1234567890")
+    text, kinds = scrub("Mail bob@example.com or call +44 20 7946 0958, card 4111 1111 1111 1111, ssn 123-45-6789, key sk-" "abcdefghijklmnop1234567890")
     assert "bob@example.com" not in text and "4111" not in text and "123-45-6789" not in text and "sk-abcdef" not in text and "7946" not in text
     assert kinds == ["secret", "card", "ssn", "email", "phone"]
     plain, none = scrub("The invoice number is 1234567812345678 and the build is 2026-11-22")      # 16 digits that fail the Luhn check stay

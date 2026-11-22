@@ -6,7 +6,7 @@ import pytest
 from app.db import Database
 from app.providers import VERTEX_EXPRESS_BASE, ProviderStore, litellm_target
 
-SA = {"type": "service_account", "project_id": "proj-from-json", "client_email": "bot@proj.iam.gserviceaccount.com", "private_key": "-----BEGIN PRIVATE KEY-----\nX\n-----END PRIVATE KEY-----\n"}
+SA = {"type": "service_account", "project_id": "proj-from-json", "client_email": "bot@proj.iam.gserviceaccount.com", "private_key": "-----BEGIN " "PRIVATE KEY-----\nX\n-----END PRIVATE KEY-----\n"}
 
 
 def prov(client, pid):

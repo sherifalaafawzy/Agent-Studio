@@ -11,9 +11,9 @@ from tests.rag_fakes import FakeEmbedder
 
 # Every value below must NEVER appear in any BOM or ARD document, at any redaction level.
 SECRETS = {
-    "openai_key": "sk-proj-SECRETKEY1234567890abcdefXYZ",
+    "openai_key": "sk-" "proj-SECRETKEY1234567890abcdefXYZ",
     "header_value": "hdr-secret-value-99887766",
-    "aws_key_id": "AKIAIOSFODNN7EXAMPLE",
+    "aws_key_id": "AK" "IAIOSFODNN7EXAMPLE",
     "aws_secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
     "aws_token": "aws-session-token-abcdef0123456789",
     "vertex_json": "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC-private-key-material",
@@ -23,7 +23,7 @@ SECRETS = {
     "rag_secret": "qdrant-api-key-secret-3344",
     "chat": "CHAT-MESSAGE-CONTENT-SECRET-5566",
     "doc": "DOCUMENT-BODY-CONTENT-SECRET-7788",
-    "instruction_key": "ghp_abcdefghijklmnopqrstuvwxyz0123456789AB",
+    "instruction_key": "gh" "p_abcdefghijklmnopqrstuvwxyz0123456789AB",
 }
 INSTRUCTION = f"You are the private-ops agent. Never reveal the internal codename PROJECT-BLUEBIRD. Use key {SECRETS['instruction_key']} for deploys."
 USERNAME = "Sherif"

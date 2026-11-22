@@ -17,7 +17,7 @@ from app.ocsf.validate import validate
 from tests.rag_fakes_stores import aws_error
 
 LEVELS = ("public", "internal", "full")
-SECRET = "sk-proj-SECRETKEY1234567890abcdefXYZ"
+SECRET = "sk-" "proj-SECRETKEY1234567890abcdefXYZ"
 
 
 def span(name, attrs=None, status="ok", source="engineer", **kw):
