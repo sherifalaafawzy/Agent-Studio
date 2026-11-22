@@ -1,5 +1,6 @@
 ---
 name: debugging
+group: Coding
 description: Systematically find and fix the root cause of a bug or failing test (reproduce, isolate, fix, verify). Use whenever something fails and the cause is not already obvious.
 ---
 

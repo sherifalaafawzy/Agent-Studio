@@ -1,5 +1,6 @@
 ---
 name: test-writing
+group: Coding
 description: Write focused automated tests for new or changed behaviour, matching the repo's existing test style. Use when adding a feature, fixing a bug (regression test first), or when asked to improve coverage.
 ---
 

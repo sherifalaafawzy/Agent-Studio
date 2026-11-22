@@ -37,6 +37,28 @@ TOOL_INFO: dict[str, tuple[str, bool]] = {
     "load_skill": ("Load a skill's full instructions", True),
     "create_skill": ("Author a new skill (SKILL.md) and optionally link MCP servers", False),
     "propose_mcp_server": ("Propose an MCP server (disabled until a human approves it)", False),
+    "propose_openapi_mcp": ("Propose an API from an OpenAPI file as MCP tools (read-only; disabled until a human approves it)", False),
+    "rag_search": ("Search the knowledge bases attached to the agent (RAG) and cite the sources", True),
+    "rag_list": ("List the knowledge bases attached to the agent", True),
+    "data_sources": ("List the data sources the agent may read (databases, warehouses, Salesforce)", True),
+    "data_schema": ("Browse a data source: its tables and columns", True),
+    "data_query": ("Run one read-only query on a data source (writes are refused)", True),
+    "memory_search": ("Search what the agent remembers (facts, past chats, people and things, how-tos)", True),
+    "memory_save": ("Remember a fact, a person or thing, a how-to or an event (may wait for your review)", False),
+    "memory_forget": ("Forget a memory by id or description", False),
+    "memory_notes": ("Read or add to the project notes file (AGENTS.md) in the workspace", False),
+    "save_artifact": ("Keep a file or some text as an artifact you can find later on the Artifacts page", False),
+    "todo_write": ("Keep a to-do list for the task that you can watch update live", False),
+    "repo_map": ("A compact map of the project: files and their main classes and functions", True),
+    "web_fetch": ("Read a public web page (only when web tools are switched on in Settings)", True),
+    "web_search": ("Search the web (needs a search service in Settings)", True),
+    "canvas_create": ("Open a canvas beside the chat to write a document, code, a table or a web page together", False),
+    "canvas_read": ("Read the canvas (and the text you selected)", True),
+    "canvas_replace_selection": ("Propose a replacement for the text you selected in the canvas", False),
+    "canvas_insert": ("Propose text to add to the canvas", False),
+    "canvas_patch": ("Propose exact-text edits to the canvas", False),
+    "run_workflow": ("Run one of your saved workflows (a drawn graph of agents, tools and API calls)", False),
+    "call_remote_agent": ("Ask another agent over the A2A protocol (agents registered in Settings > API & A2A)", False),
 }
 READ_ONLY_TOOLS = [n for n, (_, ro) in TOOL_INFO.items() if ro and n not in ("load_skill",)]
 ALL_TOOLS = list(TOOL_INFO)
@@ -49,6 +71,26 @@ class ToolContext:
     skills: SkillRegistry
     mcp: McpStore
     read_files: set[str] = field(default_factory=set)  # read-before-edit tracking (per chat turn)
+    rag: object | None = None                          # the RagService, when knowledge bases are available
+    rag_kbs: tuple[str, ...] = ()                      # knowledge bases THIS agent may search ("*" = all)
+    data: object | None = None                         # the DataService, when data sources exist
+    data_grants: tuple[str, ...] = ()                  # data sources THIS agent may read ("*" = all of them)
+    memory: object | None = None                       # the MemoryService, when memory is available
+    mem: dict = field(default_factory=dict)            # THIS agent's memory settings ({} = none)
+    agent_id: str = ""
+    session_id: str = ""
+    on_memory: object | None = None                    # callback(event dict): what the agent remembered, shown in the chat
+    artifacts: object | None = None                    # the ArtifactService, when artifacts are available
+    on_artifact: object | None = None                  # callback(artifact dict): an artifact was saved, shown in the chat
+    trace_id: str = ""                                 # the run this turn belongs to (links an artifact back to it)
+    web: object | None = None                          # the WebClient, when web tools are available (they also need to be switched on)
+    remotes: object | None = None                      # the RemoteAgents registry (A2A), when any enabled remote agent exists
+    workflows: object | None = None                    # the workflow Runner, when any workflow is saved
+    todos: list = field(default_factory=list)          # the agent's current to-do list
+    on_todos: object | None = None                     # callback(list): the list changed, shown live in the chat
+    canvas: object | None = None                       # the CanvasService, when the canvas is on
+    on_canvas: object | None = None                    # callback(event dict): the canvas changed or opened, shown in the chat
+    can_apply: bool = True                             # False in plan mode: the agent may only propose canvas changes
 
 
 def build_tools(ctx: ToolContext, allowed: list[str]) -> list:
@@ -232,7 +274,8 @@ def build_tools(ctx: ToolContext, allowed: list[str]) -> list:
             return {"ok": False, "error": f"unknown skill '{name}'", "available": [x.name for x in ctx.skills.list()]}
         return {"ok": True, "name": s.name, "mcp_servers_linked": s.mcp, "instructions": s.body}
 
-    async def create_skill(name: str, description: str, body: str, mcp_servers: list[str] | None = None, overwrite: bool = False) -> dict:
+    async def create_skill(name: str, description: str, body: str, mcp_servers: list[str] | None = None, overwrite: bool = False,
+                           group: str = "General") -> dict:
         """Author a new reusable skill (saved as SKILL.md). Use the skill-creator skill for guidance first.
 
         Args:
@@ -241,13 +284,14 @@ def build_tools(ctx: ToolContext, allowed: list[str]) -> list:
             body: Markdown instructions.
             mcp_servers: Optional MCP server ids this skill needs (agents using the skill get those servers if enabled).
             overwrite: Replace an existing user skill of the same name.
+            group: Short label to file it under (Coding, Security, Research, Writing, Data, Ops, General or your own).
         """
         try:
             known = {s.id for s in ctx.mcp.list()}
             bad = [m for m in (mcp_servers or []) if m not in known]
             if bad:
                 raise ValueError(f"unknown MCP servers {bad}; known: {sorted(known)}. Use propose_mcp_server for a new one.")
-            s = ctx.skills.create(name, description, body, mcp_servers, overwrite)
+            s = ctx.skills.create(name, description, body, mcp_servers, overwrite, group)
             return {"ok": True, "skill": s.public(), "note": "Saved. Agents pick it up via their Skills index."}
         except ValueError as e:
             return {"ok": False, "error": str(e)}
@@ -268,6 +312,121 @@ def build_tools(ctx: ToolContext, allowed: list[str]) -> list:
         except ValueError as e:
             return {"ok": False, "error": str(e)}
 
+    async def propose_openapi_mcp(id: str, label: str, description: str, spec: str, base_url: str = "",
+                                  auth_header_env: str = "") -> dict:
+        """Propose exposing an API described by an OpenAPI file as tools. Read-only; a human must approve it first.
+
+        Args:
+            id: short lowercase id, e.g. 'billing-api'.
+            label: Display name.
+            description: What the API is for and why agents need it.
+            spec: ABSOLUTE path to the OpenAPI file on this PC, or an https URL.
+            base_url: Server URL to call (optional; defaults to the document's own).
+            auth_header_env: Leave empty. If the API needs a token, the human adds it after approval (never put secrets here).
+        """
+        from ..mcp_openapi import validate
+        if not spec.startswith("https://") and not (spec.startswith("/") or (len(spec) > 2 and spec[1] == ":")):
+            return {"ok": False, "error": "spec must be an absolute file path or an https URL"}
+        try:
+            n = validate(spec, base_url or None)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": f"not a usable OpenAPI document: {e}"}
+        args = [spec] + (["--base", base_url] if base_url else [])
+        requires = ["HEADER_AUTHORIZATION"] if auth_header_env or n else []
+        try:
+            s = ctx.mcp.propose_openapi(id, label, f"{description} ({n} operations, read-only)", args, requires)
+            return {"ok": True, "status": s.status, "operations": n,
+                    "note": "Pending human approval on the MCP servers page (review the file path and the operations). It will not run until approved."}
+        except ValueError as e:
+            return {"ok": False, "error": str(e)}
+
+    def attached_kbs() -> list[dict]:
+        """The knowledge bases this agent may search, as the service describes them."""
+        every = ctx.rag.list_kbs()                                 # type: ignore[union-attr]
+        return every if "*" in ctx.rag_kbs else [k for k in every if k["id"] in ctx.rag_kbs]
+
+    async def rag_list() -> dict:
+        """List the knowledge bases you can search with rag_search (id, what it holds, how big it is)."""
+        return {"ok": True, "knowledge_bases": [
+            {"id": k["id"], "label": k["label"], "description": k["description"], "documents": k["docs"], "passages": k["chunks"]}
+            for k in attached_kbs()]}
+
+    async def rag_search(query: str, knowledge_base: str = "", k: int = 5) -> dict:
+        """Search your knowledge bases for passages relevant to a question. Use it before answering from memory when the
+        question may be covered by the user's own documents. Cite the `source` of every passage you rely on.
+
+        Args:
+            query: What to look for, in natural language (a full question works better than keywords).
+            knowledge_base: Id of one knowledge base to search. Empty searches all of yours (see rag_list).
+            k: How many passages to return (1-10).
+        """
+        try:
+            ids = [kb["id"] for kb in attached_kbs()]
+            if knowledge_base:
+                if knowledge_base not in ids:
+                    return {"ok": False, "error": f"'{knowledge_base}' is not one of your knowledge bases ({', '.join(ids) or 'none'})"}
+                ids = [knowledge_base]
+            results = await ctx.rag.search(query, ids, max(1, min(int(k), 10)))     # type: ignore[union-attr]
+        except Exception as e:  # noqa: BLE001 - every failure (bad query, store down, spend cap) goes back to the model as text
+            return {"ok": False, "error": str(e)[:400]}
+        return {"ok": True, "results": results,
+                "note": ("Each result has a score_kind. 'cosine' scores run to 1 (identical) and low ones mean weak matches; 'provider' scores come "
+                         "from a managed service on its own scale and only compare within one knowledge base. "
+                         "Say so if nothing relevant was found.")}
+
+    async def save_artifact(name: str, path: str = "", content: str = "", tags: str = "") -> dict:
+        """Keep a deliverable (a report, a chart, a data file, a model, a script) as an artifact so the user can find, preview and download it later
+        on the Artifacts page. Use it for results the user will want to keep, not for scratch files. Give either `path` (a file in the workspace)
+        or `content` (text to keep).
+
+        Args:
+            name: A short, descriptive file name, for example 'q3-sales-report.md' (the extension decides how it is shown).
+            path: A file inside the workspace to keep, relative to the workspace root. Leave empty when you pass content.
+            content: The text to keep when there is no file.
+            tags: A few comma-separated words that help find it later (for example 'sales, q3').
+        """
+        from ..artifacts.service import ArtifactError
+        if ctx.artifacts is None:
+            return {"ok": False, "error": "artifacts are not available"}
+        words = [t.strip() for t in (tags or "").split(",") if t.strip()]
+        try:
+            if path:
+                p = F.jail(ws, path)
+                if not p.is_file():
+                    raise F.ToolError(f"not a file: {path}")
+                art = ctx.artifacts.capture_file(p, rel(p), agent=ctx.agent_id, session_id=ctx.session_id, trace_id=ctx.trace_id, workspace=str(ws), source="tool",
+                                                 tags=words, name=name or None)
+            else:
+                art = ctx.artifacts.save_text(name, content, agent=ctx.agent_id, session_id=ctx.session_id, trace_id=ctx.trace_id, workspace=str(ws), tags=words)
+        except (F.ToolError, ArtifactError) as e:
+            return {"ok": False, "error": str(e)}
+        if not art.get("existing") and ctx.on_artifact:
+            ctx.on_artifact(art)
+        return {"ok": True, "id": art["id"], "name": art["name"], "type": art["type"], "size": art["size"], "kept_in": [c["storage"] for c in art["copies"]],
+                **({"note": "this exact file was already saved"} if art.get("existing") else {})}
+
     registry = {f.__name__: f for f in (read_file, list_dir, glob_files, search_text, write_file, edit_file, run_shell,
-                                         load_skill, create_skill, propose_mcp_server)}
+                                         load_skill, create_skill, propose_mcp_server, propose_openapi_mcp, rag_search, rag_list, save_artifact)}
+    if ctx.rag is None or not ctx.rag_kbs:                        # no knowledge bases attached: the tools do not exist for this agent
+        registry.pop("rag_search")
+        registry.pop("rag_list")
+    if ctx.data is not None and ctx.data_grants:                  # data tools exist only for agents with a data source ticked
+        from ..datasources.tools import data_tools
+        registry.update(data_tools(ctx))
+    if ctx.memory is not None and ctx.mem:                        # memory tools exist only for agents that have memory switched on
+        from ..memory.tools import memory_tools
+        registry.update(memory_tools(ctx))
+    from .extras import extra_tools
+    registry.update(extra_tools(ctx))
+    if ctx.canvas is not None:                                    # canvas tools exist only while the canvas is on
+        from ..canvas.tools import canvas_tools
+        registry.update(canvas_tools(ctx))
+    ids = ctx.remotes.enabled_ids(ctx.agent_id or "") if ctx.remotes is not None else []
+    wf_ids = ctx.workflows.store.ids() if ctx.workflows is not None else []
+    if wf_ids:                                                    # run_workflow exists only once a workflow is saved
+        from ..workflows.core import workflow_tool
+        registry["run_workflow"] = workflow_tool(ctx.workflows, wf_ids)
+    if ids:                                                       # remote A2A agents exist only once one is registered and enabled
+        from ..apiaccess.a2a import remote_tool
+        registry["call_remote_agent"] = remote_tool(ctx.remotes, ids)
     return [registry[n] for n in allowed if n in registry]

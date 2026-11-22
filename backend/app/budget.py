@@ -24,10 +24,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from .db import Database
-from .pricing import Price, cost_usd, price_for
-from .providers import Provider, ProviderStore
+from .pricing import Price, cost_usd
+from .providers import Provider, ProviderStore, price_of
 
-RESERVATION_TTL_S = 600  # stale reservations (crashed calls) expire after 10 min
+RESERVATION_TTL_S = 3600  # stale reservations (crashed calls) expire after 1 h (long model calls stay reserved)
 
 
 class BudgetExceeded(Exception):
@@ -67,9 +67,10 @@ def estimate_tokens(text_chars: int, n_messages: int = 1) -> int:
 
 
 class BudgetGuard:
-    def __init__(self, db: Database, providers: ProviderStore):
+    def __init__(self, db: Database, providers: ProviderStore, credits=None):
         self.db = db
         self.providers = providers
+        self.credits = credits          # Credits | None: account balance per provider (see credits.py)
 
     # ---- accounting views -------------------------------------------------
     def spent(self, p: Provider) -> float:
@@ -88,8 +89,12 @@ class BudgetGuard:
                               (p.id, window_start(p.cap_period)))["n"]
         calls = self.db.one("SELECT COUNT(*) n FROM ledger WHERE provider=? AND kind='call' AND ts>=?",
                             (p.id, window_start(p.cap_period)))["n"]
+        credit = self.credits.remaining(p.id) if self.credits else None
         return dict(provider=p.id, label=p.label, enabled=p.enabled, cap_usd=p.cap_usd, cap_period=p.cap_period,
                     spent_usd=spent, reserved_usd=reserved, remaining_usd=max(0.0, p.cap_usd - spent - reserved),
+                    credits_remaining_usd=None if credit is None else max(0.0, credit - reserved),
+                    credits_strict=bool(self.credits and self.credits.strict(p.id)),
+                    spendable_usd=max(0.0, min(p.cap_usd - spent, credit if credit is not None else float("inf")) - reserved),
                     pct_used=(100.0 * spent / p.cap_usd) if p.cap_usd > 0 else (0.0 if spent == 0 else 100.0),
                     calls=calls, refused=refused)
 
@@ -103,15 +108,20 @@ class BudgetGuard:
                 raise BudgetExceeded(self._detail(provider_id, model, "unknown_provider", 0, 0, 0, 0, False,
                                                   f"Unknown provider '{provider_id}'"))
             kind = p.kind
-            price = price_for(kind, model, litellm_model)
+            price = price_of(p, model, litellm_model)
             projected = cost_usd(price, est_input_tokens, max_output_tokens)
             spent, reserved = self.spent(p), self.reserved(p.id)
             remaining = p.cap_usd - spent - reserved
+            credit = self.credits.remaining(p.id) if self.credits else None
             reason = None
             if not p.enabled:
                 reason = "provider_disabled"
             elif projected > remaining + 1e-12:
                 reason = "cap_exceeded"
+            elif credit is not None and projected > credit - reserved + 1e-12:
+                reason, remaining = "credits_insufficient", credit - reserved      # your account can't cover it
+            elif credit is None and self.credits and self.credits.strict(p.id) and p.kind != "ollama":
+                reason = "credits_unverified"
             if reason:
                 msg = self._message(p, model, reason, projected, remaining, price)
                 self.db.execute(
@@ -155,6 +165,13 @@ class BudgetGuard:
     def _message(p: Provider, model: str, reason: str, projected: float, remaining: float, price: Price) -> str:
         if reason == "provider_disabled":
             return f"{p.label} is disabled in Settings."
+        if reason == "credits_insufficient":
+            return (f"Credits guard: call to {p.id}/{model} REFUSED before sending. Projected worst-case ${projected:.4f} "
+                    f"exceeds the ${max(remaining, 0):.4f} of account credit left. Top up your {p.label} account, then refresh "
+                    f"(or update) the balance in Settings.")
+        if reason == "credits_unverified":
+            return (f"Credits guard: call to {p.id}/{model} REFUSED - strict credits mode is on for {p.label} and the account "
+                    f"balance is unknown. Refresh or enter the balance in Settings, or turn strict mode off.")
         extra = "" if price.known else " (model price unknown - priced at a conservative fallback)"
         return (f"Budget guard: call to {p.id}/{model} REFUSED before sending. Projected worst-case "
                 f"${projected:.4f} exceeds remaining ${max(remaining, 0):.4f} of the ${p.cap_usd:.4f} "
@@ -162,7 +179,7 @@ class BudgetGuard:
 
     @staticmethod
     def _detail(pid, model, reason, projected, remaining, cap, spent, price_known, message, reserved=0.0) -> dict:
-        return dict(error="budget_exceeded" if reason == "cap_exceeded" else reason, provider=pid, model=model,
+        return dict(error="budget_exceeded" if reason == "cap_exceeded" else reason, reason=reason, provider=pid, model=model,
                     projected_usd=projected, remaining_usd=max(0.0, remaining), cap_usd=cap, spent_usd=spent,
                     reserved_usd=reserved, price_known=price_known, message=message)
 

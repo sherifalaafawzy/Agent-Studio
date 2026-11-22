@@ -4,6 +4,7 @@ Run:  backend\.venv\Scripts\python scripts\demo_cap_guard.py
 import os, sys, tempfile, warnings
 warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+os.environ["AGENT_STUDIO_ENABLE_MOCK"] = "1"   # demos run on the offline mock provider
 os.environ["AGENT_STUDIO_HOME"] = tempfile.mkdtemp(prefix="as-demo-")
 
 import litellm

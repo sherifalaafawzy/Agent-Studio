@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api, ProviderBilling, usd } from "@/lib/api";
+import InfoTip from "@/components/InfoTip";
 
 type Summary = { providers: ProviderBilling[]; by_model: any[]; total_spent_usd: number };
 
@@ -22,7 +23,8 @@ export default function BillingPage() {
 
   return (
     <div>
-      <div className="row"><h2 style={{ margin: 0 }}>Billing</h2><span className="mut small">live · refreshes every 3s · caps enforced per provider before each call</span></div>
+      <div className="page-head"><h2>Billing</h2><span className="pill">live</span><InfoTip id="cost" /></div>
+      <p className="page-sub">Every model call is checked against its provider's cap — and its account credits, where known — <b>before</b> it is sent. The overview with charts is on the <a href="/dashboard/">Dashboard</a>.</p>
       {err && <p className="err">{err}</p>}
       {s && <>
         <h3>Spend vs cap — total {usd(s.total_spent_usd)}</h3>

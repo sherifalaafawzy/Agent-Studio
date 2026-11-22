@@ -1,5 +1,6 @@
 ---
 name: skill-creator
+group: General
 description: Create a new reusable skill (SKILL.md) and optionally link MCP servers it needs. Use when the user asks you to "make a skill", or when you notice a repeatable procedure worth saving for next time.
 ---
 

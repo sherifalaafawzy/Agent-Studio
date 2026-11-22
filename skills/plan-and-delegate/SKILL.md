@@ -1,5 +1,6 @@
 ---
 name: plan-and-delegate
+group: General
 description: Break a large task into steps and delegate them to sub-agents (explorer/coder/reviewer) with isolated context, then integrate and verify. Use for multi-file or multi-step work that would bloat your own context.
 ---
 

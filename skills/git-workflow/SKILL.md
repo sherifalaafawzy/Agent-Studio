@@ -1,5 +1,6 @@
 ---
 name: git-workflow
+group: Ops
 description: Make clean, reviewable git commits and branches (status, focused staging, good messages). Use when asked to commit, branch, or summarise changes. Links the git MCP server.
 mcp:
   - git

@@ -7,6 +7,7 @@ fallback and flagged price_known=False so the guard errs on the side of refusing
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 
 import litellm
@@ -54,10 +55,15 @@ def price_for(kind: str, model: str, litellm_model: str) -> Price:
         i, o = BUILTIN[key]
         return Price(i, o, True, "builtin")
     cm = litellm.model_cost
-    for cand in (litellm_model, model, model.split("/")[-1]):
+    bare = re.sub(r"^(us|eu|apac|global|jp|au|ca|us-gov)\.", "", model)      # Bedrock cross-region profile -> base model
+    for cand in (litellm_model, model, model.split("/")[-1], f"bedrock/{model}", bare, f"bedrock/{bare}"):
         e = cm.get(cand)
-        if e and e.get("input_cost_per_token") is not None and e.get("output_cost_per_token") is not None:
-            return Price(e["input_cost_per_token"] * 1e6, e["output_cost_per_token"] * 1e6, True, "litellm")
+        if e and e.get("input_cost_per_token") is not None:
+            out = e.get("output_cost_per_token")
+            if out is None and e.get("mode") == "embedding":
+                out = 0.0                                   # embedding models only bill input tokens
+            if out is not None:
+                return Price(e["input_cost_per_token"] * 1e6, out * 1e6, True, "litellm")
     return Price(FALLBACK_IN_PER_M, FALLBACK_OUT_PER_M, False, "fallback")
 
 

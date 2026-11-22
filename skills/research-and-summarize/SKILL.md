@@ -1,5 +1,6 @@
 ---
 name: research-and-summarize
+group: Research
 description: Research a question on the web and produce a sourced, concise summary. Use for "find out / compare / what is the current X" tasks. Links the fetch MCP server.
 mcp:
   - fetch

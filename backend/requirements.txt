@@ -1,6 +1,6 @@
 # Pinned after checking PyPI on 2026-11-20
-google-adk==2.15.0
-litellm==1.110.2
+google-adk==2.14.0
+litellm==1.108.3
 fastapi==0.165.0
 uvicorn==0.54.0
 # dev
@@ -9,3 +9,20 @@ mcp==2.3.0
 pytest-asyncio
 httpx
 agent-client-protocol==1.0.0
+pypdf==6.21.4
+# RAG stores (pinned >14 days old on 2026-11-21)
+psycopg[binary]==3.3.8
+boto3==1.43.126
+google-auth==2.62.1
+# AI-BOM + Agentic Resource Discovery (already installed transitively; pinned here because the code imports them directly; all > 14 days old on 2026-11-22)
+jsonschema==4.26.0
+referencing==0.37.0
+cryptography==50.0.2
+packaging==26.3
+# Cloud ML MCP: Oracle OCI Data Science (imported lazily only when an OCI account is used; published 2026-10, older than 14 days)
+oci==2.190.0
+# imported directly (skills, harness verify, eval exports); already installed transitively; 6.0.3 was published 2025-09
+PyYAML==6.0.3
+a2a-sdk==1.3.0
+ag-ui-protocol==1.0.0
+pymysql==1.1.3

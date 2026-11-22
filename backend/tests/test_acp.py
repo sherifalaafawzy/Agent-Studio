@@ -198,9 +198,24 @@ def test_auth_required_then_authenticate_retry(st, monkeypatch):
             assert s.info["auth_methods"][0]["id"] == "fake_login"
             ev, _ = await turn(st, s, "hi")
             assert texts(ev) == "echo: hi"
+            ev, _ = await turn(st, s, "!authmethod")
+            assert texts(ev) == "auth:fake_login"            # no key stored -> the agent's login method
         finally:
             await st.acp.close_all()
     run(main())
+
+
+def test_stored_api_key_selects_the_agents_api_key_sign_in(st):
+    st.acp.store.update("fake", {"env": {"FAKE_AUTH": "1", "GEMINI_API_KEY": "k-123"}})
+    async def main():
+        s = await st.acp.get_or_open("fake", None, None)
+        try:
+            ev, _ = await turn(st, s, "!authmethod")
+            assert texts(ev) == "auth:gemini-api-key"
+        finally:
+            await st.acp.close_all()
+    run(main())
+    assert "k-123" not in json.dumps(st.acp.store.get("fake"))
 
 
 def test_cancel_running_turn(st):

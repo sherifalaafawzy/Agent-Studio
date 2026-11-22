@@ -30,11 +30,14 @@ class FakeAgent:
 
     async def initialize(self, protocol_version, client_capabilities=None, client_info=None, **kw):
         self.caps = client_capabilities
-        methods = [S.AuthMethodAgent(id="fake_login", name="Fake login")] if os.environ.get("FAKE_AUTH") == "1" else []
+        methods = [S.AuthMethodAgent(id="fake_login", name="Fake login"), S.AuthMethodAgent(id="gemini-api-key", name="API key")] if os.environ.get("FAKE_AUTH") == "1" else []
         return S.InitializeResponse(protocol_version=protocol_version, auth_methods=methods,
                                     agent_info=S.Implementation(name="fake-acp-agent", title="Fake Agent", version="9.9.9"))
 
     async def authenticate(self, method_id, **kw):
+        if method_id == "gemini-api-key" and not os.environ.get("GEMINI_API_KEY"):
+            raise acp.RequestError.auth_required()
+        self.auth_method = method_id
         self.authed = True
         return S.AuthenticateResponse()
 
@@ -98,6 +101,8 @@ class FakeAgent:
             await self._say(session_id, f"plan:{r}")
         elif text.startswith("!env "):
             await self._say(session_id, f"env:{text[5:].strip()}={'present' if text[5:].strip() in os.environ else 'absent'}")
+        elif text == "!authmethod":
+            await self._say(session_id, f"auth:{getattr(self, 'auth_method', None)}")
         elif text == "!slow":
             for _ in range(200):
                 if session_id in self.cancel_flags:

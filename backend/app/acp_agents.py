@@ -14,6 +14,7 @@ IMPORTANT - what is and is NOT enforced here:
 from __future__ import annotations
 
 import asyncio
+import calendar
 import contextlib
 import json
 import os
@@ -27,11 +28,14 @@ from collections import deque
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable
 
 import acp
 from acp import schema as S
 
+from . import cli_agents
+from .cli_agents import CliError
 from .db import Database, data_dir
 from .harness.files import ToolError, jail, read_text, write_text
 
@@ -43,27 +47,77 @@ IDLE_REAP_S = 1800
 ID_RE = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
 READ_KINDS = {"read", "search", "think"}   # 'fetch' is network access -> always asked
 
-# Launch commands come from each vendor's own docs (verified 2026-11-20); the user can edit them in Settings.
+# Launch commands come from each vendor's own docs (verified 2026-11-21); the user can edit them in Settings.
+# kind "acp": spawned and spoken to over the Agent Client Protocol. kind "cli": a headless-CLI adapter (cli_agents.py).
+# `install` = the exact instruction shown when a harness is missing; `billing` = whose account/keys it spends;
+# `version_cmd` = a free health check (never starts a model call).
 CATALOG: list[dict] = [
-    dict(id="claude", label="Claude Code", command="npx",
-         args=["-y", "@agentclientprotocol/claude-agent-acp@0.101.0"],
-         notes="ACP adapter over the Claude Agent SDK. Uses your Claude Code login (run `claude` once) or ANTHROPIC_API_KEY in env.",
+    dict(id="claude", label="Claude Code", kind="acp", command="npx",
+         args=["-y", "@agentclientprotocol/claude-agent-acp@0.101.0"], version_cmd=["claude", "--version"],
+         install="Needs Node.js (npx fetches the pinned ACP adapter on first use). Sign in once by running `claude` in a terminal, or store ANTHROPIC_API_KEY below.",
+         billing="your Claude subscription or Anthropic API key (not capped by Agent Studio)",
+         notes="DEFAULT for large coding tasks. ACP adapter over the Claude Agent SDK. Uses your Claude Code login (run `claude` once) or ANTHROPIC_API_KEY in env.",
          env_hint=["ANTHROPIC_API_KEY"]),
-    dict(id="cursor", label="Cursor", command="agent", args=["acp"],
-         notes="Cursor CLI in ACP mode. Install the Cursor CLI, then run `agent login` once (or set CURSOR_API_KEY).",
+    dict(id="codex", label="OpenAI Codex", kind="acp", command="npx",
+         args=["-y", "@agentclientprotocol/codex-acp@2.5.0"], version_cmd=["codex", "--version"],
+         install="Needs Node.js (npx fetches the pinned ACP adapter, which bundles the Codex CLI). Sign in once with `npx -y @openai/codex@0.167.0 login` (ChatGPT account), or store OPENAI_API_KEY / CODEX_API_KEY below.",
+         billing="your ChatGPT plan or OpenAI API key (not capped by Agent Studio)",
+         notes="OpenAI Codex CLI through the ACP adapter (`codex-acp`). Codex applies its own sandbox/approval rules; permission requests it sends are handled by the run policy.",
+         env_hint=["OPENAI_API_KEY", "CODEX_API_KEY"]),
+    dict(id="aider", label="Aider", kind="cli", command="aider",
+         args=["--yes-always", "--no-auto-commits", "--no-pretty", "--no-stream", "--no-check-update", "--analytics-disable",
+               "--no-suggest-shell-commands", "--no-show-release-notes", "--no-detect-urls"],
+         version_cmd=["aider", "--version"],
+         install="Install: `uv tool install --python 3.12 aider-chat==0.86.2` (needs uv; pulls Python 3.12 if missing). Then set the model with `--model <name>` in the arguments below and store that provider's key (e.g. OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or any provider Aider supports).",
+         billing="YOUR OWN provider key (any provider Aider supports, incl. local models via an OpenAI-compatible base URL); Aider prints per-run cost",
+         notes="No ACP: run through its headless CLI (`aider --message-file`, one fresh run per call - put the full context in the task). Edits files, no shell. Not under Agent Studio's caps.",
+         env_hint=["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_BASE"]),
+    dict(id="openhands", label="OpenHands", kind="cli", command="openhands",
+         args=["--headless", "--json", "--override-with-envs", "--exit-without-confirmation"],
+         version_cmd=["openhands", "--version"],
+         install="Linux/macOS/WSL only. On Windows run inside WSL (Ubuntu): `uv tool install openhands==1.16.0 --python 3.12` (needs uv >= 0.11.6 and Python 3.12 there; set WSL_DISTRO below if it is not your default distro). Provide the model via LLM_MODEL, LLM_API_KEY and optionally LLM_BASE_URL below. The CLI is flagged 'no longer actively maintained' upstream.",
+         billing="YOUR OWN provider via LLM_MODEL / LLM_API_KEY / LLM_BASE_URL (any LiteLLM provider, incl. local); cost is parsed if reported, else unknown",
+         notes="No stable ACP on Windows: run through its headless CLI (`openhands --headless --json`, in WSL on Windows). It AUTO-APPROVES every action incl. shell for the whole run, so Agent Studio asks you once before each run and refuses the readonly policy.",
+         env_hint=["LLM_MODEL", "LLM_API_KEY", "LLM_BASE_URL", "WSL_DISTRO"]),
+    dict(id="cursor", label="Cursor", kind="acp", command="cursor-agent", args=["acp"],
+         notes="Needs the standalone Cursor Agent CLI (`cursor-agent`; Grok also installs a different `agent`, so don't use that name) - the Cursor IDE alone does not include it. Install: `irm 'https://cursor.com/install?win32=true' | iex`, then `agent login` once (or set CURSOR_API_KEY).",
          env_hint=["CURSOR_API_KEY"]),
-    dict(id="antigravity", label="Antigravity", command="agy", args=["acp"],
-         notes="Google's official Antigravity CLI ACP server. Sign in once with `agy acp --login` (credentials are cached).",
+    dict(id="kiro", label="Kiro", kind="acp", command="kiro-cli", args=["acp"],
+         notes="Kiro CLI in ACP mode (`kiro-cli acp`). Sign in once with `kiro-cli login`. Add `--trust-all-tools` to args only if you want it to skip its own approvals.",
          env_hint=[]),
-    dict(id="grok", label="Grok Build", command="grok", args=["agent", "stdio"],
-         notes="xAI Grok Build CLI as an ACP agent. Install Grok Build and sign in first (SuperGrok / X Premium+).",
+    dict(id="antigravity", label="Antigravity", kind="acp", command="agy", args=["acp"],
+         notes="Needs the Antigravity CLI (`agy`) - the Antigravity IDE alone does not put it on PATH. Sign in once with `agy acp --login` (Google account), OR store a Gemini API key below (GEMINI_API_KEY) and Agent Studio uses Antigravity's API-key sign-in.",
+         env_hint=["GEMINI_API_KEY"]),
+    dict(id="grok", label="Grok Build", kind="acp", command="grok", args=["agent", "stdio"],
+         notes="xAI's Grok Build CLI (`grok`). This is NOT the 'Grok Bot' desktop app, which has no ACP interface. Install Grok Build and sign in first.",
          env_hint=["XAI_API_KEY"]),
 ]
 _HINTS = {c["id"]: c["env_hint"] for c in CATALOG}
+_META = {c["id"]: c for c in CATALOG}
+CLI_KINDS = {c["id"] for c in CATALOG if c["kind"] == "cli"}
 
 
 class AcpError(Exception):
     """Expected, user-actionable failure."""
+
+
+def _refresh_path() -> None:
+    """Windows: pick up PATH entries added by installers after this server started (no restart needed)."""
+    if os.name != "nt":
+        return
+    try:
+        import winreg
+        parts: list[str] = []
+        for hive, sub in ((winreg.HKEY_CURRENT_USER, "Environment"),
+                          (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")):
+            with contextlib.suppress(OSError), winreg.OpenKey(hive, sub) as k:
+                parts += os.path.expandvars(winreg.QueryValueEx(k, "Path")[0]).split(";")
+        have = {x.lower().rstrip("\\") for x in os.environ.get("PATH", "").split(";")}
+        extra = [x for x in parts if x and x.lower().rstrip("\\") not in have]
+        if extra:
+            os.environ["PATH"] = os.environ.get("PATH", "") + ";" + ";".join(extra)
+    except Exception:
+        pass
 
 
 def _clip(v: Any, n: int = 4000) -> Any:
@@ -95,16 +149,33 @@ def _content_text(content: Any) -> str:
 class AcpStore:
     def __init__(self, db: Database):
         self.db = db
+        cols = {r["name"] for r in db.query("PRAGMA table_info(acp_agents)")}
+        for c, ddl in (("month_cost_cap", "REAL NOT NULL DEFAULT 0"), ("month_turn_cap", "INTEGER NOT NULL DEFAULT 0"),
+                       ("month_minutes_cap", "REAL NOT NULL DEFAULT 0")):
+            if c not in cols:     # per-agent monthly limits Agent Studio enforces itself (0 = no limit)
+                db.execute(f"ALTER TABLE acp_agents ADD COLUMN {c} {ddl}")
         for c in CATALOG:
+            notes = c["notes"] + (f" SETUP: {c['install']}" if c.get("install") else "")   # Settings shows `notes`: keep the install steps in it
             db.execute("INSERT OR IGNORE INTO acp_agents(id,label,command,args,env,enabled,builtin,notes) VALUES(?,?,?,?,?,1,1,?)",
-                       (c["id"], c["label"], c["command"], json.dumps(c["args"]), "{}", c["notes"]))
+                       (c["id"], c["label"], c["command"], json.dumps(c["args"]), "{}", notes))
+            db.execute("UPDATE acp_agents SET notes=? WHERE id=? AND builtin=1", (notes, c["id"]))   # refresh guidance on upgrade
+        # migration: Grok's installer ships its own `agent`, which shadows Cursor's; Cursor also installs `cursor-agent`
+        db.execute("UPDATE acp_agents SET command='cursor-agent' WHERE id='cursor' AND builtin=1 AND command='agent'")
 
     def _view(self, r) -> dict:
+        _refresh_path()
         env = json.loads(r["env"] or "{}")
+        meta = _META.get(r["id"], {})
+        kind = meta.get("kind", "acp") if r["builtin"] else "acp"
         exe = shutil.which(r["command"]) or (r["command"] if Path(r["command"]).is_file() else None)
+        if exe is None and kind == "cli" and cli_agents.is_installed(r["command"], env):
+            exe = r["command"]                         # present inside WSL (Windows): the launcher resolves it per run
         keys = sorted(set(_HINTS.get(r["id"], [])) | set(env))
         return dict(id=r["id"], label=r["label"], command=r["command"], args=json.loads(r["args"] or "[]"),
+                    kind=kind, install=meta.get("install", ""), billing=meta.get("billing", "its own account (not capped by Agent Studio)"),
                     enabled=bool(r["enabled"]), builtin=bool(r["builtin"]), max_turns=r["max_turns"], notes=r["notes"],
+                    month_cost_cap=r["month_cost_cap"], month_turn_cap=r["month_turn_cap"], month_minutes_cap=r["month_minutes_cap"],
+                    month=self.month_usage(r["id"]),
                     installed=exe is not None, resolved_path=exe, env_keys=keys, env_set={k: bool(env.get(k)) for k in keys})
 
     def list(self) -> list[dict]:
@@ -145,6 +216,11 @@ class AcpStore:
             sets.append("enabled=?"); vals.append(1 if patch["enabled"] else 0)
         if patch.get("max_turns") is not None:
             sets.append("max_turns=?"); vals.append(max(1, min(int(patch["max_turns"]), 1000)))
+        for k in ("month_cost_cap", "month_turn_cap", "month_minutes_cap"):
+            if patch.get(k) is not None:
+                if float(patch[k]) < 0:
+                    raise AcpError(f"{k} must be >= 0")
+                sets.append(f"{k}=?"); vals.append(int(patch[k]) if k == "month_turn_cap" else float(patch[k]))
         if patch.get("env"):
             env = self.env_values(aid)
             for k, v in patch["env"].items():
@@ -164,6 +240,41 @@ class AcpStore:
         if r["builtin"]:
             raise AcpError("built-in agents can be disabled but not deleted")
         self.db.execute("DELETE FROM acp_agents WHERE id=?", (aid,))
+
+    async def version(self, aid: str, workspace: Path) -> str | None:
+        """Free health check: run the harness' own `--version` (never a model call). None if it has no such check
+        or the underlying CLI is not on this machine (e.g. an ACP adapter that bundles its own copy)."""
+        cfg, cmd = self.get(aid), _META.get(aid, {}).get("version_cmd")
+        if not cmd or not cfg["builtin"]:
+            return None
+        env = self.env_values(aid)
+        if cfg["kind"] == "cli":                          # the harness itself (possibly via WSL), using the configured command
+            return await cli_agents.version_of(cfg["command"], cmd[1:], workspace, {**os.environ, **env})
+        if not cli_agents.is_installed(cmd[0], env):      # ACP adapters bundle their CLI: the global one is only informational
+            return None
+        return await cli_agents.version_of(cmd[0], cmd[1:], workspace, {**os.environ, **env})
+
+    def month_usage(self, aid: str) -> dict:
+        """This calendar month (UTC): turns, minutes and the cost the agent REPORTED (None if it never reports cost)."""
+        g = time.gmtime()
+        start = calendar.timegm((g.tm_year, g.tm_mon, 1, 0, 0, 0))
+        r = self.db.one("SELECT COUNT(*) n, SUM(cost) c, SUM(duration_s) d, SUM(CASE WHEN cost IS NOT NULL THEN 1 ELSE 0 END) nc "
+                        "FROM acp_usage WHERE agent=? AND ts>=?", (aid, start))
+        return dict(turns=r["n"], minutes=round((r["d"] or 0) / 60, 2), reported_cost=r["c"], cost_reported_turns=r["nc"])
+
+    def check_limits(self, aid: str) -> None:
+        """Refuse a new turn BEFORE it starts if a monthly limit is used up."""
+        a, m = self.get(aid), self.month_usage(aid)
+        if a["month_turn_cap"] and m["turns"] >= a["month_turn_cap"]:
+            raise AcpError(f"{a['label']}: monthly turn limit reached ({m['turns']}/{a['month_turn_cap']}). Raise it in Settings -> External agents.")
+        if a["month_minutes_cap"] and m["minutes"] >= a["month_minutes_cap"]:
+            raise AcpError(f"{a['label']}: monthly time limit reached ({m['minutes']:.0f}/{a['month_minutes_cap']:.0f} min). Raise it in Settings -> External agents.")
+        if a["month_cost_cap"]:
+            if m["turns"] and not m["cost_reported_turns"]:
+                raise AcpError(f"{a['label']}: a monthly cost limit is set, but this agent doesn't report cost - Agent Studio can't verify it. "
+                               "Use a turn or minute limit for it instead (Settings -> External agents).")
+            if (m["reported_cost"] or 0) >= a["month_cost_cap"]:
+                raise AcpError(f"{a['label']}: monthly cost limit reached (reported ${m['reported_cost']:.2f} of ${a['month_cost_cap']:.2f}).")
 
     def usage(self) -> list[dict]:
         rows = self.db.query("""SELECT agent, COUNT(*) turns, SUM(input_tokens) i, SUM(output_tokens) o, SUM(total_tokens) t,
@@ -208,6 +319,8 @@ class AcpSession:
         self.last_used = time.time()
         self.last_usage_update: dict | None = None
         self.closed = False
+        self.kind: str = agent.get("kind", "acp")      # "cli" sessions have no connection: one process per prompt (cli_agents.py)
+        self.cancel_requested = False
 
     def public(self) -> dict:
         return dict(session_id=self.id, agent=self.agent["id"], workspace=self.workspace.as_posix(), turns=self.turns,
@@ -340,8 +453,9 @@ class _Client:
 
 
 class AcpManager:
-    def __init__(self, db: Database, store: AcpStore, workspace_for: Callable[[str | None], Path]):
+    def __init__(self, db: Database, store: AcpStore, workspace_for: Callable[[str | None], Path], tel: Any = None):
         self.db, self.store, self.workspace_for = db, store, workspace_for
+        self.tel = tel          # Telemetry | None: OTel env for agents + a span per turn / tool call
         self.sessions: dict[str, AcpSession] = {}
         self.pending: dict[str, Pending] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -472,7 +586,7 @@ class AcpManager:
             s = self.sessions.get(session_id)
             if not s or s.agent["id"] != agent_id:
                 raise AcpError("unknown or expired session (start a new one)")
-            if s.proc is not None and s.proc.returncode is not None:
+            if s.kind == "acp" and s.proc is not None and s.proc.returncode is not None:
                 await self._close(session_id)
                 raise AcpError(f"the agent process exited (code {s.proc.returncode}). {self._tail(s)}")
             return s
@@ -494,10 +608,15 @@ class AcpManager:
         ws = ws_path or self.workspace_for(workspace)
         ws.mkdir(parents=True, exist_ok=True)
         sess = AcpSession(uuid.uuid4().hex[:12], cfg, ws)
+        if sess.kind == "cli":                      # nothing to spawn yet: each prompt runs its own process
+            sess.info = dict(name=cfg["label"], title=cfg["label"], version=None, protocol="n/a (headless CLI adapter)", auth_methods=[], capabilities={})
+            self.sessions[sess.id] = sess
+            return sess
         client = _Client(self, sess)
         try:
             sess.conn, sess.proc = await sess.stack.enter_async_context(acp.spawn_agent_process(
-                client, cfg["resolved_path"], *cfg["args"], env=self.store.env_values(agent_id), cwd=str(ws),
+                client, cfg["resolved_path"], *cfg["args"],
+                env={**(self.tel.agent_env(agent_id, sess.id) if self.tel else {}), **self.store.env_values(agent_id)}, cwd=str(ws),
                 transport_kwargs={"limit": 16 << 20}))
             sess.stderr_task = asyncio.create_task(self._drain(sess.proc.stderr, sess.stderr))
             init = await asyncio.wait_for(sess.conn.initialize(
@@ -518,7 +637,12 @@ class AcpManager:
                 methods = init.auth_methods or []
                 if e.code != -32000 or not methods:
                     raise
-                mid = next((m.id for m in methods if m.id == "cursor_login"), methods[0].id)
+                ids = [m.id for m in methods]
+                keyed = [i for i in ids if re.search(r"api[-_]?key", i, re.I)]
+                # a key stored for this agent -> use its API-key method; else Cursor's login; else the agent's first method
+                has_key = any(v and "KEY" in k.upper() for k, v in self.store.env_values(agent_id).items())
+                mid = keyed[0] if keyed and has_key else (
+                    "cursor_login" if "cursor_login" in ids else ids[0])
                 try:
                     await asyncio.wait_for(sess.conn.authenticate(method_id=mid), 60)
                     ns = await new()
@@ -554,23 +678,46 @@ class AcpManager:
         if policy not in ("ask", "reads_auto", "readonly"):
             raise AcpError("policy must be ask | reads_auto | readonly")
         async with sess.lock:
+            self.store.check_limits(sess.agent["id"])
             if sess.turns >= cfg["max_turns"]:
                 raise AcpError(f"turn limit reached ({cfg['max_turns']}) for this session - start a new session (limit is editable in Settings)")
-            if sess.proc.returncode is not None:
+            if sess.kind == "acp" and sess.proc.returncode is not None:
                 raise AcpError(f"the agent process exited (code {sess.proc.returncode}). {self._tail(sess)}")
+            tel, trace_id, root_span = self.tel, uuid.uuid4().hex, uuid.uuid4().hex[:16]
+            tool_t0: dict[str, tuple[float, str]] = {}
+            user_emit = emit
+
+            def emit(ev: dict) -> None:         # noqa: F811 - wraps the caller's sink to record a span per tool call
+                if tel and ev.get("type") == "tool_call":
+                    tool_t0[ev["id"]] = (time.time(), str(ev.get("title") or ev.get("kind") or "tool"))
+                elif tel and ev.get("type") == "tool_update" and ev.get("status") in ("completed", "failed") and ev.get("id") in tool_t0:
+                    st, title = tool_t0.pop(ev["id"])
+                    tel.span(sess.agent["id"], trace_id, uuid.uuid4().hex[:16], root_span, f"tool.{title}"[:80], st, time.time(),
+                             {"tool_call_id": ev["id"], "status": ev["status"]}, "error" if ev["status"] == "failed" else "ok")
+                user_emit(ev)
+
             sess.emit, sess.policy, sess.last_usage_update = emit, policy, None
             t0 = time.time()
+            stop = "error"
             try:
-                resp = await asyncio.wait_for(sess.conn.prompt(session_id=sess.acp_id, prompt=[S.TextContentBlock(text=text)]), timeout)
+                resp = await asyncio.wait_for(self._turn(sess, text, policy), timeout)
+                stop = str(resp.stop_reason)
             except asyncio.TimeoutError:
                 await self._cancel(sess)
                 raise AcpError(f"the turn exceeded {int(timeout)}s and was cancelled")
             except acp.RequestError as e:
                 raise AcpError(f"agent error {e.code}: {e}")
+            except CliError as e:
+                raise AcpError(str(e))
             finally:
                 sess.emit = _noop
                 self._cancel_pending(sess.id)
                 sess.last_used = time.time()
+                if tel:
+                    tel.span(sess.agent["id"], trace_id, root_span, None, f"acp.turn.{sess.agent['id']}", t0, time.time(),
+                             {"agent": sess.agent["id"], "session": sess.id, "stop_reason": stop, "policy": policy, "turn": sess.turns + 1,
+                              "prompt_chars": len(text), "billing": "external account - not capped by Agent Studio"},
+                             "ok" if stop in ("end_turn", "max_tokens", "max_turn_requests") else "error")
             sess.turns += 1
             u = resp.usage
             lu = sess.last_usage_update or {}
@@ -583,8 +730,44 @@ class AcpManager:
                         reported_cost=lu.get("cost"), currency=lu.get("currency"), context=lu or None,
                         billing_note="External agent: not covered by the Agent Studio spend caps; usage shown is what the agent reported.")
 
+    async def _turn(self, sess: AcpSession, text: str, policy: str) -> Any:
+        """One model turn: ACP prompt, or (cli harnesses) one headless process. Returns an object with .stop_reason/.usage."""
+        if sess.kind == "acp":
+            return await sess.conn.prompt(session_id=sess.acp_id, prompt=[S.TextContentBlock(text=text)])
+        ok = await self._approve_unattended(sess, policy)
+        if not ok:
+            sess.emit({"type": "text", "text": "The unattended run was not approved, so nothing was executed."})
+            return SimpleNamespace(stop_reason="cancelled", usage=None)
+        res = await cli_agents.run_cli(sess.agent["id"], sess.agent, self.store.env_values(sess.agent["id"]), sess.workspace, text, policy,
+                                       sess.emit, sess)
+        if res.cost is not None:
+            sess.last_usage_update = dict(used=(res.usage or {}).get("total_tokens"), size=None, cost=res.cost, currency="USD")
+        if res.truncated:
+            sess.emit({"type": "note", "text": f"{res.truncated} characters of output were not kept (cap)."})
+        u = res.usage
+        return SimpleNamespace(stop_reason=res.stop_reason, usage=SimpleNamespace(**u) if u else None)
+
+    async def _approve_unattended(self, sess: AcpSession, policy: str) -> bool:
+        """CLI harnesses have no per-action permission protocol. 'readonly' needs the harness' own read-only mode (run_cli
+        refuses otherwise); 'ask'/'reads_auto' ask the user ONCE for the whole unattended run (unanswered = denied)."""
+        if policy == "readonly":
+            return True
+        rid = uuid.uuid4().hex[:12]
+        what = cli_agents.SPECS[sess.agent["id"]].unattended
+        res = await self._wait(rid, "permission", sess, ["allow", "reject"], {
+            "type": "permission", "request_id": rid, "title": f"Run {sess.agent['label']} unattended in {sess.workspace.as_posix()}", "kind": "execute",
+            "input": what, "options": [dict(id="allow", name="Allow this run", kind="allow_once"), dict(id="reject", name="Reject", kind="reject_once")]})
+        decision = res["option_id"] if res else "cancelled"
+        sess.emit({"type": "resolved", "request_id": rid, "decision": decision})
+        return decision == "allow"
+
     async def _cancel(self, sess: AcpSession) -> None:
         self._cancel_pending(sess.id)
+        if sess.kind == "cli":
+            sess.cancel_requested = True
+            if sess.proc is not None:
+                cli_agents.kill_tree(sess.proc)
+            return
         with contextlib.suppress(Exception):
             await asyncio.wait_for(sess.conn.cancel(session_id=sess.acp_id), 10)
 
@@ -593,6 +776,9 @@ class AcpManager:
             return
         sess.closed = True
         self._cancel_pending(sess.id)
+        if sess.kind == "cli":
+            cli_agents.kill_tree(sess.proc)
+            return
         pid = getattr(sess.proc, "pid", None)
         if os.name == "nt" and pid and sess.proc.returncode is None:   # npx/cmd wrappers leave grandchildren: kill the tree
             with contextlib.suppress(Exception):
@@ -628,9 +814,23 @@ class AcpManager:
     async def _probe(self, agent_id: str) -> dict:
         """Start the agent, initialize + open a session (verifies install/login), report what it advertises, close."""
         ws = data_dir() / "workspaces" / "acp-probe"
+        cfg = self.store.get(agent_id)
+        if cfg["kind"] == "cli":                   # no ACP handshake to do: the version check is the whole (free) health check
+            if not cfg["installed"]:
+                raise AcpError(f"'{cfg['command']}' was not found on PATH. {cfg['notes']}")
+            ws.mkdir(parents=True, exist_ok=True)
+            try:
+                v = await self.store.version(agent_id, ws)
+            except CliError as e:
+                raise AcpError(f"{cfg['label']} did not pass its version check: {e}")
+            return dict(ok=True, name=cfg["label"], title=cfg["label"], version=v, protocol="n/a (headless CLI adapter)", auth_methods=[], modes=None)
         sess = await self._open(agent_id, ws_path=ws)
         try:
-            return dict(ok=True, **sess.info, modes=sess.modes)
+            try:
+                cli_version = await self.store.version(agent_id, ws)
+            except CliError:
+                cli_version = None
+            return dict(ok=True, **sess.info, modes=sess.modes, cli_version=cli_version)
         finally:
             await self._close_session(sess)
             self.sessions.pop(sess.id, None)

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { API_BASE, api } from "@/lib/api";
+import InfoTip from "@/components/InfoTip";
 
 type AcpAgent = { id: string; label: string; installed: boolean; enabled: boolean; notes: string; command: string };
 type Mode = { id: string; name: string; description?: string };
@@ -38,7 +39,7 @@ function apply(blocks: Block[], ev: Ev): Block[] {
     }
     case "auto": b.push({ k: "note", text: `auto-${ev.decision}: ${ev.title} (${ev.kind}, policy ${ev.policy})`, bad: ev.decision === "rejected" }); break;
     case "fs_write": b.push({ k: "note", text: `wrote ${ev.path} (${ev.bytes} bytes, via workspace-jailed fs)` }); break;
-    case "ext": b.push({ k: "note", text: `${ev.method}: ${String(ev.data).slice(0, 200)}` }); break;
+    case "ext": b.push({ k: "note", text: `${ev.method}: ${(typeof ev.data === "string" ? ev.data : JSON.stringify(ev.data, null, 2) ?? String(ev.data)).slice(0, 200)}` }); break;
   }
   return b;
 }
@@ -155,10 +156,8 @@ export default function ExternalPage() {
   const dangerous = /bypass|yolo|dangerously/i.test(mode);
   return (
     <div className="chat">
-      <div className="row" style={{ marginBottom: 8 }}>
-        <h2 style={{ margin: 0 }}>External agents</h2>
-        <span className="mut small">run Claude Code, Cursor, Antigravity, Grok Build over ACP · not covered by the spend caps</span>
-      </div>
+      <div className="page-head"><h2>External agents</h2><InfoTip id="acp" /><span className="pill ok" title="They bill their own accounts">own accounts · not capped</span></div>
+      <p className="page-sub" style={{ marginBottom: 12 }}>Talk directly to Claude Code, Cursor, Kiro, Antigravity or Grok over ACP. To let your own agents call them, tick them on the agent in Agent Studio. Monthly limits: Settings → External agents.</p>
       <div className="row" style={{ marginBottom: 8 }}>
         <label>Agent
           <select value={agent} disabled={!!session} onChange={(e) => setAgent(e.target.value)}>

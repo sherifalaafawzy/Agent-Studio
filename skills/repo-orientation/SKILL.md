@@ -1,5 +1,6 @@
 ---
 name: repo-orientation
+group: Coding
 description: Quickly map an unfamiliar repository (stack, entry points, tests, conventions) before changing anything. Use at the start of any task in a codebase you have not seen this session.
 ---
 

@@ -6,6 +6,7 @@ import json, os, shutil, sys, tempfile, warnings
 sys.stdout.reconfigure(encoding="utf-8")
 warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+os.environ["AGENT_STUDIO_ENABLE_MOCK"] = "1"   # demos run on the offline mock provider
 os.environ["AGENT_STUDIO_HOME"] = tempfile.mkdtemp(prefix="as-demo2-")
 
 from fastapi.testclient import TestClient

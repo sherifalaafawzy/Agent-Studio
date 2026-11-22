@@ -1,5 +1,6 @@
 ---
 name: code-review
+group: Coding
 description: Review a code change for correctness, edge cases, security and missing tests, and report findings by severity. Use when asked to review a diff/PR/files or to double-check your own change before reporting done.
 ---
 

@@ -53,11 +53,13 @@ def _clip(s: str) -> tuple[str, bool]:
 class Sandbox:
     _lock = threading.Lock()
 
-    def __init__(self, workspace: Path, network: bool = False, memory: str = "1g", cpus: str = "2"):
+    kind = "docker-container"
+
+    def __init__(self, workspace: Path, network: bool = False, memory: str = "1g", cpus: str = "2", pids: int = 256, read_only: bool = False):
         self.workspace = Path(workspace).resolve()
         self.network = network
-        self.memory, self.cpus = memory, cpus
-        h = hashlib.sha1(f"{self.workspace}|{network}".encode()).hexdigest()[:12]
+        self.memory, self.cpus, self.pids, self.read_only = memory, cpus, pids, read_only
+        h = hashlib.sha1(f"{self.workspace}|{network}|{memory}|{cpus}|{pids}|{read_only}".encode()).hexdigest()[:12]
         self.name = f"agent-studio-{h}"
 
     def ensure(self) -> None:
@@ -74,8 +76,9 @@ class Sandbox:
             args = ["run", "-d", "--name", self.name, "--label", "agent-studio=1",
                     "--network", "bridge" if self.network else "none",
                     "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-                    "--pids-limit", "256", "--memory", self.memory, "--cpus", self.cpus,
+                    "--pids-limit", str(self.pids), "--memory", self.memory, "--cpus", self.cpus,
                     "--user", "1000:1000", "--mount", f"type=bind,source={self.workspace},target=/workspace",
+                    *(["--read-only", "--tmpfs", "/tmp:rw,exec,size=256m", "--tmpfs", "/var/tmp:rw,size=64m"] if self.read_only else []),
                     "-w", "/workspace", IMAGE]
             r = _docker(args, timeout=60)
             if r.returncode != 0:

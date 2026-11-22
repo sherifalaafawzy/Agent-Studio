@@ -1,0 +1,100 @@
+{
+ "ContinuousIntelligence/ci-proto@ee3031351a151e3f6febf8c62b53e6ea1008bef6": {
+  "assets/readme/bike_sharing_forecast.png": {
+   "sha256": "da28b3388dcc823887bc40921b284d17d2f3f2aec1c5cf68d92b2c0ffe68e839",
+   "size": 225905
+  },
+  "assets/readme/ci_proto_pareto_frontier.png": {
+   "sha256": "fa99ea3fdbcfc8ef8e97c7d2b16ab3db25f014ceed3aac98a08092ccab9120a2",
+   "size": 253726
+  },
+  "model-long.ckpt": {
+   "sha256": "fd4feb17842b0395e461dec1f2214476ca0549f51073f857cd5aaa226675317c",
+   "size": 668921710
+  },
+  "model.ckpt": {
+   "sha256": "0855f78f231f4313257bd81adf7052cdd33ef3faf26417c0d7ff570c3ee731e6",
+   "size": 668895231
+  }
+ },
+ "Datadog/Toto-2.0-4m@8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9": {
+  "assets/architecture.png": {
+   "sha256": "973196289f6036b880ec7fdb00fe0b1078215232bf58f0bdd6a27eeebfca46ef",
+   "size": 436711
+  },
+  "assets/pareto.png": {
+   "sha256": "756a059027357cf224effc92995755b2c50ca8396b68918135ef0e5226798294",
+   "size": 302199
+  },
+  "figures/architecture.png": {
+   "sha256": "d17a304f234cc65a426a83c6a8ea9c6e03c3e7f5230860146834063999ced76d",
+   "size": 396113
+  },
+  "model.safetensors": {
+   "sha256": "316660d5afb47943e531f39242e0b02ca0b8bb73be5709dfe07ca80dfce9805e",
+   "size": 16582848
+  }
+ },
+ "LiquidAI/d1-2B@a6bce774e6dde338dcc3036ceb5d91f78bf4c19e": {
+  "model.safetensors": {
+   "sha256": "b5e573687315e82ea80f4f7dd8d76b5cec3b6ee97e3509fd0493cfebb203719f",
+   "size": 3836417920
+  },
+  "tokenizer.json": {
+   "sha256": "a39eed58008cbcbc09e5b629b81338a654269c64cd13348aaa6090f4db75c7e7",
+   "size": 17908258
+  }
+ },
+ "LiquidAI/d1-3B@05b80faf55536582ad5ffb2da7456f6a653acf71": {
+  "model.safetensors": {
+   "sha256": "50e03317847caf6df9a9aee27ed40f20554a86a21e60d1d47ba41a422b546c0c",
+   "size": 6247065504
+  },
+  "tokenizer.json": {
+   "sha256": "8096ecb9f54599d756c8de728a598a340bc1e43c0deb77ddd62456c38349fcee",
+   "size": 17905750
+  }
+ },
+ "NeoQuasar/Kronos-Tokenizer-base@0e0117387f39004a9016484a186a908917e22426": {
+  "model.safetensors": {
+   "sha256": "59d85f6af76a2c3b8240ea06cb21db4213b4eeca053f246b23e29cf832fc6bee",
+   "size": 15842368
+  }
+ },
+ "NeoQuasar/Kronos-base@2b554741eca47781b64468546e77fef3e85130e6": {
+  "model.safetensors": {
+   "sha256": "abff193acab6db1a0368e9773e75799d11403b6d054ee6d5f0a11aeabc5f4b83",
+   "size": 409264008
+  }
+ },
+ "amazon/chronos-2@29ec3766d36d6f73f0696f85560a422f50e8498c": {
+  "model.safetensors": {
+   "sha256": "ddcda3c7508bf2528087723e98a20707cc04b7f370ae275a9fd88078ddba4f42",
+   "size": 477930472
+  }
+ },
+ "google/timesfm-3.0-pytorch@43046b85ec22d584a13f8098c2ed39c889e129c2": {
+  "model.safetensors": {
+   "sha256": "a7592b0a8432baee54483254e5647856911ce69e09d09a9bb65904b2d98f17da",
+   "size": 1322898824
+  }
+ },
+ "mistralai/Timestral-209M@9874d252ab0aae16f7f7c999f98f98d6ad7d8365": {
+  "model.safetensors": {
+   "sha256": "1456effb9927e3daa8c7234f10497e3424233869245a9c72b8ecebaf7ad2b7fa",
+   "size": 837271648
+  }
+ },
+ "mistralai/Timestral-28M@49b26409ac87b5935539a5d8ffe7f397b720db47": {
+  "model.safetensors": {
+   "sha256": "dfc83c6220937ce5fc6687b35a4df94cd25e28a2cfe6fb92a23dad6301b2015d",
+   "size": 111296464
+  }
+ },
+ "mistralai/Timestral-5M@bdd20cfc15a3fea0e4cb5ccef37f8d3ca7aa335f": {
+  "model.safetensors": {
+   "sha256": "7ace108c4987e7f2a99a75a445240019d1d31c2117139d1bd05ffdfd25aca738",
+   "size": 20843960
+  }
+ }
+}

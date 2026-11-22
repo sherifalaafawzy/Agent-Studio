@@ -1,0 +1,235 @@
+{
+ "version": "1.0.0",
+ "snapshot_date": "2026-11-22",
+ "agents": [
+  {
+   "id": "antigravity-acp",
+   "name": "Google Antigravity",
+   "version": "1.5.2",
+   "description": "Google\u2019s AI coding agent",
+   "license": "proprietary",
+   "website": "https://antigravity.google/docs/ide/extensions",
+   "distribution": {
+    "binary": {
+     "windows-x86_64": {
+      "archive": "https://dl.google.com/agy-extensions/releases/windows/agy-acp-server-1.5.2-windows-x86_64.zip",
+      "cmd": "./agy_acp_server.exe",
+      "sha256": "5cbadd4f4df698572473d8890fc26ec2dc1724501f06e3a963941daec2bd21d6"
+     },
+     "windows-aarch64": {
+      "archive": "https://dl.google.com/agy-extensions/releases/windows/agy-acp-server-1.5.2-windows-arm64.zip",
+      "cmd": "./agy_acp_server.exe",
+      "sha256": "8a4b2ea8df2ffefae33309348752e9119d21a6d36090c0eb48631c2e8f5781ab"
+     }
+    }
+   }
+  },
+  {
+   "id": "claude-acp",
+   "name": "Claude Agent",
+   "version": "0.109.1",
+   "description": "ACP wrapper for Anthropic's Claude",
+   "license": "proprietary",
+   "website": "https://github.com/agentclientprotocol/claude-agent-acp",
+   "distribution": {}
+  },
+  {
+   "id": "cline",
+   "name": "Cline",
+   "version": "3.0.75",
+   "description": "Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more",
+   "license": "Apache-2.0",
+   "website": "https://cline.bot/cli",
+   "distribution": {
+    "npx": {
+     "package": "cline@3.0.75",
+     "args": [
+      "--acp"
+     ]
+    }
+   }
+  },
+  {
+   "id": "codex-acp",
+   "name": "Codex",
+   "version": "2.9.0",
+   "description": "ACP adapter for OpenAI's coding assistant",
+   "license": "Apache-2.0",
+   "website": "https://github.com/agentclientprotocol/codex-acp",
+   "distribution": {
+    "npx": {
+     "package": "@agentclientprotocol/codex-acp@2.9.0"
+    }
+   }
+  },
+  {
+   "id": "cursor",
+   "name": "Cursor",
+   "version": "2026.11.19",
+   "description": "Cursor's coding agent",
+   "license": "proprietary",
+   "website": "https://cursor.com/docs/cli/acp",
+   "distribution": {
+    "binary": {
+     "windows-aarch64": {
+      "archive": "https://downloads.cursor.com/lab/2026.11.19-f005e9d/windows/arm64/agent-cli-package.zip",
+      "cmd": "./dist-package\\cursor-agent.cmd",
+      "args": [
+       "acp"
+      ]
+     },
+     "windows-x86_64": {
+      "archive": "https://downloads.cursor.com/lab/2026.11.19-f005e9d/windows/x64/agent-cli-package.zip",
+      "cmd": "./dist-package\\cursor-agent.cmd",
+      "args": [
+       "acp"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "gemini",
+   "name": "Gemini CLI",
+   "version": "0.70.0",
+   "description": "Google's official CLI for Gemini",
+   "license": "Apache-2.0",
+   "website": "https://geminicli.com",
+   "distribution": {
+    "npx": {
+     "package": "@google/gemini-cli@0.70.0",
+     "args": [
+      "--acp"
+     ]
+    }
+   }
+  },
+  {
+   "id": "github-copilot-cli",
+   "name": "GitHub Copilot",
+   "version": "1.0.114",
+   "description": "GitHub's AI pair programmer",
+   "license": "proprietary",
+   "website": "https://github.com/features/copilot/cli/",
+   "distribution": {
+    "npx": {
+     "package": "@github/copilot@1.0.114",
+     "args": [
+      "--acp"
+     ]
+    }
+   }
+  },
+  {
+   "id": "goose",
+   "name": "goose",
+   "version": "1.60.2",
+   "description": "A local, extensible, open source AI agent that automates engineering tasks",
+   "license": "Apache-2.0",
+   "website": "https://block.github.io/goose/",
+   "distribution": {
+    "binary": {
+     "windows-x86_64": {
+      "archive": "https://github.com/block/goose/releases/download/v1.60.2/goose-x86_64-pc-windows-msvc.zip",
+      "cmd": "./goose-package\\goose.exe",
+      "args": [
+       "acp"
+      ],
+      "sha256": "5b838ab498f7a6b121fab621b99d39a480458c373f16be7f7ce7869e9bc54888"
+     }
+    }
+   }
+  },
+  {
+   "id": "grok-build",
+   "name": "Grok Build",
+   "version": "1.0.93",
+   "description": "xAI's coding agent and CLI",
+   "license": "proprietary",
+   "website": "https://x.ai/cli",
+   "distribution": {
+    "npx": {
+     "package": "@xai-official/grok@1.0.93",
+     "args": [
+      "agent",
+      "stdio"
+     ]
+    }
+   }
+  },
+  {
+   "id": "kilo",
+   "name": "Kilo",
+   "version": "7.8.32",
+   "description": "The open source coding agent",
+   "license": "MIT",
+   "website": "https://kilo.ai/",
+   "distribution": {
+    "binary": {
+     "windows-x86_64": {
+      "archive": "https://github.com/Kilo-Org/kilocode/releases/download/v7.8.32/kilo-windows-x64.zip",
+      "cmd": "./kilo.exe",
+      "args": [
+       "acp"
+      ],
+      "sha256": "5efa1066b4667d43aeb6a6719ff9310ada03b793ad9bc20c6bcbdff6affebf72"
+     }
+    }
+   }
+  },
+  {
+   "id": "kiro",
+   "name": "Kiro CLI",
+   "version": "3.0.0",
+   "description": "The Kiro coding agent",
+   "license": "proprietary",
+   "website": "https://kiro.dev/docs/cli/acp/",
+   "distribution": {}
+  },
+  {
+   "id": "opencode",
+   "name": "OpenCode",
+   "version": "2.3.2",
+   "description": "The open source coding agent",
+   "license": "MIT",
+   "website": "https://opencode.ai",
+   "distribution": {
+    "binary": {
+     "windows-aarch64": {
+      "archive": "https://github.com/anomalyco/opencode/releases/download/v2.3.2/opencode-windows-arm64.zip",
+      "cmd": "./opencode.exe",
+      "args": [
+       "acp"
+      ],
+      "sha256": "13dabbf6874c8abfc7ff44bee0e64c3758e918a0e27f56f74173c353d56a842d"
+     },
+     "windows-x86_64": {
+      "archive": "https://github.com/anomalyco/opencode/releases/download/v2.3.2/opencode-windows-x64.zip",
+      "cmd": "./opencode.exe",
+      "args": [
+       "acp"
+      ],
+      "sha256": "8ad59f1992a0594d8bd72b5ed3be1f5bfffcd9d1756853eec7e5d3141c25be1f"
+     }
+    }
+   }
+  },
+  {
+   "id": "qwen-code",
+   "name": "Qwen Code",
+   "version": "0.28.3",
+   "description": "Alibaba's Qwen coding assistant",
+   "license": "Apache-2.0",
+   "website": "https://qwenlm.github.io/qwen-code-docs/en/users/overview",
+   "distribution": {
+    "npx": {
+     "package": "@qwen-code/qwen-code@0.28.3",
+     "args": [
+      "--acp",
+      "--experimental-skills"
+     ]
+    }
+   }
+  }
+ ]
+}
