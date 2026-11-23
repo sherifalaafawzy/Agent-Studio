@@ -129,7 +129,7 @@ export default function AutoSettings({ providers }: { providers: Provider[] }) {
   const tryIt = async () => {
     setProbing(true); setProbeErr(""); setResult(null);
     try {
-      setResult(await api<AutoRoute>("/api/auto/route", { method: "POST", body: JSON.stringify({ message: probe, agent: asAgent,
+      setResult(await api<AutoRoute>("/api/auto/route", { method: "POST", body: JSON.stringify({ message: probe, agent: asAgent, wait: true,
         ...(val("engine") !== info.engine ? { engine: val("engine") } : {}), ...(val("preference") !== info.preference ? { preference: val("preference") } : {}) }) }));
     } catch (e) { setProbeErr((e as Error).message); }
     finally { setProbing(false); }
@@ -212,6 +212,7 @@ export default function AutoSettings({ providers }: { providers: Provider[] }) {
           <span className="grow" />
           <button className="acc" disabled={!probe.trim() || probing} onClick={tryIt}>Show the routing</button>
         </div>
+        {probing && val("engine") !== "rules" && <div className="small mut" role="status" style={{ marginTop: 8 }}>Waiting for the decision model: the first time it has to load into memory, which can take from several seconds to a few minutes{info.worker?.load_seconds ? ` (about ${Math.round(info.worker.load_seconds)} s last time)` : ""}.</div>}
         {probeErr && <div className="small err" style={{ marginTop: 8 }}>{probeErr}</div>}
         {result && <div style={{ marginTop: 10 }}><RouteNote route={result} open showSkipped /></div>}
       </div>

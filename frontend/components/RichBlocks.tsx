@@ -10,12 +10,14 @@ import DataTable from "./rich/DataTable";
 import HtmlPreview from "./rich/HtmlPreview";
 import JsonViewer from "./rich/JsonViewer";
 import MediaBlock, { parseMedia } from "./rich/MediaBlock";
+import UiBlock from "./uikit/UiBlock";
+import { ReplyContext } from "./rich/ReplyContext";
 import { parseTable, splitLine, tableFromDelimited } from "@/lib/tables";
 
 export { KeepContext, splitLine };
 
 /** The chat provides this so a form in an answer can send the user's reply as their next message. */
-export const ReplyContext = createContext<((text: string) => void) | null>(null);
+export { ReplyContext };
 
 const clip = (v: unknown, n: number) => String(v ?? "").slice(0, n);
 
@@ -167,12 +169,13 @@ export function FormBlock({ form }: { form: NonNullable<ReturnType<typeof parseF
 }
 
 // ---------------------------------------------------------------------------------------------------- the code-fence dispatcher
-const RICH = ["chart", "diff", "patch", "csv", "tsv", "form", "table", "jsonview", "html-preview", "audio", "video"];
+const RICH = ["chart", "diff", "patch", "csv", "tsv", "form", "table", "jsonview", "html-preview", "audio", "video", "ui"];
 export const isRichLang = (lang: string) => RICH.includes(lang.toLowerCase());
 
 /** A fenced block that asks for one of the whitelisted pieces. Returns null when it is not one (or is invalid): the caller shows it as code. */
 export function RichFence({ lang, code }: { lang: string; code: string }) {
   const l = lang.toLowerCase();
+  if (l === "ui") return <UiBlock spec={code} />;
   if (l === "diff" || l === "patch") return <DiffBlock text={code} />;
   if (l === "table") {
     let raw: unknown = null;

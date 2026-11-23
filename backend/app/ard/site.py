@@ -183,6 +183,7 @@ class Publisher:
                         "tools": p.get("tools", []), "mcp": p.get("mcp", []), "skills": p.get("resolved-skills", []), "sub_agents": p.get("sub-agents", []),
                         "knowledge_bases": p.get("knowledge-bases", []), "can_spawn": p.get("can-spawn") == "true", "builtin": p.get("builtin") == "true",
                         "framework": p.get("framework"), "api_access": p.get("api-access") == "true", "a2a": p.get("a2a-enabled-for-agent") == "true",
+                        "agui": {"components": p.get("agui-components-off") != "true", "endpoint": p.get("agui-endpoint-off") != "true"},
                         "runtime": p.get("runtime"), "runtime_deployed": (p.get("runtime-deployed") == "true") if p.get("runtime") else None, "sandbox": p.get("sandbox"),
                         "data_source_kinds": p.get("data-source-kinds"), "data_sources": p.get("data-sources"), "data_products": p.get("data-products"),
                         "data_classification": p.get("data-classification"),

@@ -3,13 +3,13 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { IAgents, IBook, IChat, ICoin, IGear, IGrid, IHelp, ISetup, IKnowledge, IMonitor, IMoon, IPlug, IPlus, IPulse, IServer, ISide, ISun, ITimeline, IX, Spark, IBrain, IShield, ICatalog, ILock, IFlask, IArchive, IFlow } from "./Icons";
+import { IAgents, IBook, IChat, ICoin, IGear, IGrid, IHelp, ISetup, IKnowledge, IMonitor, IMoon, IPlug, IPlus, IPulse, IServer, ISide, ISun, ITimeline, IX, Spark, IBrain, IShield, ICatalog, ILock, IFlask, IArchive, IFlow, IApp, IAtom } from "./Icons";
 import { startTour } from "./TourRunner";
 
 type NavItem = [string, string, (p: { size?: number }) => React.ReactElement];
 const groups: [string, NavItem[]][] = [
   ["Work", [["/dashboard/", "Dashboard", IGrid], ["/", "Chat", IChat], ["/runs/", "Runs", ITimeline], ["/artifacts/", "Artifacts", IArchive], ["/external/", "External agents", IPlug]]],
-  ["Build", [["/agents/", "Agent Studio", IAgents], ["/workflows/", "Workflows", IFlow], ["/skills/", "Skills", IBook], ["/knowledge/", "Knowledge", IKnowledge], ["/mcp/", "MCP servers", IServer], ["/catalog/", "Catalog", ICatalog], ["/memory/", "Memory", IBrain]]],
+  ["Build", [["/agents/", "Agent Studio", IAgents], ["/workflows/", "Workflows", IFlow], ["/apps/", "Apps", IApp], ["/science/", "Science", IAtom], ["/skills/", "Skills", IBook], ["/knowledge/", "Knowledge", IKnowledge], ["/mcp/", "MCP servers", IServer], ["/catalog/", "Catalog", ICatalog], ["/memory/", "Memory", IBrain]]],
   ["Observe", [["/telemetry/", "Telemetry", IPulse], ["/billing/", "Billing", ICoin], ["/security/", "Security", ILock], ["/evals/", "Evaluations", IFlask], ["/discovery/", "AI-BOM", IShield], ["/settings/", "Settings", IGear]]],
 ];
 const items: NavItem[] = groups.flatMap(([, list]) => list);

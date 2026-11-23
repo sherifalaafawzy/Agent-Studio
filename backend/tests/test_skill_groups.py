@@ -8,6 +8,8 @@ BUILTIN_GROUPS = {
     "test-writing": "Coding", "git-workflow": "Ops", "security-audit": "Security", "research-and-summarize": "Research",
     "plan-and-delegate": "General", "delegate-to-external-agents": "General", "skill-creator": "General",
     "time-series-forecasting": "Data", "ai-bom-and-discovery": "Security",
+    "science-literature-review": "Science", "science-hypothesis-ranking": "Science", "science-chemistry": "Science", "science-biology": "Science",
+    "science-physics": "Science", "science-math": "Science", "science-safety": "Science",
 }
 
 

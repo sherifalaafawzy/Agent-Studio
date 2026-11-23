@@ -175,6 +175,11 @@ def c_telemetry(s) -> Check:
 def c_ocsf(s) -> Check:
     cfg = s.ocsf.config()
     sinks = [k for k in cfg.get("sinks", []) if k.get("enabled")]
+    broken = [k for k in sinks if (lambda st: st.get("failed", 0) > 0 and not st.get("sent", 0))(s.ocsf.sink_stats.get(k.get("id"), {}))]
+    if cfg.get("enabled") and sinks and len(broken) == len(sinks):
+        err = (s.ocsf.sink_stats.get(broken[0].get("id"), {}).get("last_error") or "see the destination's test result")[:120]
+        return Check("ocsf", "Security events go to your security tools", ("ASI10", "LLM10"), "warn",
+                     f"OCSF export is on, but no destination has received an event: {err}.", "Open Settings > Telemetry > Security export and use 'Test' on the destination.", "/settings/#telemetry")
     if cfg.get("enabled") and sinks:
         return Check("ocsf", "Security events go to your security tools", ("ASI10", "LLM10"), "pass", f"OCSF export is on with {len(sinks)} destination(s).", link="/settings/#telemetry")
     return Check("ocsf", "Security events go to your security tools", ("ASI10", "LLM10"), "warn", "No OCSF destination is receiving events.",
@@ -231,16 +236,15 @@ def c_inter_agent(s) -> Check:
 
 
 def c_evals(s) -> Check:
-    since = time.time() - 30 * 86400
-    r = s.db.one("SELECT COUNT(*) n FROM eval_runs WHERE started>=? AND status='done'", (since,))["n"]
-    return Check("evals", "Agents are tested regularly", ("LLM09", "ASI09"), "pass" if r else "warn",
-                 f"{r} evaluation run(s) in the last 30 days." if r else "No evaluation has been run in the last 30 days.", "" if r else "Create a test set and run it (Evaluations).", "/evals/")
+    from . import evidence
+    st, detail, fix = evidence.evals(s)
+    return Check("evals", "Agents are tested regularly", ("LLM09", "ASI09"), st, detail, fix, "/evals/")
 
 
 def c_redteam(s) -> Check:
-    n = s.db.one("SELECT COUNT(*) n FROM redteam_runs WHERE status IN ('done','failed')")["n"]
-    return Check("redteam", "Agents have been attacked on purpose", ("LLM01", "ASI01", "ASI10"), "pass" if n else "warn",
-                 f"{n} red-team run(s) finished." if n else "No red-team run has finished yet.", "" if n else "Install a red-team tool and run it against your main agent.", "/security/")
+    from . import evidence
+    st, detail, fix = evidence.redteam(s)
+    return Check("redteam", "Agents have been attacked on purpose", ("LLM01", "ASI01", "ASI10"), st, detail, fix, "/security/")
 
 
 def c_transparency(s) -> Check:

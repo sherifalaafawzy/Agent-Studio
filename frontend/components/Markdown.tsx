@@ -3,6 +3,7 @@
 // Supports headings, paragraphs, fenced code (with copy), lists, quotes, rules, tables, inline code / bold / italic / links.
 import { Fragment, useContext, useState } from "react";
 import { ICheck, ICopy } from "./Icons";
+import { PlainRichContext } from "./rich/PlainContext";
 import { isRichLang, RichFence, SafeImage } from "./RichBlocks";
 import { CanvasContext } from "./rich/BlockActions";
 import { canvasKindFor } from "@/lib/canvas";
@@ -57,6 +58,7 @@ const isTableSep = (l: string) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?
 const cells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 
 export default function Markdown({ text }: { text: string }) {
+  const plain = useContext(PlainRichContext);                 // AG-UI components are off for this agent: a rich fence is just code
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const blocks: React.ReactNode[] = [];
   let i = 0, k = 0;
@@ -68,7 +70,7 @@ export default function Markdown({ text }: { text: string }) {
       i++;
       while (i < lines.length && !lines[i].trim().startsWith(fence[1])) body.push(lines[i++]);
       i++;
-      blocks.push(isRichLang(fence[2]) ? <RichFence key={k++} lang={fence[2]} code={body.join("\n")} /> : <CodeBlock key={k++} lang={fence[2]} code={body.join("\n")} />);
+      blocks.push(isRichLang(fence[2]) && !plain ? <RichFence key={k++} lang={fence[2]} code={body.join("\n")} /> : <CodeBlock key={k++} lang={fence[2]} code={body.join("\n")} />);
       continue;
     }
     if (!line.trim()) { i++; continue; }

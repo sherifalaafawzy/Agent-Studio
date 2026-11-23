@@ -322,7 +322,7 @@ describe("Auto settings: try it", () => {
     await userEvent.type(screen.getByPlaceholderText(/Refactor this function/), "hello there");
     await userEvent.click(go);
     expect(await within(screen.getByTestId("try-it")).findByText("gpt-5-mini")).toBeInTheDocument();
-    expect(calls.find((c) => c.url.pathname === "/api/auto/route")!.body).toEqual({ message: "hello there", agent: false });
+    expect(calls.find((c) => c.url.pathname === "/api/auto/route")!.body).toEqual({ message: "hello there", agent: false, wait: true });
     expect(screen.getByText(/turned off in Settings/)).toBeInTheDocument();                              // skipped providers are listed here
   });
 
@@ -335,7 +335,18 @@ describe("Auto settings: try it", () => {
     await userEvent.type(screen.getByPlaceholderText(/Refactor this function/), "x");
     await userEvent.click(screen.getByRole("button", { name: "Show the routing" }));
     await waitFor(() => expect(calls.some((c) => c.url.pathname === "/api/auto/route")).toBe(true));
-    expect(calls.find((c) => c.url.pathname === "/api/auto/route")!.body).toEqual({ message: "x", agent: true, engine: "d1-2b", preference: "cost" });
+    expect(calls.find((c) => c.url.pathname === "/api/auto/route")!.body).toEqual({ message: "x", agent: true, wait: true, engine: "d1-2b", preference: "cost" });
+  });
+
+  it("says it is waiting for the decision model while Try it runs, with how long the last load took", async () => {
+    const w = { model: "d1-2b", state: "idle", error: "", device: "cpu", load_seconds: 37.4 };
+    setup(INFO({ engine: "d1-2b", engine_ready: { "d1-2b": true, "d1-3b": false }, worker: w }), MODELS(), {
+      "POST /api/auto/route": async () => { await new Promise((r) => setTimeout(r, 40)); return jsonResponse(ROUTE); } });
+    await ready();
+    await userEvent.type(screen.getByPlaceholderText(/Refactor this function/), "hi");
+    await userEvent.click(screen.getByRole("button", { name: "Show the routing" }));
+    expect(await screen.findByText(/Waiting for the decision model: the first time it has to load into memory.*\(about 37 s last time\)/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/Waiting for the decision model/)).toBeNull());
   });
 
   it("shows why a message could not be routed", async () => {

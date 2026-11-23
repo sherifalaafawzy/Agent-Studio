@@ -13,6 +13,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from . import agui_flags
 from .acp_agents import AcpError
 from .agui import AguiTranslator, last_user_text
 from .chat_job import make_chat_work
@@ -52,12 +53,17 @@ def register(app: FastAPI) -> None:
                     s.acp.respond(entry.interrupt_id, body)
                 except AcpError as e:
                     raise HTTPException(409, str(e))
+            agent = s.agents.get(((s.chat.store.get(sid) or {}).get("agent") or "")) if sid else None
             after = s.agui_cursors.get(job.id, -1)
         else:
             try:
                 props = Props.model_validate(inp.forwarded_props if isinstance(inp.forwarded_props, dict) else {})
             except ValueError as e:
                 raise HTTPException(422, f"forwardedProps is not valid: {str(e)[:200]}")
+            agent_id = props.agent or ((s.chat.store.get(sid) or {}).get("agent") if sid else None)
+            agent = s.agents.get(agent_id) if agent_id else None
+            if agent is not None and not agui_flags.endpoint_on(agent):
+                raise HTTPException(403, f"AG-UI is switched off for the agent '{agent.id}'. Switch it on in the agent's settings (AG-UI) to use this endpoint.")
             message = last_user_text(inp.messages)
             if not message:
                 raise HTTPException(422, "the run needs a user message")
@@ -69,7 +75,7 @@ def register(app: FastAPI) -> None:
             body = SimpleNamespace(provider=provider, model=props.model, message=message[:100_000], session_id=sid, max_tokens=props.max_tokens, agent=props.agent, workspace=props.workspace)
             job = s.jobs.start(make_chat_work(s, body), float(s.db.get_setting("max_turn_minutes", "0") or 0))
             after = -1
-        tr = AguiTranslator(inp.thread_id, inp.run_id, inp.parent_run_id)
+        tr = AguiTranslator(inp.thread_id, inp.run_id, inp.parent_run_id, components=agent is None or agui_flags.components_on(agent))
         enc = EventEncoder()
 
         async def stream():

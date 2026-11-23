@@ -138,7 +138,7 @@ def test_load_failures_are_reported_and_retried_only_after_a_pause(worker):
     try:
         w.warm()
         assert wait_state(w, "failed") == "failed" and "weights are missing" in w.error
-        with pytest.raises(WorkerUnavailable, match="not available: RuntimeError: weights are missing"):
+        with pytest.raises(WorkerUnavailable, match="could not be loaded: RuntimeError: weights are missing"):
             w.decide("x", {}, 1)                                               # failed recently: no new attempt yet
         assert w.state == "failed"
         t[0] = d1_client.RETRY_AFTER_S + 1

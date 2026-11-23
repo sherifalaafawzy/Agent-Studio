@@ -425,15 +425,15 @@ def a_framework(s: Any, a: Any, x: Ctx) -> Check:
 
 # --------------------------------------------------------------------------------------------------- tested, shared
 def a_evals(s: Any, a: Any, x: Ctx) -> Check:
-    n = s.db.one("SELECT COUNT(*) n FROM eval_runs WHERE agent=? AND started>=? AND status='done'", (a.id, time.time() - 30 * 86400))["n"]
-    return Check("evals", "Agents are tested regularly", ("LLM09", "ASI09"), "pass" if n else "warn", f"{n} evaluation run(s) of this agent in the last 30 days." if n else "This agent has not been evaluated in the last 30 days.",
-                 "" if n else "Create a test set and run it against this agent.", "/evals/")
+    from . import evidence
+    st, detail, fix = evidence.evals(s, a.id)
+    return Check("evals", "Agents are tested regularly", ("LLM09", "ASI09"), st, detail, fix, "/evals/")
 
 
 def a_redteam(s: Any, a: Any, x: Ctx) -> Check:
-    n = s.db.one("SELECT COUNT(*) n FROM redteam_runs WHERE agent=? AND status IN ('done','failed')", (a.id,))["n"]
-    return Check("redteam", "Agents have been attacked on purpose", ("LLM01", "ASI01", "ASI10"), "pass" if n else "warn", f"{n} red-team run(s) against this agent finished." if n else "No red-team run against this agent has finished yet.",
-                 "" if n else "Install a red-team tool and run it against this agent.", "/security/#redteam")
+    from . import evidence
+    st, detail, fix = evidence.redteam(s, a.id)
+    return Check("redteam", "Agents have been attacked on purpose", ("LLM01", "ASI01", "ASI10"), st, detail, fix, "/security/#redteam")
 
 
 def a_inter_agent(s: Any, a: Any, x: Ctx) -> Check:

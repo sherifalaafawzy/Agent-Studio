@@ -219,6 +219,8 @@ describe("Workflows page", () => {
     const row = await screen.findByTestId("runs-row");
     expect(row).toHaveTextContent("write the report"); expect(row).toHaveTextContent("(no task)"); expect(row).toHaveTextContent("$0.0123"); expect(row).toHaveTextContent("v2");
     expect(screen.getByLabelText("Show earlier runs of a")).toHaveAttribute("aria-expanded", "true");
+    await user.click(within(row).getByRole("button", { name: "See all runs of Flow a" }));
+    expect(push).toHaveBeenLastCalledWith("/workflows/?tab=runs&workflow=a");
     await user.click(screen.getByLabelText("Show earlier runs of b"));
     await waitFor(() => expect(screen.getAllByTestId("runs-row")).toHaveLength(2));
     expect(screen.getByText("No earlier runs.")).toBeInTheDocument();

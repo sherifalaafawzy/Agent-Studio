@@ -18,14 +18,17 @@ from dataclasses import asdict
 
 import httpx
 
-from . import cloud, d1gate, modelguard, rules
-from .base import MODES, STAGES, Env, Guard, GuardError, Kind, Profile, Verdict
+from ..d1_client import WorkerLoading, WorkerUnavailable
+from . import cloud, d1gate, modelguard, rules, science as science_guard
+from .base import MODES, STAGES, WAIT_FOR_LOAD, Env, Guard, GuardError, GuardNotInstalled, GuardPreparing, Kind, Profile, Verdict
+from .pulls import GuardPuller
 
 CONFIG_KEY, SECRETS_KEY, ENABLED_KEY = "guardrail_config", "guardrail_secrets", "guardrails_enabled"
-KINDS: dict[str, Kind] = {k.id: k for k in (rules.KIND, modelguard.KIND, d1gate.KIND, cloud.BEDROCK, cloud.AZURE, cloud.ARMOR)}
+KINDS: dict[str, Kind] = {k.id: k for k in (rules.KIND, science_guard.KIND, modelguard.KIND, d1gate.KIND, cloud.BEDROCK, cloud.AZURE, cloud.ARMOR)}
 ID_RE = re.compile(r"^[a-z][a-z0-9_-]{1,30}$")
 BASIC = Profile(id="basic", name="Basic rules", kind="rules", mode="monitor", default=True)
 NONE = "none"
+TEST_LOAD_WAIT_S = 25.0           # one Try it request waits this long for the decision model to load; the page then asks again
 
 
 class GuardrailError(ValueError):
@@ -55,13 +58,14 @@ def _default_env() -> Env:
             return google_token_provider(sa)
         except StoreError as e:
             raise GuardError(str(e)) from e
-    return Env(http=httpx.AsyncClient, aws_clients=aws, google_token=google)
+    return Env(http=httpx.AsyncClient, aws_clients=aws, google_token=google, pulls=GuardPuller())
 
 
 class GuardrailService:
     def __init__(self, db, tel=None, env: Env | None = None):
         self.db, self.tel = db, tel
         self.env = env or _default_env()
+        self.pulls = self.env.pulls                         # downloads a missing Ollama model in the background (None in tests without one)
         if self.env.decide is None:
             self.env.decide = self._d1_decide
         self.d1_ready = lambda model: False                  # State wires these to the Auto router's decision-model worker
@@ -70,8 +74,16 @@ class GuardrailService:
 
     async def _d1_decide(self, model: str, state, questions: dict, timeout: float) -> dict:
         if not self.d1_ready(model):
-            raise GuardError("the d1 model is not installed (Settings > Auto > Install)")
-        return await asyncio.to_thread(self.d1_worker(model).decide, state, questions, timeout)
+            raise GuardNotInstalled("The decision model is not installed yet. Install it under MCP servers > Decision model, then try again.", "d1")
+        worker = self.d1_worker(model)
+        try:
+            if WAIT_FOR_LOAD.get():                          # a person pressed Try it: wait for the load (live chat never waits)
+                return await asyncio.to_thread(worker.decide, state, questions, timeout, True, TEST_LOAD_WAIT_S)
+            return await asyncio.to_thread(worker.decide, state, questions, timeout)
+        except WorkerLoading as e:
+            raise GuardPreparing("Decision model is loading", "loading", worker.public()) from e
+        except WorkerUnavailable as e:
+            raise GuardError(f"the decision model could not answer: {e}") from e
 
     # ------------------------------------------------------------------ settings
     def enabled(self) -> bool:
@@ -226,6 +238,11 @@ class GuardrailService:
                 if not v.flagged:
                     continue
                 action = "blocked" if p.mode == "block" else "flagged"
+            except GuardPreparing as e:                      # a model is still downloading or loading: not a failure, just not ready yet
+                closed = p.fail == "closed" and p.mode == "block"
+                v = Verdict(True, "guard_preparing", f"{e.notice}: " + ("this check is blocked because this profile stops when the guard cannot answer"
+                                                                     if closed else "this check was skipped"), guard=p.id)
+                action = "blocked" if closed else "error"
             except GuardError as e:
                 v, action = Verdict(True, "guard_unavailable", str(e), guard=p.id), ("blocked" if p.fail == "closed" and p.mode == "block" else "error")
                 if p.fail == "closed" and p.mode == "block":
@@ -264,13 +281,70 @@ class GuardrailService:
             if p is None:
                 raise GuardrailError("choose or define a profile to test")
         t0 = time.time()
+        token = WAIT_FOR_LOAD.set(True)                                # a person asked: wait for a model to load rather than skipping the check
         try:
             g = KINDS[p.kind].make(p.params, sec, self.env)
             v = await g.check(text, stage)
+        except GuardPreparing as e:
+            return {"ok": False, "error": e.notice, "preparing": {**e.state, "what": e.what, "notice": e.notice}, "ms": round((time.time() - t0) * 1000)}
+        except GuardNotInstalled as e:
+            return {"ok": False, "error": str(e), "install": e.install, "ms": round((time.time() - t0) * 1000)}
         except GuardError as e:
             return {"ok": False, "error": str(e), "ms": round((time.time() - t0) * 1000)}
+        finally:
+            WAIT_FOR_LOAD.reset(token)
         return {"ok": True, "flagged": v.flagged, "category": v.category, "reason": v.reason, "score": v.score,
                 "would": ("block" if p.mode == "block" else "record") if v.flagged else "allow", "ms": round((time.time() - t0) * 1000)}
+
+    # ------------------------------------------------------------------ getting models ready
+    def warm_d1(self) -> None:
+        """Load the decision model ahead of time when an enabled profile uses it, so the first check does not meet it cold."""
+        if not self.enabled():
+            return
+        for p in self.profiles():
+            if p.kind == "d1" and p.mode != "off":
+                model = p.params.get("model") or "d1-2b"
+                worker = self.d1_worker(model) if self.d1_ready(model) else None
+                if worker is not None:
+                    worker.warm()
+
+    async def prepare(self, only: str | None = None, require_enabled: bool = True) -> list[dict]:
+        """Get the models the profiles need: warm the decision model and download any missing Ollama model (only the one each profile
+        names). `only` limits it to one profile; `require_enabled=False` is for a profile that was just saved while the master switch is off."""
+        self.warm_d1()
+        out: list[dict] = []
+        if self.pulls is None or (require_enabled and not self.enabled()):
+            return out
+        secrets = self._secrets()
+        for p in self.profiles():
+            if p.kind != "model" or p.mode == "off" or (only and p.id != only):
+                continue
+            target = modelguard.ollama_target(p.params, secrets.get(p.id) or {})
+            if target:
+                out.append(await self.pulls.ensure(**target))
+        return out
+
+    def pull_states(self) -> list[dict]:
+        """Every download that is running or recently finished, each with the profile that asked for it (so the page can offer "try again")."""
+        if self.pulls is None:
+            return []
+        secrets, owners = self._secrets(), {}
+        for p in self.profiles():
+            target = modelguard.ollama_target(p.params, secrets.get(p.id) or {}) if p.kind == "model" else None
+            if target:
+                owners.setdefault(self.pulls.key(target["base"], target["model"]), p.id)
+        return [{**s, "profile": owners.get(s["key"], "")} for s in self.pulls.states()]
+
+    async def retry_pull(self, pid: str) -> dict:
+        """"Try again" on a profile whose model could not be downloaded."""
+        p = self.by_id(pid)
+        target = modelguard.ollama_target(p.params, self._secrets().get(pid) or {}) if p is not None and p.kind == "model" else None
+        if target is None or self.pulls is None:
+            raise GuardrailError("this profile does not run a model on an Ollama server, so there is nothing to download")
+        return await self.pulls.ensure(**target, force=True)
+
+    def cancel_pull(self, base: str, model: str) -> bool:
+        return bool(self.pulls and self.pulls.cancel(base, model))
 
     # ------------------------------------------------------------------ audit
     def events(self, limit: int = 100, stage: str | None = None, action: str | None = None) -> list[dict]:

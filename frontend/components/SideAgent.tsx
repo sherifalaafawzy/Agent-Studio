@@ -12,7 +12,7 @@ import { startTour } from "./TourRunner";
 export const ROUTES: { path: string; label: string }[] = [
   { path: "/", label: "Chat" }, { path: "/dashboard/", label: "Dashboard" }, { path: "/runs/", label: "Runs" },
   { path: "/external/", label: "External agents" }, { path: "/agents/", label: "Agent Studio" }, { path: "/skills/", label: "Skills" },
-  { path: "/knowledge/", label: "Knowledge" }, { path: "/mcp/", label: "MCP servers" }, { path: "/memory/", label: "Memory" }, { path: "/catalog/", label: "Catalog" }, { path: "/security/", label: "Security" }, { path: "/evals/", label: "Evaluations" }, { path: "/artifacts/", label: "Artifacts" }, { path: "/workflows/", label: "Workflows" }, { path: "/telemetry/", label: "Telemetry" }, { path: "/discovery/", label: "Discovery & AI-BOM" },
+  { path: "/knowledge/", label: "Knowledge" }, { path: "/mcp/", label: "MCP servers" }, { path: "/memory/", label: "Memory" }, { path: "/catalog/", label: "Catalog" }, { path: "/security/", label: "Security" }, { path: "/evals/", label: "Evaluations" }, { path: "/artifacts/", label: "Artifacts" }, { path: "/components/", label: "Component gallery" }, { path: "/workflows/", label: "Workflows" }, { path: "/apps/", label: "Apps" }, { path: "/telemetry/", label: "Telemetry" }, { path: "/discovery/", label: "Discovery & AI-BOM" },
   { path: "/billing/", label: "Billing" }, { path: "/settings/", label: "Settings" }, { path: "/setup/", label: "Set-up guide" },
 ];
 

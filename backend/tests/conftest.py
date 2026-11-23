@@ -12,6 +12,18 @@ def _isolated_home(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENT_STUDIO_ENABLE_MOCK", "1")       # the offline mock provider exists only for tests
 
 
+@pytest.fixture(autouse=True)
+def _no_real_ollama(monkeypatch):
+    """A test never talks to a real Ollama on this PC (and so can never start a multi-GB pull): tests that need one install their own transport."""
+    import httpx
+    from app.easy import ollama_local
+
+    def refuse(request):
+        raise httpx.ConnectError("no real Ollama in tests", request=request)
+    monkeypatch.setattr(ollama_local, "TRANSPORT", httpx.MockTransport(refuse))
+    monkeypatch.setattr(ollama_local, "ATRANSPORT", httpx.MockTransport(refuse))
+
+
 @pytest.fixture
 def state(tmp_path):
     return State(Database(tmp_path / "t.db"))

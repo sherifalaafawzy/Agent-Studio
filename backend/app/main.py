@@ -23,8 +23,17 @@ from .chat_job import make_chat_work
 from .agui_api import register as register_agui
 from .artifacts.api import register as register_artifacts
 from .artifacts.service import ArtifactService
+from .apps.api import register as register_apps
+from .apps.runner import AppRunner
+from .apps.server import AppsServer
+from .apps.store import AppStore
 from .canvas.api import register as register_canvas
 from .canvas.service import CanvasService
+from .science.api import register as register_science
+from .science.catalog import ComponentInstaller
+from .science.service import ScienceService
+from .uikit.api import register as register_uikit
+from .uikit.service import UiKitService
 from .db import Database, data_dir
 from .pricing import known_models
 from .harness import sandbox as sandbox_mod
@@ -78,10 +87,20 @@ from .custom_providers import discover as discover_endpoint, test_endpoint, tran
 from .providers import CATALOG, ProviderStore, price_of
 from .skills import SkillRegistry, covers, render_skill
 
-ALLOWED_ORIGINS = [
-    "http://localhost:3100", "http://127.0.0.1:3100",  # Next dev / static server
-    "app://agent-studio", "null",                       # Electron packaged (file:// / custom scheme)
-] + [o.strip() for o in os.environ.get("AGENT_STUDIO_EXTRA_ORIGINS", "").split(",") if o.strip()]   # e.g. a second dev UI port
+def allowed_origins(env: "os._Environ[str] | dict[str, str]") -> list[str]:
+    """CORS origins for the local API. The "null" origin is what file:// pages AND every sandboxed iframe (on any website) send;
+    allowing it would let any web page read this local, unauthenticated API (settings, chats, keys), so it is off unless the
+    packaged file:// build opts in with AGENT_STUDIO_ALLOW_NULL_ORIGIN=1."""
+    out = [
+        "http://localhost:3100", "http://127.0.0.1:3100",  # Next dev / static server
+        "app://agent-studio",                               # Electron packaged (custom scheme)
+    ] + [o.strip() for o in env.get("AGENT_STUDIO_EXTRA_ORIGINS", "").split(",") if o.strip()]   # e.g. a second dev UI port
+    if env.get("AGENT_STUDIO_ALLOW_NULL_ORIGIN", "").strip().lower() in ("1", "true", "yes"):
+        out.append("null")
+    return out
+
+
+ALLOWED_ORIGINS = allowed_origins(os.environ)
 
 
 class State:
@@ -113,6 +132,7 @@ class State:
         self.guardrails = GuardrailService(self.db, self.tel)          # checks on inputs, outputs and tool calls (open-source models, cloud services, rules)
         self.guardrails.d1_ready, self.guardrails.d1_worker = self.auto.d1_ready, self.auto._worker_for      # the d1 gate shares Auto's decision-model worker
         self.chat.guardrails = self.guardrails
+        self.guardrails.warm_d1()                                      # start loading the decision model now if an enabled profile uses it
         self.evals = EvalService(self.db, self.chat)                    # test sets, runs against an agent, exports for other evaluation frameworks
         self.redteam = RedTeam(self.db)                                 # opt-in red-team tools (garak, PyRIT, promptfoo) aimed at one agent
         self.identity = IdentityService(self.db, self.agents, self.tel)    # agent identities (SPIFFE-style ids, short-lived tokens, RFC 8693 delegation)
@@ -122,9 +142,18 @@ class State:
         self.artifacts.resume()                            # copies that were waiting when the app last stopped
         self.canvas = CanvasService(self.db, self.artifacts)     # the document you and an agent edit together (versions, proposals, a copy as an artifact)
         self.chat.canvas = self.canvas
+        self.uikit = UiKitService(self.db)                 # rich components agents can show (charts, time series, maps, cards): limits and the optional map basemap
+        self.chat.uikit = self.uikit
         self.agui_threads: dict[str, str] = {}             # AG-UI thread id -> chat session id
         self.agui_cursors: dict[str, int] = {}             # chat job id -> last event an AG-UI client has seen (for resuming after an interrupt)
         self.apikeys = ApiKeys(self.db)                    # keys for the OpenAI-compatible API and A2A (only hashes are stored)
+        self.apps = AppStore(self.db, keys=self.apikeys, agents=self.agents)    # apps agents build with you: files, versions, proposals and each app's own scoped API key
+        self.chat.apps = self.apps
+        self.app_runner = AppRunner(self.apps, policy=self.chat.sandboxes.policy, frame_ancestors=[o for o in ALLOWED_ORIGINS if o.startswith("http")])
+        self.science = ScienceService(self.db, self.artifacts, self.tel)       # the Science Lab: open data sources, evidence, claims and reports (read-only, safety-screened)
+        self.chat.science = self.science
+        self.science_components = ComponentInstaller(self.db)          # optional science components (PaperQA2, ToolUniverse...) in their own isolated environments
+        self.apps_server = AppsServer(self.app_runner)     # the separate loopback server that shows static apps (never the same origin as this API)
         self.a2a_remotes = RemoteAgents(self.db)           # other A2A agents our agents may call
         self.chat.remotes = self.a2a_remotes
         self.workflows = WorkflowStore(self.db)            # drag-and-drop workflows (versions, validation)
@@ -135,6 +164,7 @@ class State:
         self.chat.workflows = self.wf_runner
         self.data = DataService(self.db)                    # read-only data sources (databases, warehouses, Salesforce), data products, audit
         self.chat.data = self.data
+        self.apps.data = self.app_runner.data = self.data     # apps may be connected to data sources (read-only, audited, only the ones their manifest lists)
         self.runtimes = RuntimeService(self.db, self.agents, model_resolver(self.providers), data_dir())    # where agents run: local, Docker, AgentCore, Vertex, Foundry
         self.chat.runtimes = self.runtimes
         self.jobs = JobManager()                           # background turns (long runs survive closed tabs)
@@ -237,6 +267,7 @@ class AgentIn(BaseModel):
     runtime: str | None = None                      # local | docker | agentcore | vertex | foundry (where it runs; see /api/runtimes)
     sandbox: str | None = None                      # "" = the default sandbox | docker-container | docker-microvm
     data: list[str] | None = None                   # data source ids this agent may read; ["*"] = all
+    agui: dict | None = None                        # {components, endpoint}: rich components in its answers / the AG-UI stream endpoint (both on by default)
 
 
 class McpPatch(BaseModel):
@@ -444,6 +475,8 @@ def create_app(state: State | None = None) -> FastAPI:
         yield
         a.state.s.ocsf.close()               # send what is still queued
         a.state.s.redteam.close()            # red-team tools cannot outlive the address they attack
+        a.state.s.app_runner.stop_all()      # containers of running server apps
+        a.state.s.apps_server.stop()         # the apps preview server
         shutdown_ard(a)                      # the optional discovery server (a separate loopback listener)
         await a.state.s.jobs.shutdown()     # running turns are cancelled cleanly: progress saved, reservations settled
         await a.state.s.acp.close_all()     # never leave agent subprocesses behind
@@ -821,6 +854,7 @@ def create_app(state: State | None = None) -> FastAPI:
     def create_agent(body: AgentIn, s: State = Depends(S)):
         try:
             d = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+            d.setdefault("agui", s.uikit.config()["new_agents"])           # a new agent starts with the default chosen in Settings
             made = s.agents.create(AgentDef(id=d.pop("id", ""), name=d.pop("name", ""), **d))
             s.tel.emit("entity", activity_id=1, kind="agent", name=made.id)
             return made.__dict__
@@ -1448,7 +1482,10 @@ def create_app(state: State | None = None) -> FastAPI:
     register_evals(app)       # /api/evals/*: test sets, runs, exports (promptfoo, Inspect, DeepEval, Ragas, CSV, JSONL)
     register_security(app)    # /api/security/* (scorecard) and /api/redteam/* (red-team runners)
     register_artifacts(app)   # /api/artifacts/*: files agents produced, storages, search, preview, download
+    register_apps(app)        # /api/apps/*: apps agents build with you (files, versions, run, export, git)
+    register_science(app)     # /api/science/*: the Science Lab (sources, calculator, investigations, evidence, components)
     register_canvas(app)      # /api/canvas/*: the shared document (versions, proposals, live updates)
+    register_uikit(app)       # /api/uikit/*: rich component settings, catalog and validator
     register_agui(app)        # /api/agui: the chat run as an AG-UI event stream (any AG-UI client can render it)
     register_identity(app)    # /api/identity/*: agent identities, tokens, delegation (RFC 8693), identity providers
     register_memory(app)    # /api/memories/*: memory kinds, scopes, backends, review queue, notes, export/import

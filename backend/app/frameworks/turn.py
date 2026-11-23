@@ -9,8 +9,12 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from ..agents import ARTIFACT_RULES, HARNESS_RULES, AgentDef
+from .. import agui_flags
+from ..agents import HARNESS_RULES, AgentDef, artifact_rules
+from ..apps.tools import APP_RULES
 from ..canvas.tools import CANVAS_RULES
+from ..science.tools import SCIENCE_RULES
+from ..uikit.tools import UI_RULES
 from ..harness.policy import ToolPolicy, get_policy, instructions_text
 from ..harness.tools import ToolContext, build_tools
 from ..providers import litellm_target, tier_model
@@ -28,9 +32,15 @@ def instructions_for(chat: Any, d: AgentDef, turn: Any, tool_names: list[str], w
     if tool_names:
         text += HARNESS_RULES
     if "save_artifact" in tool_names:
-        text += ARTIFACT_RULES
+        text += artifact_rules(agui_flags.components_on(d))
     if chat.canvas is not None and "canvas_create" in tool_names:
         text += CANVAS_RULES
+    if chat.apps is not None and "app_write_file" in tool_names:
+        text += APP_RULES
+    if chat.science is not None and "science_search" in tool_names:
+        text += SCIENCE_RULES
+    if chat.uikit is not None and "render_ui" in tool_names:
+        text += UI_RULES
     if ws is not None and tool_names and get_policy(chat.db)["project_instructions"]:
         text += instructions_text(ws)
     if d.rag and chat.rag is not None:
@@ -78,6 +88,9 @@ async def send_framework(chat: Any, root: AgentDef, p: Any, model: str | None, m
     ctx.memory, ctx.mem, ctx.agent_id = (chat.memory if root.memory else None), (root.memory or {}), root.id
     ctx.session_id, ctx.on_memory = sid, turn.memory_event
     ctx.artifacts, ctx.on_artifact, ctx.trace_id = chat.artifacts, turn.artifact_event, turn.trace_id
+    ctx.uikit, ctx.on_ui = chat.uikit, turn.ui_event
+    ctx.apps, ctx.on_app = chat.apps, (lambda ev: turn.note({**ev, "type": "app"}))
+    ctx.science, ctx.on_science = chat.science, (lambda ev: turn.note({**ev, "type": "science"}))
     before = chat.artifacts.snapshot(ws) if chat.artifacts is not None else None
     turn.session_id = sid
     if root.memory and chat.memory is not None:
@@ -95,7 +108,8 @@ async def send_framework(chat: Any, root: AgentDef, p: Any, model: str | None, m
         chat.store.add(sid, "user", message)
     if emit:
         emit({"type": "session", "session_id": sid, "agent": root.id, "provider": p.id, "trace_id": turn.trace_id})
-    tool_fns = {fn.__name__: fn for fn in build_tools(ctx, root.tools)}
+    ctx.agui_components = agui_flags.components_on(root)
+    tool_fns = {fn.__name__: fn for fn in build_tools(ctx, agui_flags.tools_for(root))}
     for w in fwk.compat_warnings(root):
         turn.warnings.append(w)
     run_text = (note + "\n\n" if note else "") + message
@@ -161,5 +175,5 @@ async def send_framework(chat: Any, root: AgentDef, p: Any, model: str | None, m
         halted = turn.refused.detail
     return dict(session_id=sid, provider=prov.id, agent=root.id, model=turn.calls[0]["model"] if turn.calls else None, reply=reply, halted=halted,
                 warnings=turn.warnings, steps=turn.steps, model_calls=turn.calls, usage=usage, runs=turn.runs, trace_id=turn.trace_id, thinking=None,
-                no_answer=no_answer, retried=False, route=route, memory=turn.memory, guardrails=turn.rails, artifacts=turn.artifacts,
+                no_answer=no_answer, retried=False, route=route, memory=turn.memory, guardrails=turn.rails, artifacts=turn.artifacts, uis=turn.uis,
                 billing=chat.guard.status(chat.providers.get(prov.id)))

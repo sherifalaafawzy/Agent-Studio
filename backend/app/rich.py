@@ -11,6 +11,7 @@ Event contents:
   rich.html     {title, html, sandbox: "", csp}   (render in an iframe with an empty sandbox attribute and that CSP; never in the page itself)
   rich.audio / rich.video   {artifact: <id>, title, captions: <artifact id> | null}   (files are artifacts; fetch /api/artifacts/<id>/content)
   rich.diff     {text}
+  ui.component  {type, version, ...}   (a ```ui fence, or the render_ui tool: a validated component spec, see app/uikit/kinds.py; the content is the spec itself)
 """
 from __future__ import annotations
 
@@ -31,7 +32,7 @@ ARTIFACT_ID = re.compile(r"^[0-9a-f]{12}$")
 
 _FENCE = re.compile(r"^[ \t]*(```|~~~)[ \t]*([\w+#.-]*)[ \t]*\n(.*?)\n?[ \t]*\1[ \t]*$", re.S | re.M)
 _KINDS = {"table": "table", "csv": "table", "tsv": "table", "chart": "chart", "jsonview": "json", "html-preview": "html", "audio": "audio", "video": "video",
-          "diff": "diff", "patch": "diff"}
+          "diff": "diff", "patch": "diff", "ui": "ui"}
 _NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?")
 
@@ -125,6 +126,10 @@ def block_content(lang: str, body: str) -> dict | None:
             return None
         cap = str(raw.get("captions") or "")
         return {"artifact": raw["artifact"], "title": str(raw.get("title") or "")[:100], "captions": cap if ARTIFACT_ID.match(cap) else None}
+    if kind == "ui":
+        from .uikit.validate import validate
+        clean, _errors, _warnings = validate(body)
+        return clean
     return {"text": body[:100_000]}                                    # diff
 
 

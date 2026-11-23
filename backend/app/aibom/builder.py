@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .. import d1_spec, ts_spec
+from .. import agui_flags, d1_spec, ts_spec
 from ..db import REPO_ROOT, data_dir
 from ..harness import sandbox
 from ..harness.tools import ALL_TOOLS
@@ -526,6 +526,30 @@ class Build:
                       "properties": props(enabled=cfg["enabled"], agent_changes_applied_straight_away=cfg["auto_apply"], canvases=n["canvases"], changes_waiting_for_review=n["pending"])})
         self.edge(self.app_ref, "canvas")
 
+    def science(self) -> None:
+        """The Science Lab: whether it is on, the safety level, which open data sources are on and where queries go. Never questions, evidence, claims or keys."""
+        svc = getattr(self.s, "science", None)
+        if svc is None:
+            return
+        cfg, st = svc.config(), svc.stats()
+        on = [c["id"] for c in svc.connectors() if c["enabled"]]
+        self.service({"bom-ref": "science", "name": "Science Lab", "description": "Research investigations over open science databases (questions, evidence and reports are never included)",
+                      "data": [{"flow": "outbound", "classification": "search terms and identifiers sent to public reference databases (read-only)", "description": "Sources switched on: " + ", ".join(on)}] if cfg["enabled"] and on else None,
+                      "properties": props(enabled=cfg["enabled"], safety_level=cfg["safety_level"], sources_on=on, investigations=st["investigations"], safety_events=st["safety_events"],
+                                          call_budget_per_investigation=cfg["max_calls_per_investigation"], keys_set=svc.public_config()["key_set"] or None)})
+        self.edge(self.app_ref, "science")
+
+    def apps(self) -> None:
+        """Apps agents build with you: whether they are on, how many, which kinds and how many agents they call. Never names, code, keys or environment values."""
+        svc = getattr(self.s, "apps", None)
+        if svc is None:
+            return
+        cfg, n = svc.config(), svc.counts()
+        self.service({"bom-ref": "apps", "name": "Apps", "description": "Small apps that agents build with you and that call your agents (names, files, keys and environment values are never included)",
+                      "properties": props(enabled=cfg["enabled"], apps=n["apps"], by_type=n["by_type"] or None, agents_called=n["agents_called"], changes_waiting_for_review=n["pending"],
+                                          server_apps_allowed=cfg["allow_server_apps"], agent_changes_applied_straight_away=cfg["auto_apply"])})
+        self.edge(self.app_ref, "apps")
+
     def data_platform(self) -> None:
         """Data sources, data products, runtimes and the sandbox. Kinds, counts and classifications; hosts, tables and credentials are never included."""
         s, r = self.s, self.r
@@ -606,6 +630,7 @@ class Build:
                                       memory_kinds=a.memory.get("types") or None, memory_read_scopes=a.memory.get("read_scopes") or None,
                                       memory_write_scopes=a.memory.get("write_scopes") or None, memory_saving=a.memory.get("auto_save") if a.memory else None,
                                       framework=a.framework, api_access=True if a.api_access else None, a2a_enabled_for_agent=True if a.a2a else None,
+                                      agui_components_off=None if agui_flags.components_on(a) else True, agui_endpoint_off=None if agui_flags.endpoint_on(a) else True,
                                       runtime=a.runtime if a.runtime != "local" else None, runtime_deployed=(True if live else False) if a.runtime != "local" else None,
                                       sandbox=a.sandbox or None,
                                       data_source_kinds=sorted({x["kind"] for x in every_src if x["id"] in src_ids}) or None,
@@ -641,6 +666,8 @@ class Build:
         self.security()
         self.artifacts()
         self.canvas()
+        self.science()
+        self.apps()
         self.access()
         self.data_platform()
         self.sandbox_image()

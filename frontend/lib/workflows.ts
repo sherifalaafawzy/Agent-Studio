@@ -15,12 +15,30 @@ export const RULE_OPS: [string, string][] = [["equals", "is"], ["not_equals", "i
   ["gt", "is greater than"], ["gte", "is at least"], ["lt", "is less than"], ["lte", "is at most"], ["is_empty", "is empty"], ["not_empty", "is not empty"], ["regex", "matches pattern"]];
 export type NodeSpec = { type: string; group: string; label: string; desc: string; fields: Field[]; outputs: string[] | string; inputs: number; visual?: boolean };
 export type Catalog = { groups: { id: string; label: string }[]; nodes: NodeSpec[] };
-export type RunNode = { status: string; output: string; error: string | null; label: string; type: string; ports?: string[]; attempts?: number; input?: string; message?: string; decision?: string; pinned?: boolean; form?: FormField[]; reused?: boolean; flagged?: number };
-export type Run = { id: string; status: string; final: string; error: string | null; plan: { node: string; label: string; does: string }[]; nodes: Record<string, RunNode>; cost_usd: number; autonomy: string; started?: number; ended?: number | null; task?: string; from_node?: string | null };
+export type RunNode = { status: string; output: string; error: string | null; label: string; type: string; ports?: string[]; attempts?: number; input?: string; message?: string; decision?: string; pinned?: boolean; form?: FormField[]; reused?: boolean; flagged?: number; started?: number | null; ended?: number | null; answers?: Record<string, unknown> };
+export type Run = { id: string; status: string; final: string; error: string | null; plan: { node: string; label: string; does: string }[]; nodes: Record<string, RunNode>; cost_usd: number; autonomy: string; started?: number; ended?: number | null; task?: string; from_node?: string | null;
+  workflow?: string; name?: string; origin?: string; tokens?: number; version?: number; counts?: RunCounts; needs_you?: boolean };
+export type RunCounts = { total: number; done: number; error: number; skipped: number; running: number; waiting: number; pending: number; stopped: number };
+/** One line of the Runs tab (no box text: that is in the detail). */
+export type RunRow = { id: string; workflow: string; name: string; status: string; origin: string; autonomy: string; version: number; started: number; ended: number | null; duration: number; task: string; error: string | null;
+  cost_usd: number; tokens: number; from_node: string | null; counts: RunCounts; needs_you: boolean };
+export type RunList = { runs: RunRow[]; total: number; counts: Record<string, number>; needs_you: number; retention: number; limit: number; offset: number };
 export type TestResult = { status: string; output?: string; error?: string | null; ports?: string[]; decision?: string | null; side_effects?: boolean; message?: string; cost_usd?: number };
 
 export const AUTONOMY: [string, string][] = [["suggest", "Suggest only: show me the plan, run nothing"], ["approve", "Ask me before each step"], ["auto", "Run it all by itself"]];
 export const SAFE = new Set(["read_file", "list_dir", "glob_files", "search_text", "repo_map", "rag_search", "memory_search", "web_fetch", "web_search"]);
+export const ORIGIN_LABEL: Record<string, string> = { manual: "Run by you", webhook: "Webhook", agent: "An agent", run_from: "From a box" };
+export const RUN_STATUS: Record<string, { label: string; icon: string; tone: string }> = {
+  running: { label: "Running", icon: "◔", tone: "acc" }, done: { label: "Worked", icon: "✓", tone: "ok" }, error: { label: "Failed", icon: "✕", tone: "bad" }, stopped: { label: "Stopped", icon: "■", tone: "warn" }, plan: { label: "Plan only", icon: "☰", tone: "" },
+};
+/** "850 ms", "12 s", "3 min 05 s", "2 h 10 min". */
+export function fmtDuration(s: number | null | undefined): string {
+  if (s == null) return "–";
+  if (s < 1) return `${Math.round(s * 1000)} ms`;
+  if (s < 60) return `${s < 10 ? s.toFixed(1) : Math.round(s)} s`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, "0")} s`;
+  return `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, "0")} min`;
+}
 export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^[^a-z]+/, "").slice(0, 36);
 export const blankDoc = (name: string): Doc => ({ id: slug(name) || "workflow", name, autonomy: "approve", nodes: [{ id: "start", type: "input", label: "Task", position: { x: 60, y: 160 }, config: {} }], edges: [] });
 export const ago = (t?: number | null) => {

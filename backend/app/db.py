@@ -118,6 +118,99 @@ CREATE TABLE IF NOT EXISTS canvas_proposals(            -- changes an agent sugg
   resolved REAL NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS canvas_proposals_canvas ON canvas_proposals(canvas_id, status);
+CREATE TABLE IF NOT EXISTS science_investigations(     -- Science Lab: one question with its evidence (see science/service.py)
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  domain TEXT NOT NULL,                 -- biology | chemistry | physics | mathematics | cross
+  question TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',  -- open | done
+  autonomy TEXT NOT NULL DEFAULT 'approve',   -- suggest | approve | autonomous
+  session_id TEXT NOT NULL DEFAULT '',
+  agent TEXT NOT NULL DEFAULT '',
+  created REAL NOT NULL,
+  updated REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS science_inv_updated ON science_investigations(updated);
+CREATE TABLE IF NOT EXISTS science_evidence(            -- what a claim rests on: where it came from, when, with what query
+  id TEXT PRIMARY KEY,
+  inv_id TEXT NOT NULL,
+  kind TEXT NOT NULL,                   -- source | computed | inference
+  source TEXT NOT NULL DEFAULT '',      -- connector id, or "model" / "sandbox"
+  ref TEXT NOT NULL DEFAULT '',         -- doi:.. | pmid:.. | uniprot:.. | url
+  title TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL DEFAULT '',
+  tool TEXT NOT NULL DEFAULT '',
+  query TEXT NOT NULL DEFAULT '',
+  quote TEXT NOT NULL DEFAULT '',
+  value TEXT NOT NULL DEFAULT '',
+  run_id TEXT NOT NULL DEFAULT '',
+  retrieved_at REAL NOT NULL DEFAULT 0,
+  verified INTEGER NOT NULL DEFAULT -1, -- 1 checked and found | 0 checked and NOT found | -1 not checked / could not check
+  verified_note TEXT NOT NULL DEFAULT '',
+  created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS science_evidence_inv ON science_evidence(inv_id, created);
+CREATE TABLE IF NOT EXISTS science_claims(
+  id TEXT PRIMARY KEY,
+  inv_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  evidence TEXT NOT NULL DEFAULT '[]',
+  conflicting INTEGER NOT NULL DEFAULT 0,
+  created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS science_claims_inv ON science_claims(inv_id, created);
+CREATE TABLE IF NOT EXISTS science_hypotheses(
+  id TEXT PRIMARY KEY,
+  inv_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  elo REAL NOT NULL DEFAULT 1200,
+  wins INTEGER NOT NULL DEFAULT 0,
+  losses INTEGER NOT NULL DEFAULT 0,
+  created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS science_hyp_inv ON science_hypotheses(inv_id);
+CREATE TABLE IF NOT EXISTS science_runs(                -- every computation and every data-source call of an investigation (the reproducibility record)
+  id TEXT PRIMARY KEY,
+  inv_id TEXT NOT NULL DEFAULT '',
+  tool TEXT NOT NULL,
+  record TEXT NOT NULL,
+  created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS science_runs_inv ON science_runs(inv_id, created);
+CREATE TABLE IF NOT EXISTS apps(                        -- apps that agents build with you (see apps/store.py); the files live in data/apps/<id>/
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  template TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'advanced',  -- simple (the builder's changes apply straight away) | advanced (you review each change)
+  session_id TEXT NOT NULL DEFAULT '',    -- the builder chat that last worked on it
+  version INTEGER NOT NULL DEFAULT 1,
+  git TEXT NOT NULL DEFAULT '{}',         -- {remote, branch}: never a token
+  created REAL NOT NULL,
+  updated REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS app_versions(                -- a snapshot (zip of the files) each time a change is accepted, restored or saved on purpose
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  app_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  author TEXT NOT NULL,                   -- user | restore | agent:<name>
+  note TEXT NOT NULL DEFAULT '',
+  files BLOB NOT NULL,
+  created REAL NOT NULL,
+  UNIQUE(app_id, version)
+);
+CREATE TABLE IF NOT EXISTS app_proposals(               -- file changes a builder agent suggested, waiting for review
+  id TEXT PRIMARY KEY,
+  app_id TEXT NOT NULL,
+  author TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  changes TEXT NOT NULL,
+  status TEXT NOT NULL,                   -- pending | accepted | rejected | stale
+  created REAL NOT NULL,
+  resolved REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS app_proposals_app ON app_proposals(app_id, status);
 CREATE TABLE IF NOT EXISTS settings_log(               -- what changed, when (secret values are never written here)
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ts REAL NOT NULL,
@@ -328,9 +421,13 @@ CREATE TABLE IF NOT EXISTS workflow_runs(                 -- finished (and runni
   cost_usd REAL NOT NULL DEFAULT 0,
   error TEXT,
   final TEXT NOT NULL DEFAULT '',
-  nodes TEXT NOT NULL DEFAULT '{}'
+  nodes TEXT NOT NULL DEFAULT '{}',
+  origin TEXT NOT NULL DEFAULT 'manual',                -- manual | webhook | agent | run_from: what started it
+  tokens INTEGER NOT NULL DEFAULT 0,
+  from_node TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS workflow_runs_wf ON workflow_runs(wf_id, started);
+CREATE INDEX IF NOT EXISTS workflow_runs_started ON workflow_runs(started);
 CREATE TABLE IF NOT EXISTS workflow_hooks(                -- the secret address that starts a workflow from outside: only a hash of the secret is kept
   wf_id TEXT PRIMARY KEY,
   secret_hash TEXT NOT NULL,
@@ -464,6 +561,8 @@ class Database:
                 self.conn.execute("ALTER TABLE agents ADD COLUMN sandbox TEXT NOT NULL DEFAULT ''")
             if "data" not in acols:  # data sources it may read (see datasources/); [] = none, ["*"] = all
                 self.conn.execute("ALTER TABLE agents ADD COLUMN data TEXT NOT NULL DEFAULT '[]'")
+            if "agui" not in acols:  # AG-UI switches: {"components": bool, "endpoint": bool}; '{}' = both on (see agui_flags.py)
+                self.conn.execute("ALTER TABLE agents ADD COLUMN agui TEXT NOT NULL DEFAULT '{}'")
             ocols = {r["name"] for r in self.conn.execute("PRAGMA table_info(openapi_sources)")}
             for col, ddl in (("spec", "TEXT NOT NULL DEFAULT ''"), ("origin", "TEXT NOT NULL DEFAULT 'url'"), ("auth", "TEXT NOT NULL DEFAULT '{}'"),
                              ("servers", "TEXT NOT NULL DEFAULT '[]'"), ("refreshed", "REAL"), ("updated", "REAL"), ("overrides", "TEXT NOT NULL DEFAULT '{}'"),
@@ -474,6 +573,10 @@ class Database:
             for col in ("label", "note"):
                 if col not in vcols:  # a name and a note for a saved workflow version
                     self.conn.execute(f"ALTER TABLE workflow_versions ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
+            wcols = {r["name"] for r in self.conn.execute("PRAGMA table_info(workflow_runs)")}
+            for col, ddl in (("origin", "TEXT NOT NULL DEFAULT 'manual'"), ("tokens", "INTEGER NOT NULL DEFAULT 0"), ("from_node", "TEXT NOT NULL DEFAULT ''")):
+                if col not in wcols:  # runs of every workflow in one list: what started each run (origin), how many tokens it used, which box it began from
+                    self.conn.execute(f"ALTER TABLE workflow_runs ADD COLUMN {col} {ddl}")
             rcols = {r["name"] for r in self.conn.execute("PRAGMA table_info(a2a_remotes)")}
             for col, ddl in (("auth_kind", "TEXT NOT NULL DEFAULT 'bearer'"), ("auth_header", "TEXT NOT NULL DEFAULT ''"), ("delegates", "TEXT NOT NULL DEFAULT '[]'")):
                 if col not in rcols:  # remote A2A agents: how the token is sent, and which agents may call it

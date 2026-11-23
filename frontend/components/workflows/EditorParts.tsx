@@ -31,7 +31,7 @@ export function Palette({ catalog, ops, onAdd, onClose }: { catalog: Catalog; op
 }
 
 // ------------------------------------------------------------------ settings panel
-function DataView({ title, text, onPin }: { title: string; text: string | undefined; onPin?: () => void }) {
+export function DataView({ title, text, onPin }: { title: string; text: string | undefined; onPin?: () => void }) {
   const [mode, setMode] = useState<"text" | "json" | "table">("text");
   if (!text) return <div className="small mut" data-testid={`${title}-empty`}>Nothing yet. Run the workflow to see the {title.toLowerCase()} of this box.</div>;
   let parsed: unknown = null;
@@ -138,7 +138,7 @@ export function BuilderChat({ doc, ctx, autonomy, onApply, onClose, initial }: {
 // ------------------------------------------------------------------ bottom drawer
 type Saved = { id: string; status: string; task: string; started: number; cost_usd: number; version: number };
 export type DrawerTab = "run" | "problems" | "runs";
-function Details({ form, onAnswer }: { form: FormField[]; onAnswer: (values: Record<string, unknown>) => void }) {
+export function Details({ form, onAnswer }: { form: FormField[]; onAnswer: (values: Record<string, unknown>) => void }) {
   const [v, setV] = useState<Record<string, unknown>>({});
   return (
     <span data-testid="approval-form" style={{ display: "block", margin: "4px 0" }}>

@@ -112,6 +112,16 @@ SETTINGS: tuple[Setting, ...] = (
     # ---- Canvas (tab: harness): the document you and an agent edit together
     _s("canvas_config", "Canvas", "harness", "blob", {}, "Whether the canvas is on, whether agent changes are applied straight away (off = you review each one), the size limit and how many versions are kept.", "canvas",
        where="Agents & sandbox > Canvas"),
+    _s("apps_config", "Apps", "harness", "blob", {}, "Whether apps are on, whether a builder agent's changes are applied straight away (off = you review each one), whether server apps may run in a container, the preview port, size limits, how many versions are kept, the rate limit of each app's key and your name and email for git commits.", "apps",
+       where="Agents & sandbox > Apps"),
+    _s("apps_secrets", "App keys and variables", "harness", "secret", "", "Each app's own API key and its environment values, and its git token (write-only; never written into an app's files).", "apps", where="Apps"),
+    _s("apps_token_secret", "Apps preview token secret", "harness", "secret", "", "The random secret that signs the short-lived tokens an app preview uses to call your agents (made automatically).", "apps", where="Apps"),
+    _s("science_config", "Science Lab", "harness", "blob", {}, "Whether the Science Lab is on, the safety level (it can only be raised, also when imported), which data sources are off, the time between requests, the contact email sent to Crossref, the call budget of an investigation and the cache time.", "science",
+       where="Science > Settings"),
+    _s("science_secrets", "Science data source keys", "harness", "secret", "", "Free keys for NCBI, NASA ADS, OpenAlex and Wolfram|Alpha (write-only).", "science", where="Science > Settings"),
+    _s("science_components", "Science components", "harness", "blob", {}, "Which optional science components are installed in their own environments and the licence you accepted (per machine, never exported).", "", internal=True),
+    _s("uikit_config", "Rich components", "harness", "blob", {}, "Whether agents can show charts, time series, maps and cards, the size limits for one component, and the optional map basemap (off by default: maps then use a built-in world outline and load nothing from the internet). Also which AG-UI switches a new agent starts with (rich components, stream endpoint; both on by default); each agent has its own switches.", "ui-components",
+       where="Agents & sandbox > Rich components"),
     # ---- Harness rules, API access (blobs owned by their features)
     _s("harness_policy", "Harness rules", "harness", "blob", {}, "Permission mode, loop guard, project instructions, checkpoints, your hooks, tool-call limits and the web tools.", "harness-rules",
        where="Agents & sandbox > Harness rules"),

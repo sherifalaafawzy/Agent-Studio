@@ -343,9 +343,9 @@ def test_runtime_and_framework_checks(state):
 def test_evaluation_and_red_team_checks_are_about_this_agent(state):
     make(state, "tested")
     make(state, "untested")
-    state.db.execute("INSERT INTO eval_runs(id,set_id,agent,started,status) VALUES('e1','s','tested',?, 'done')", (time.time(),))
-    state.db.execute("INSERT INTO eval_runs(id,set_id,agent,started,status) VALUES('e2','s','untested',?, 'done')", (time.time() - 90 * 86400,))
-    state.db.execute("INSERT INTO redteam_runs(id,tool,agent,started,status) VALUES('r1','garak','tested',?, 'done')", (time.time(),))
+    state.db.execute("INSERT INTO eval_runs(id,set_id,agent,started,status,summary) VALUES('e1','s','tested',?, 'done', ?)", (time.time(), '{"done": 2, "errors": 0}'))
+    state.db.execute("INSERT INTO eval_runs(id,set_id,agent,started,status,summary) VALUES('e2','s','untested',?, 'done', ?)", (time.time() - 90 * 86400, '{"done": 2, "errors": 0}'))
+    state.db.execute("INSERT INTO redteam_runs(id,tool,agent,started,status,requests) VALUES('r1','garak','tested',?, 'done', 4)", (time.time(),))
     assert st(state, "tested", "evals") == "pass" and st(state, "tested", "redteam") == "pass"
     assert st(state, "untested", "evals") == "warn" and "not been evaluated" in chk(card(state, "untested"), "evals")["detail"]
     assert st(state, "untested", "redteam") == "warn"

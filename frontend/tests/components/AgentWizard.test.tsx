@@ -167,6 +167,20 @@ describe("AgentWizard: building one by hand", () => {
     for (let i = 0; i < n; i++) await next();
   }
 
+  it("lets you switch AG-UI components off for the new agent and sends only what you changed", async () => {
+    const { calls } = setup();
+    await userEvent.click(await screen.findByRole("button", { name: /Orchestrator/ }));
+    await next(); await next(); await next(); await next();                                       // name, model, abilities, permissions
+    expect(screen.getByTestId("agent-agui")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rich components in answers")).toBeChecked();
+    await userEvent.click(screen.getByLabelText("Rich components in answers"));
+    await next(); await next();                                                                    // instructions, review
+    expect(screen.getByText("no components")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Create agent" }));
+    await screen.findByText(/is ready/);
+    expect((created(calls) as { agui?: unknown }).agui).toEqual({ components: false, endpoint: true });
+  });
+
   it("walks through every step, with quick picks for tools and a pinned model", async () => {
     const { calls } = setup();
     await userEvent.type(await screen.findByLabelText("What the agent should do"), "Summarise my meeting notes");

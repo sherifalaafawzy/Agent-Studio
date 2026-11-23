@@ -114,9 +114,9 @@ describe("RedTeamPanel", () => {
     await userEvent.selectOptions(screen.getByLabelText("Tool"), "promptfoo");
     expect(screen.getByLabelText(/^Risks to test/)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/What the agent is for/), "A support bot");
-    expect(screen.getByText(/writes its attacks with its own cloud service/)).toBeInTheDocument();
+    expect(screen.getByText(/update check, telemetry and result sharing are switched off/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Start" }));
-    await waitFor(() => expect(posts(net.calls, "/api/redteam/runs")[1]).toMatchObject({ tool: "promptfoo", purpose: "A support bot" }));
+    await waitFor(() => expect(posts(net.calls, "/api/redteam/runs")[1]).toMatchObject({ tool: "promptfoo", purpose: "A support bot", local_only: true }));
   });
 
   it("asks you to install something first when no tool is ready", async () => {

@@ -19,6 +19,7 @@ function Editor() {
   const id = useSearchParams().get("id") ?? "";
   const wantChat = useSearchParams().get("chat") === "1";
   const wantRun = useSearchParams().get("run") === "1";
+  const wantVersions = useSearchParams().get("versions") === "1";
   const [doc, setDoc] = useState<Doc | null>(null);
   const [past, setPast] = useState<Doc[]>([]), [future, setFuture] = useState<Doc[]>([]);
   const [dirty, setDirty] = useState(false), [restored, setRestored] = useState(false);
@@ -28,7 +29,7 @@ function Editor() {
   const [selIds, setSelIds] = useState<string[]>([]);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [run, setRun] = useState<Run | null>(null), [task, setTask] = useState(""), [runOpen, setRunOpen] = useState(false);
-  const [palette, setPalette] = useState(false), [chat, setChat] = useState(wantChat), [drawer, setDrawer] = useState(false), [dTab, setDTab] = useState<DrawerTab>("run"), [versions, setVersions] = useState(false), [saving, setSaving] = useState(false);
+  const [palette, setPalette] = useState(false), [chat, setChat] = useState(wantChat), [drawer, setDrawer] = useState(false), [dTab, setDTab] = useState<DrawerTab>("run"), [versions, setVersions] = useState(wantVersions), [saving, setSaving] = useState(false);
   const [label, setLabel] = useState(""), [err, setErr] = useState(""), [clip, setClip] = useState<{ nodes: WNode[]; edges: WEdge[] } | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const specs = useMemo(() => Object.fromEntries(catalog.nodes.map((n) => [n.type, n])) as Record<string, NodeSpec>, [catalog]);

@@ -29,8 +29,12 @@ from google.genai import types
 from .acp_agents import AcpError
 from .auto import AUTO_ID
 from .memory.model import STORED_TYPES, uses_records
-from .agents import ARTIFACT_RULES, HARNESS_RULES, AgentDef, AgentStore
+from .agents import HARNESS_RULES, AgentDef, AgentStore, artifact_rules
+from .apps.tools import APP_RULES
 from .canvas.tools import CANVAS_RULES
+from .science.tools import SCIENCE_RULES
+from . import agui_flags
+from .uikit.tools import UI_RULES
 from .budget import BudgetExceeded, BudgetGuard, Reservation, estimate_tokens
 from .memory.model import STORED_TYPES, uses_records
 from .chat_store import ChatStore
@@ -84,8 +88,17 @@ class TurnTrace:
     memory: list = field(default_factory=list)               # what was recalled / remembered / forgotten this turn (shown in the chat and Runs)
     recall_text: str = ""                                    # memory text added to the lead agent's instructions this turn
     rails: list = field(default_factory=list)                # guardrail flags / blocks this turn (shown in the chat; the text itself is never kept)
+    uis: list = field(default_factory=list)                  # rich components (charts, maps, cards...) agents showed this turn (validated specs)
     artifacts: list = field(default_factory=list)            # files and outputs this turn produced (public artifact records; the bytes live in the artifact store)
     policy: Any = None                                       # harness.policy.ToolPolicy: permission mode, loop guard, hooks, checkpoints (None = no rules)
+
+    def ui_event(self, spec: dict) -> bool:
+        """Record and show one rich component. False when the turn already showed the most allowed."""
+        if len(self.uis) >= 30:
+            return False
+        self.uis.append(spec)
+        self.note({"type": "ui", "spec": spec})
+        return True
 
     def artifact_event(self, art: dict) -> None:
         """Record and show one artifact (an agent saved it, or it was found in the workspace when the turn ended)."""
@@ -435,6 +448,9 @@ class ChatService:
         self.guardrails = None                             # GuardrailService, set by State: checks inputs, outputs and tool calls
         self.identity = None                               # IdentityService, set by State: agent identities and hand-overs between agents
         self.artifacts = None                              # ArtifactService, set by State: files and outputs agents produce
+        self.uikit = None                                  # UiKitService, set by State: charts, maps and cards agents can show
+        self.apps = None                                   # AppStore, set by State: apps agents build with you
+        self.science = None                                # ScienceService, set by State: the Science Lab (open data sources, evidence, reports)
         self.canvas = None                                 # CanvasService, set by State: the document you and an agent edit together
         self.fw = FrameworkRuntime()                       # the model gateway + tool bridge other agent frameworks (LangGraph, Strands...) work through
         self.web = WebClient(lambda: get_policy(db), lambda: _web_key(db))                # web_fetch / web_search for agents (off until switched on in Settings; public addresses only)
@@ -494,7 +510,12 @@ class ChatService:
         ctx.memory, ctx.mem, ctx.agent_id = (self.memory if d.memory else None), (d.memory or {}), d.id     # each agent uses only its own memory settings
         ctx.session_id, ctx.on_memory = turn.session_id or "", turn.memory_event
         ctx.artifacts, ctx.on_artifact, ctx.trace_id = self.artifacts, turn.artifact_event, turn.trace_id      # an agent can keep results on purpose (save_artifact)
-        tools: list = build_tools(ctx, d.tools)
+        ctx.uikit, ctx.on_ui = self.uikit, turn.ui_event                        # and show charts, maps and cards (render_ui)
+        ctx.agui_components = agui_flags.components_on(d)                       # unless AG-UI components are switched off for this agent
+        names = agui_flags.tools_for(d)                                         # its tools without render_ui / ui_catalog when they are off
+        ctx.apps, ctx.on_app = self.apps, (lambda ev: turn.note({**ev, "type": "app"}))       # and build apps with the user (app_*)
+        ctx.science, ctx.on_science = self.science, (lambda ev: turn.note({**ev, "type": "science"}))      # and investigate with open science data (science_*)
+        tools: list = build_tools(ctx, names)
         # MCP: explicit list + MCPs linked by explicitly-named or group-attached skills (a "*" skills list does not auto-link)
         mcp_ids = list(d.mcp) + self.skills.linked_mcp(d.skills)
         if mcp_ids:
@@ -506,9 +527,15 @@ class ChatService:
         if d.tools:
             instruction += HARNESS_RULES
         if "save_artifact" in d.tools:
-            instruction += ARTIFACT_RULES
+            instruction += artifact_rules(ctx.agui_components)
         if self.canvas is not None and "canvas_create" in d.tools:
             instruction += CANVAS_RULES
+        if self.apps is not None and "app_write_file" in d.tools:
+            instruction += APP_RULES
+        if self.science is not None and "science_search" in d.tools:
+            instruction += SCIENCE_RULES
+        if self.uikit is not None and "render_ui" in names:
+            instruction += UI_RULES
         if d.tools and get_policy(self.db)["project_instructions"]:
             instruction += instructions_text(ctx.workspace)           # AGENTS.md / CLAUDE.md in the workspace
         subs: list[AgentDef] = [s for s in (self.agents.get(i) for i in d.sub_agents) if s]
@@ -536,7 +563,7 @@ class ChatService:
         if d.skills:
             instruction += self.skills.index_text(d.skills)
         if d.can_spawn and depth < MAX_DEPTH and self.db.get_setting("agent_spawning_enabled", "1") == "1":
-            grant_tools = [t for t in d.tools if t not in SPAWN_FORBIDDEN_TOOLS]
+            grant_tools = [t for t in names if t not in SPAWN_FORBIDDEN_TOOLS]
             grant_mcp = list(dict.fromkeys(mcp_ids))
             tools.append(self._spawn_tool(d, ctx, turn, toolsets, chat_provider, max_tokens, depth, trail, grant_tools, grant_mcp))
             instruction += (f"\n\n## Creating sub-agents\nYou can create a short-lived specialist at runtime with `spawn_agent` and it runs "
@@ -583,7 +610,7 @@ class ChatService:
             slug = re.sub(r"[^a-z0-9_]", "_", (name or "helper").lower()).strip("_")[:20] or "helper"
             cdef = AgentDef(id=f"{d.id}__{slug}_{turn.spawned}", name=(name or "helper")[:60], description=task[:120],
                             instruction=instruction + (HARNESS_RULES if tools else ""), tier=tier if tier in ("pro", "flash") else "flash",
-                            tools=tools, mcp=mcp)
+                            tools=tools, mcp=mcp, agui=dict(d.agui))       # a helper shows components only if its creator may
             if memory and d.memory and uses_records(d.memory):         # read-only, and never more than the creator may read
                 cdef.memory = dict(types=[t for t in d.memory["types"] if t in STORED_TYPES], read_scopes=list(d.memory["read_scopes"]), write_scopes=[],
                                    auto_recall=False, auto_save="off")
@@ -1100,7 +1127,7 @@ class ChatService:
             session_id=sid, provider=p.id, agent=root.id, model=turn.calls[0]["model"] if turn.calls else None,
             reply=reply, halted=halted, warnings=turn.warnings, steps=turn.steps, model_calls=turn.calls,
             usage=usage, runs=turn.runs, trace_id=turn.trace_id, thinking="".join(thinking)[:40000] or None,
-            no_answer=no_answer, retried=retried, route=route, memory=turn.memory, guardrails=turn.rails, artifacts=turn.artifacts,
+            no_answer=no_answer, retried=retried, route=route, memory=turn.memory, guardrails=turn.rails, artifacts=turn.artifacts, uis=turn.uis,
             billing=self.guard.status(self.providers.get(p.id)))
 
     async def _send_framework(self, *args) -> dict:
@@ -1140,6 +1167,6 @@ class ChatService:
                            dict(agent=root.id, provider=provider, no_answer=no_answer, status="halted" if turn.refused and status == "ok" else status,
                                 steps=turn.steps, calls=turn.calls, warnings=turn.warnings, usage=usage, runs=turn.runs, trace_id=turn.trace_id,
                                 error=({k: error[k] for k in ("title", "hint", "raw", "code", "retryable", "suggestions")} if error else None),
-                                thinking=thinking[:40000] or None, route=route, memory=turn.memory or None, guardrails=turn.rails or None, artifacts=turn.artifacts or None))
+                                thinking=thinking[:40000] or None, route=route, memory=turn.memory or None, guardrails=turn.rails or None, artifacts=turn.artifacts or None, uis=turn.uis or None))
         if turn.refused:
             self.store.add(sid, "refused", "Turn stopped early: " + turn.refused.detail["message"], dict(detail=turn.refused.detail))

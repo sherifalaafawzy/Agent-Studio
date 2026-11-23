@@ -130,8 +130,8 @@ def test_discovery_memory_vector_identity_and_run_checks(state):
     assert status(s, "identity") == "warn"
     s.identity.set_config({"enforce": True})
     assert status(s, "identity") == "pass"
-    s.db.execute("INSERT INTO eval_runs(id,set_id,agent,started,status) VALUES('e1','s','a',?, 'done')", (time.time(),))
-    s.db.execute("INSERT INTO redteam_runs(id,tool,agent,started,status) VALUES('r1','garak','a',?, 'done')", (time.time(),))
+    s.db.execute("INSERT INTO eval_runs(id,set_id,agent,started,status,summary) VALUES('e1','s','a',?, 'done', ?)", (time.time(), json.dumps({"done": 3, "errors": 0})))
+    s.db.execute("INSERT INTO redteam_runs(id,tool,agent,started,status,requests) VALUES('r1','garak','a',?, 'done', 5)", (time.time(),))
     assert status(s, "evals") == "pass" and status(s, "redteam") == "pass"
     s.db.set_setting("ocsf_config", json.dumps({"enabled": True, "sinks": [{"id": "ab", "kind": "file", "enabled": True, "level": "", "config": {"file": "x.ndjson"}}]}))
     assert status(s, "ocsf") in ("pass", "warn")
@@ -139,6 +139,8 @@ def test_discovery_memory_vector_identity_and_run_checks(state):
 
 def test_ocsf_check_passes_with_an_enabled_destination(state):
     class FakeOcsf:
+        sink_stats: dict = {}
+
         def config(self):
             return {"enabled": True, "sinks": [{"id": "a", "enabled": True}, {"id": "b", "enabled": False}]}
     state.ocsf = FakeOcsf()

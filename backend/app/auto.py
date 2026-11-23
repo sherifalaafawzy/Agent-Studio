@@ -23,7 +23,7 @@ import litellm
 
 from . import d1_spec
 from .budget import estimate_tokens
-from .d1_client import D1Worker, WorkerUnavailable
+from .d1_client import D1Worker, WorkerLoading, WorkerUnavailable
 from .pricing import cost_usd
 from .providers import Provider, context_of, litellm_target, mock_enabled, price_of, tier_model
 
@@ -35,6 +35,7 @@ DEFAULT_CONFIG: dict[str, Any] = dict(enabled=True, engine="rules", preference="
                                       timeout_s=4.0, tier_models={"flash": "", "pro": ""})
 CONFIG_KEY = "auto_config"
 MAX_STATE_CHARS = 4000
+TRY_LOAD_WAIT_S = 90.0            # "Try it" in Settings waits this long for the decision model to load (live chat never waits)
 CONTEXT_MESSAGES = 3
 CONTEXT_CHARS = 400
 PROMPT_OVERHEAD = 800           # tokens every plain chat call carries besides the message (system prompt)
@@ -44,6 +45,10 @@ WINDOW_FRACTION = 0.8             # a model is skipped when the prompt alone wou
 
 class AutoError(ValueError):
     """Auto cannot route this message. The message is shown to the user."""
+
+
+class RouterLoading(Exception):
+    """The decision model is loading right now (not a failure): the rules decide this time."""
 
 
 class RouterUnavailable(Exception):
@@ -321,13 +326,19 @@ class AutoRouter:
             self._worker.close()
             self._worker = None
 
-    async def _d1_signals(self, engine: str, message: str, context: list[str], timeout: float, agent: bool, has_images: bool) -> Signals:
+    async def _d1_signals(self, engine: str, message: str, context: list[str], timeout: float, agent: bool, has_images: bool,
+                          wait_for_load: bool = False) -> Signals:
         if not self.d1_ready(engine):
             raise RouterUnavailable("it is not installed (Settings > Auto > Install)")
         worker = self._worker_for(engine)
         state, questions = d1_questions(message, context)
         try:
-            reply = await asyncio.to_thread(worker.decide, state, questions, timeout)
+            if wait_for_load:                      # a person pressed "Try it": wait for the model to load instead of falling back at once
+                reply = await asyncio.to_thread(worker.decide, state, questions, timeout, True, TRY_LOAD_WAIT_S)
+            else:
+                reply = await asyncio.to_thread(worker.decide, state, questions, timeout)
+        except WorkerLoading as e:
+            raise RouterLoading(str(e)) from e
         except WorkerUnavailable as e:
             raise RouterUnavailable(str(e)) from e
         if not reply.get("ok"):
@@ -338,7 +349,7 @@ class AutoRouter:
     # ------------------------------------------------------------ routing
     async def route(self, message: str, context: list[str] | None = None, agent: bool = False, has_images: bool = False,
                     max_tokens: int | None = None, only_provider: str | None = None, override: dict | None = None,
-                    history_chars: int = 0) -> Route:
+                    history_chars: int = 0, wait_for_load: bool = False) -> Route:
         """Choose a provider and model for this message. Raises AutoError when nothing can take it."""
         cfg = {**self.config(), **(override or {})}
         if cfg["engine"] not in ENGINES or cfg["preference"] not in PREFERENCES:
@@ -348,7 +359,9 @@ class AutoRouter:
         if engine in d1_spec.MODELS:
             label = d1_spec.spec(engine).label
             try:
-                sig = await self._d1_signals(engine, message, context, float(cfg["timeout_s"]), agent, has_images)
+                sig = await self._d1_signals(engine, message, context, float(cfg["timeout_s"]), agent, has_images, wait_for_load)
+            except RouterLoading:
+                note = f"{label} is still loading into memory, so the built-in rules decided this time."
             except RouterUnavailable as e:
                 note = f"{label} could not be used ({e}), so the built-in rules decided."
         used = engine if sig else "rules"

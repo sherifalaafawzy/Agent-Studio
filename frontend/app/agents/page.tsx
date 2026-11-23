@@ -7,6 +7,7 @@ import InfoTip from "@/components/InfoTip";
 import { MemoryPicker, type MemCfg } from "@/components/MemoryUI";
 import AgentSecurity, { type Identity } from "@/components/AgentSecurity";
 import AgentAccess from "@/components/AgentAccess";
+import AgentAgui, { aguiBadge } from "@/components/AgentAgui";
 import AgentRuntime from "@/components/AgentRuntime";
 import { A2AConnect, AgentCreateChoice, RemotePanel, type Remote } from "@/components/RemoteAgents";
 
@@ -15,6 +16,7 @@ type Agent = {
   tools: string[]; mcp: string[]; skills: string[]; sub_agents: string[]; builtin: boolean; can_spawn: boolean;
   acp_agents: string[]; acp_policy: string; rag?: string[]; memory?: MemCfg; guardrails?: string[]; identity?: Identity;
   framework?: string; api_access?: boolean; a2a?: boolean; runtime?: string; sandbox?: string; data?: string[];
+  agui?: { components: boolean; endpoint: boolean };
 };
 type Tool = { name: string; description: string; read_only: boolean };
 type Mcp = { id: string; label: string; ready: boolean; enabled: boolean; status: string };
@@ -117,6 +119,7 @@ export default function AgentsPage() {
                 {a.name} <span className={`pill ${a.tier === "pro" ? "ok" : ""}`}>{a.tier}</span>
                 {a.sub_agents.length > 0 && <span className="mut small"> · {a.sub_agents.length} sub</span>}
                 {a.can_spawn && <span className="mut small" title="can create its own sub-agents"> · ⚙</span>}
+                {aguiBadge(a) && <span className="pill" data-testid="agui-badge" title="AG-UI is partly or fully switched off for this agent (see its AG-UI section)">{aguiBadge(a)}</span>}
                 {scores[a.id] && <a className={`pill ag-score ${SCORE_TONE[scores[a.id].band] ?? ""}`} href={`/security/?agent=${a.id}`} onClick={(e) => e.stopPropagation()}
                   title="Security score: open this agent's scorecard" aria-label={`Security score ${scores[a.id].percent} percent: open the scorecard of ${a.name}`}>{scores[a.id].percent}%</a>}
               </div>
@@ -246,6 +249,7 @@ export default function AgentsPage() {
             onChange={(g, i) => setF((s) => ({ ...s, guardrails: g, identity: i }))} />
 
           <AgentAccess agent={f} onChange={(patch) => setF((s) => ({ ...s, ...patch }))} />
+          <AgentAgui agent={f} isNew={isNew} onChange={(agui) => setF((s) => ({ ...s, agui }))} />
           <AgentRuntime agent={f} isNew={isNew} onChange={(patch) => setF((s) => ({ ...s, ...patch }))} />
 
           <div className="row" style={{ marginTop: 14 }}>

@@ -22,3 +22,6 @@ coverage/
 .coverage
 htmlcov/
 backend/.playwright-mcp/
+
+.cov_*
+backend/.cov_*

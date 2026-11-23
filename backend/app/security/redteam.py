@@ -49,13 +49,98 @@ TOOLS: dict[str, dict] = {
     "promptfoo": dict(
         label="promptfoo", kind="npm", licence="MIT", size_mb=600, module="promptfoo", packages=["promptfoo@0.125.1"],
         blurb="Generates adversarial test cases for the risks you pick (data leaks, prompt extraction, hijacking, excessive agency) and runs them.",
-        notes="Needs Node.js 22.22 or newer. It writes its attack prompts with its own cloud service unless you set an OpenAI key, so the purpose text below leaves this PC.",
+        notes="Needs Node.js 22.22 or newer. By default your own model writes and grades the attacks (Local only: nothing goes to promptfoo, no e-mail). Its hosted mode asks for a verified work e-mail and receives the purpose text.",
         options="plugins", default_options=["pii", "prompt-extraction", "hijacking", "excessive-agency", "shell-injection"]),
 }
 
 
 class RedTeamError(Exception):
     """Something the user can fix. The message is shown as is."""
+
+
+# ------------------------------------------------------------------------------------------------ promptfoo: hosted vs local only
+# promptfoo 0.125.1 (read from the installed package): `redteam run` asks for a work email (interactive) before it uses promptfoo's
+# HOSTED attack generation, and the check is skipped when PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION (or ..._REMOTE_GENERATION) is
+# true; then the attacks are written, and graded, by a model WE give it (`redteam.provider`), here a private address on this server that
+# forwards to your own provider. 64 of the 155 plugins work that way; the other 93 (e.g. hijacking, ssrf, bola) need promptfoo's service.
+PROMPTFOO_LOCAL_PLUGINS = frozenset({
+    "aegis", "beavertails", "bias:age", "bias:disability", "bias:gender", "bias:race", "contracts", "cross-session-leak", "cyberseceval", "debug-access",
+    "divergent-repetition", "donotanswer", "excessive-agency", "hallucination", "harmbench", "harmful:chemical-biological-weapons", "harmful:child-exploitation",
+    "harmful:copyright-violations", "harmful:cybercrime", "harmful:cybercrime:malicious-code", "harmful:graphic-content", "harmful:harassment-bullying",
+    "harmful:hate", "harmful:illegal-activities", "harmful:illegal-drugs", "harmful:illegal-drugs:meth", "harmful:indiscriminate-weapons", "harmful:insults",
+    "harmful:intellectual-property", "harmful:non-violent-crime", "harmful:privacy", "harmful:profanity", "harmful:radicalization", "harmful:self-harm",
+    "harmful:sex-crime", "harmful:sexual-content", "harmful:unsafe-practices", "harmful:violent-crime", "harmful:weapons:ied", "imitation", "intent",
+    "overreliance", "pii", "pii:api-db", "pii:direct", "pii:session", "pii:social", "pliny", "policy", "politics", "prompt-extraction", "rbac",
+    "shell-injection", "sql-injection", "teen-safety:age-restricted-goods-and-services", "teen-safety:dangerous-content", "teen-safety:dangerous-roleplay",
+    "teen-safety:harmful-body-ideals", "tool-discovery", "toxic-chat", "unsafebench", "unverifiable-claims", "vlguard", "vlsu", "xstest"})
+PROMPTFOO_LOCAL_DEFAULTS = ["pii", "prompt-extraction", "excessive-agency", "shell-injection", "debug-access"]
+GEN_CALLS_PER_PROBE = 50                    # attack writing + grading + multi-step strategies make several model calls per probe
+GEN_CALLS_BASE = 500
+
+
+def promptfoo_config_file() -> Path:
+    base = os.environ.get("PROMPTFOO_CONFIG_DIR")
+    return (Path(base) if base else Path.home() / ".promptfoo") / "promptfoo.yaml"
+
+
+def promptfoo_account_state() -> str:
+    """'verified' | 'needs_verification' | 'none' from promptfoo's own settings file. The e-mail address itself is never read out."""
+    try:
+        import yaml
+        acct = (yaml.safe_load(promptfoo_config_file().read_text(encoding="utf-8")) or {}).get("account") or {}
+    except (OSError, ValueError, ImportError, AttributeError):
+        return "none"
+    if not acct.get("email"):
+        return "none"
+    return "verified" if acct.get("emailValidated") else "needs_verification"
+
+
+def verify_command(h: Path | None = None) -> str:
+    """What the USER runs in their own terminal to answer promptfoo's e-mail question themselves (we never enter the address for them)."""
+    h = h or home()
+    cfg = h / "promptfoo" / "verify.yaml"
+    return f'& "{npm_bin("promptfoo", h)}" redteam generate -c "{cfg}" -o "{h / "promptfoo" / "verify-out.yaml"}"'
+
+
+VERIFY_CONFIG = ("description: Agent Studio one-time promptfoo e-mail check (nothing here is run against your agents)\n"
+                 "targets:\n  - id: https\n    label: placeholder\n    config:\n      url: http://127.0.0.1:9/never-called\n      method: POST\n"
+                 "      body:\n        prompt: '{{prompt}}'\nredteam:\n  purpose: A placeholder assistant\n  numTests: 1\n  plugins:\n    - prompt-extraction\n  strategies: []\n")
+
+
+def write_verify_config(h: Path | None = None) -> Path:
+    cfg = (h or home()) / "promptfoo" / "verify.yaml"
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text(VERIFY_CONFIG, encoding="utf-8")
+    return cfg
+
+
+EMAIL_MARKERS = ("Email Verification Required", "Work email:", "require email verification")
+
+
+def diagnose(tool: str, tail: list[str]) -> dict | None:
+    """A plain-language reason for a failed run, read from the tool's own log; None when the log says nothing we recognise."""
+    text = "\n".join(tail)
+    if tool == "promptfoo" and any(m in text for m in EMAIL_MARKERS):
+        return dict(code="needs_email_verification", short="promptfoo asked for a work e-mail address (its hosted mode)",
+                    message="promptfoo's hosted attack writer asks for a verified work e-mail before it will run, and it sends your agent's purpose text to promptfoo. "
+                            "Agent Studio cannot answer that question for you. Use \"Local only\" (your own model writes the attacks; nothing goes to promptfoo, no e-mail) "
+                            "or verify once yourself in your own terminal. garak and PyRIT never ask for an e-mail.",
+                    options=["local_only", "verify_yourself", "other_tools"])
+    if "Traceback (most recent call last)" in text or "ModuleNotFoundError" in text:
+        return dict(code="tool_crashed", short="the tool crashed (see the log)", message="The tool crashed while starting. The last lines of its log are shown below; reinstalling it often fixes this.", options=[])
+    return None
+
+
+def row_tool(db, rid: str) -> str:
+    r = db.one("SELECT tool FROM redteam_runs WHERE id=?", (rid,))
+    return r["tool"] if r else ""
+
+
+def log_tail(rid: str, n: int = 60) -> list[str]:
+    try:
+        return (runs_dir() / rid / "log.txt").read_text(encoding="utf-8", errors="replace").splitlines()[-n:]
+    except OSError:
+        return []
 
 
 def _notes(t: dict) -> str:
@@ -99,8 +184,10 @@ def is_ready(tool: str) -> bool:
 
 
 # ------------------------------------------------------------------------------------------------ what to run
-def build_run(tool: str, target_url: str, token: str, model: str, options: list[str], purpose: str, run_dir: Path, h: Path | None = None) -> dict:
-    """The files to write and the command to run for one tool. Pure: nothing is executed."""
+def build_run(tool: str, target_url: str, token: str, model: str, options: list[str], purpose: str, run_dir: Path, h: Path | None = None,
+              gen_url: str | None = None, gen_token: str = "") -> dict:
+    """The files to write and the command to run for one tool. Pure: nothing is executed.
+    `gen_url` (promptfoo only) turns on LOCAL ONLY mode: the attacks are written and graded by the model behind that private address."""
     h = h or home()
     if tool == "garak":
         cfg = ("plugins:\n  generators:\n    openai:\n      OpenAICompatible:\n"
@@ -129,8 +216,15 @@ def build_run(tool: str, target_url: str, token: str, model: str, options: list[
            "      transformResponse: json.choices[0].message.content\n"
            f"redteam:\n  purpose: {json.dumps(purpose)}\n  numTests: 3\n  plugins:\n" + "".join(f"    - {p}\n" for p in options) +
            "  strategies:\n    - jailbreak\n    - prompt-injection\n")
-    return dict(files={"promptfooconfig.yaml": cfg}, cmd=[str(npm_bin("promptfoo", h)), "redteam", "run", "-c", str(run_dir / "promptfooconfig.yaml")],
-                env={"PROMPTFOO_DISABLE_TELEMETRY": "1", "PROMPTFOO_DISABLE_SHARING": "true"})
+    env = {"PROMPTFOO_DISABLE_TELEMETRY": "1", "PROMPTFOO_DISABLE_SHARING": "true", "PROMPTFOO_DISABLE_UPDATE": "1"}
+    if gen_url:
+        def gen(pad: str) -> str:               # plain block YAML: promptfoo's own YAML reader rejects the compact `{...}` form with these URLs
+            return f'{pad}id: "openai:chat:agent-studio-gen"\n{pad}config:\n{pad}  apiBaseUrl: {json.dumps(gen_url)}\n{pad}  apiKey: {json.dumps(gen_token)}\n'
+        cfg = cfg.replace("redteam:\n", "redteam:\n  provider:\n" + gen("    "), 1) + "defaultTest:\n  options:\n    provider:\n" + gen("      ")
+        # `jailbreak` is an alias of `jailbreak:meta`, which promptfoo only runs through its hosted service (seen in a real run); these two work with your own model
+        cfg = cfg.replace("    - jailbreak\n    - prompt-injection\n", "    - jailbreak-templates\n    - jailbreak:tree\n")
+        env.update(PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION="true", OPENAI_API_KEY=gen_token, OPENAI_API_BASE_URL=gen_url, OPENAI_BASE_URL=gen_url)
+    return dict(files={"promptfooconfig.yaml": cfg}, cmd=[str(npm_bin("promptfoo", h)), "redteam", "run", "-c", str(run_dir / "promptfooconfig.yaml")], env=env)
 
 
 def _popen(cmd: list[str], env: dict, log_path: Path, cwd: str):
@@ -155,6 +249,7 @@ class RedTeam:
         self.error: str | None = None
         self.lock = threading.Lock()
         self.targets: dict[str, dict] = {}                         # token -> {run, agent, provider, model, left, requests, blocked, errors}
+        self.gens: dict[str, dict] = {}                            # token -> {run, provider, model, left, calls, errors}: the attack writer of a Local only run
         self.procs: dict[str, object] = {}
         db.execute("UPDATE redteam_runs SET status='interrupted', ended=? WHERE status='running'", (time.time(),))
 
@@ -264,31 +359,55 @@ class RedTeam:
                     runs_running=sum(1 for r in self.runs() if r["status"] == "running"))
 
     # ------------------------------------------------------------------------------------------------ runs
+    def preflight(self, tool: str = "promptfoo") -> dict:
+        """Cheap checks before a long run. Nothing is sent anywhere; promptfoo's own settings file is read for yes/no only."""
+        if tool not in TOOLS:
+            raise RedTeamError(f"unknown tool '{tool}'")
+        if tool != "promptfoo":
+            return dict(tool=tool, needs_email=False, local_only_available=False)
+        state = promptfoo_account_state()
+        return dict(tool=tool, needs_email=True, local_only_available=True, account=state, hosted_ready=state == "verified",
+                    verify_command=verify_command(), verify_config=str(write_verify_config()), local_plugins=sorted(PROMPTFOO_LOCAL_PLUGINS),
+                    local_defaults=PROMPTFOO_LOCAL_DEFAULTS)
+
     def start(self, tool: str, agent: str, provider: str, model: str | None, options: list[str] | None, max_requests: int | None,
-              purpose: str, base_url: str, agent_exists: Callable[[str], bool]) -> dict:
+              purpose: str, base_url: str, agent_exists: Callable[[str], bool], local_only: bool | None = None, gen_provider: str = "", gen_model: str | None = None) -> dict:
         if tool not in TOOLS:
             raise RedTeamError(f"unknown tool '{tool}'")
         if not is_ready(tool):
             raise RedTeamError(f"{TOOLS[tool]['label']} is not installed (Security > Red team > Install)")
         if not agent_exists(agent):
             raise RedTeamError(f"unknown agent '{agent}'")
-        opts = options if options else TOOLS[tool]["default_options"]
+        local = tool == "promptfoo" and local_only is not False                      # promptfoo defaults to LOCAL ONLY: no e-mail, nothing sent to promptfoo
+        opts = options if options else (PROMPTFOO_LOCAL_DEFAULTS if local else TOOLS[tool]["default_options"])
         pattern = ITEM_RE if tool != "pyrit" else re.compile(r"^.{3,300}$")
         if not isinstance(opts, list) or not 1 <= len(opts) <= 12 or any(not isinstance(o, str) or not pattern.match(o) for o in opts):
             raise RedTeamError(f"{TOOLS[tool]['options']} must be 1 to 12 short items")
         n = DEFAULT_REQUESTS if max_requests is None else max_requests
         if isinstance(n, bool) or not isinstance(n, int) or not 1 <= n <= MAX_REQUESTS:
             raise RedTeamError(f"the request limit must be between 1 and {MAX_REQUESTS}")
+        if local:
+            remote = [o for o in opts if o not in PROMPTFOO_LOCAL_PLUGINS]
+            if remote:
+                raise RedTeamError(f"these need promptfoo's own hosted service and cannot run in Local only mode: {', '.join(remote[:6])}. Pick other risks, or turn Local only off "
+                                   "(then promptfoo asks for a verified work e-mail that you must give yourself).")
+        elif tool == "promptfoo" and promptfoo_account_state() != "verified":
+            raise RedTeamError("promptfoo's hosted mode needs a verified work e-mail, and Agent Studio will not enter one for you. Use Local only, or run this once in your own "
+                               f"terminal and then try again: {verify_command()}")
         if self.running_runs():
             raise RedTeamError("another red-team run is still going - wait for it or cancel it")
         rid, token = secrets.token_hex(5), secrets.token_urlsafe(24)
         rd = runs_dir() / rid
         rd.mkdir(parents=True, exist_ok=True)
-        spec = build_run(tool, f"{base_url.rstrip('/')}/api/redteam/target/{token}/v1/chat/completions", token, agent, opts, (purpose or "A helpful assistant")[:300], rd)
+        gen_token = secrets.token_urlsafe(24) if local else ""
+        spec = build_run(tool, f"{base_url.rstrip('/')}/api/redteam/target/{token}/v1/chat/completions", token, agent, opts, (purpose or "A helpful assistant")[:300], rd,
+                         gen_url=f"{base_url.rstrip('/')}/api/redteam/gen/{gen_token}/v1" if local else None, gen_token=gen_token)
         for name, text in spec["files"].items():
             (rd / name).write_text(text, encoding="utf-8")
         env = {**self._env(), **spec["env"]}
         self.targets[token] = dict(run=rid, agent=agent, provider=provider, model=model, left=n, requests=0, blocked=0, errors=0)
+        if local:
+            self.gens[gen_token] = dict(run=rid, provider=gen_provider or provider, model=gen_model or model, left=GEN_CALLS_PER_PROBE * n + GEN_CALLS_BASE, calls=0, errors=0)
         self.db.execute("INSERT INTO redteam_runs(id,tool,agent,provider,started,status,max_requests,options) VALUES(?,?,?,?,?,'running',?,?)",
                         (rid, tool, agent, provider, time.time(), n, json.dumps(opts)))
         try:
@@ -307,10 +426,13 @@ class RedTeam:
         rc = proc.wait()
         row = self.db.one("SELECT status FROM redteam_runs WHERE id=?", (rid,))
         if row and row["status"] == "running":
-            self._finish(rid, token, "done" if rc == 0 else "failed", "" if rc == 0 else f"the tool exited with code {rc}")
+            why = "" if rc == 0 else (lambda d: f"{d['short']} (exit code {rc})" if d else f"the tool exited with code {rc}")(diagnose(row_tool(self.db, rid), log_tail(rid)))
+            self._finish(rid, token, "done" if rc == 0 else "failed", why)
 
     def _finish(self, rid: str, token: str, status: str, error: str = "") -> None:
         t = self.targets.pop(token, {})
+        for gk in [k for k, v in self.gens.items() if v["run"] == rid]:
+            self.gens.pop(gk, None)
         self.procs.pop(rid, None)
         self.db.execute("UPDATE redteam_runs SET status=?, ended=?, requests=?, blocked=?, errors=?, error=? WHERE id=?",
                         (status, time.time(), t.get("requests", 0), t.get("blocked", 0), t.get("errors", 0), error, rid))
@@ -325,6 +447,21 @@ class RedTeam:
         t["left"] -= 1
         t["requests"] += 1
         return t
+
+    def gen_for(self, token: str) -> dict:
+        """The attack-writer behind a Local only run. Spends one call; raises when the token is unknown or the call limit is used up."""
+        g = self.gens.get(token)
+        if g is None:
+            raise RedTeamError("this attack-writer address is not active")
+        if g["left"] <= 0:
+            raise RedTeamError("the model-call limit of this run is used up")
+        g["left"] -= 1
+        g["calls"] += 1
+        return g
+
+    @staticmethod
+    def gen_error(g: dict) -> None:
+        g["errors"] += 1
 
     def note_result(self, t: dict, blocked: bool = False, error: bool = False) -> None:
         t["blocked"] += int(blocked)
@@ -348,6 +485,8 @@ class RedTeam:
         if live:
             d.update(requests=live["requests"], blocked=live["blocked"], errors=live["errors"])
         d["options"] = json.loads(r["options"] or "[]")
+        if r["status"] == "failed":
+            d["help"] = diagnose(r["tool"], log_tail(r["id"]))
         return d
 
     def runs(self, limit: int = 30) -> list[dict]:

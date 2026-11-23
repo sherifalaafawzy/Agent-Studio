@@ -141,7 +141,8 @@ export default function FlowsTab() {
                 <button onClick={() => act(async () => { const a = await api<{ agent: string }>(`/api/workflows/${r.id}/to-agent`, { method: "POST" }); toast(`Agent created: ${a.agent}`); }, "Turned into an agent")}>Turn into an agent</button>
                 <button onClick={() => askDelete(r)}>Delete…</button></div></details></td></tr>),
             ...(r.id in open ? [(<tr key={`${r.id}-runs`} data-testid="runs-row"><td /><td colSpan={7}>{open[r.id] === null ? <span className="small mut">Loading…</span> : open[r.id]!.length === 0 ? <span className="small mut">No earlier runs.</span>
-              : open[r.id]!.map((p) => <div key={p.id} className="row small"><span className={`pill ${dot(p.status)}`}>{p.status}</span><span className="grow">{p.task || "(no task)"}</span><span className="mut">v{p.version} · {ago(p.started)}{p.cost_usd > 0 ? ` · $${p.cost_usd.toFixed(4)}` : ""}</span></div>)}</td></tr>)] : [])])}
+              : open[r.id]!.map((p) => <div key={p.id} className="row small"><span className={`pill ${dot(p.status)}`}>{p.status}</span><span className="grow">{p.task || "(no task)"}</span><span className="mut">v{p.version} · {ago(p.started)}{p.cost_usd > 0 ? ` · $${p.cost_usd.toFixed(4)}` : ""}</span></div>)}
+              <button className="link small" onClick={() => router.push(`/workflows/?tab=runs&workflow=${r.id}`)}>See all runs of {r.name}</button></td></tr>)] : [])])}
         </tbody></table>)}
       {adding && <NewWorkflow onClose={() => setAdding(false)} onImport={() => { setAdding(false); setImporting(true); }} />}
       {importing && <ImportDialog onClose={() => setImporting(false)} onDone={(id) => { setImporting(false); if (id) router.push(`/workflows/edit/?id=${id}`); else load(); }} />}

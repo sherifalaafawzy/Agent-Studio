@@ -124,6 +124,9 @@ def test_instructions_for_helper_directly(state):
     turn = type("T", (), {"recall_text": ""})()
     assert "Working rules" in T.instructions_for(state.chat, d, turn, ["read_file"])
     assert "## Canvas" in T.instructions_for(state.chat, d, turn, ["canvas_create"]) and "## Canvas" not in T.instructions_for(state.chat, d, turn, ["read_file"])
+    assert "## Apps" in T.instructions_for(state.chat, d, turn, ["app_write_file"]) and "## Apps" not in T.instructions_for(state.chat, d, turn, ["read_file"])
+    assert "## Science Lab" in T.instructions_for(state.chat, d, turn, ["science_search"]) and "## Science Lab" not in T.instructions_for(state.chat, d, turn, ["read_file"])
+    assert "## Rich components" in T.instructions_for(state.chat, d, turn, ["render_ui"]) and "## Rich components" not in T.instructions_for(state.chat, d, turn, ["read_file"])
 
 
 def test_memory_events_are_shown_and_a_timeout_releases_the_reservation(h, state, monkeypatch):

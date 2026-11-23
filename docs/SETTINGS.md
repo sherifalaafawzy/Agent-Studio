@@ -27,6 +27,13 @@ Every change is recorded in **Settings → Backup & history** (secret values are
 | `max_external_calls_per_turn` — Max external-agent calls per turn | Agents & sandbox > Agents calling external agents | 6 | 1 to 1000 | Limits hand-offs to external agents in one turn. | server |
 | `external_timeout_min` — Max minutes per external-agent call | Agents & sandbox > Agents calling external agents | 120 | 1 to 100000 | An external agent that runs longer is stopped. | server |
 | `canvas_config` — Canvas | Agents & sandbox > Canvas | empty | managed by its own page | Whether the canvas is on, whether agent changes are applied straight away (off = you review each one), the size limit and how many versions are kept. | server |
+| `apps_config` — Apps | Agents & sandbox > Apps | empty | managed by its own page | Whether apps are on, whether a builder agent's changes are applied straight away (off = you review each one), whether server apps may run in a container, the preview port, size limits, how many versions are kept, the rate limit of each app's key and your name and email for git commits. | server |
+| `apps_secrets` (secret) — App keys and variables | Apps | (none) | write-only | Each app's own API key and its environment values, and its git token (write-only; never written into an app's files). | server |
+| `apps_token_secret` (secret) — Apps preview token secret | Apps | (none) | write-only | The random secret that signs the short-lived tokens an app preview uses to call your agents (made automatically). | server |
+| `science_config` — Science Lab | Science > Settings | empty | managed by its own page | Whether the Science Lab is on, the safety level (it can only be raised, also when imported), which data sources are off, the time between requests, the contact email sent to Crossref, the call budget of an investigation and the cache time. | server |
+| `science_secrets` (secret) — Science data source keys | Science > Settings | (none) | write-only | Free keys for NCBI, NASA ADS, OpenAlex and Wolfram|Alpha (write-only). | server |
+| `science_components` — Science components | harness | empty | managed by its own page | Which optional science components are installed in their own environments and the licence you accepted (per machine, never exported). | server |
+| `uikit_config` — Rich components | Agents & sandbox > Rich components | empty | managed by its own page | Whether agents can show charts, time series, maps and cards, the size limits for one component, and the optional map basemap (off by default: maps then use a built-in world outline and load nothing from the internet). Also which AG-UI switches a new agent starts with (rich components, stream endpoint; both on by default); each agent has its own switches. | server |
 | `harness_policy` — Harness rules | Agents & sandbox > Harness rules | empty | managed by its own page | Permission mode, loop guard, project instructions, checkpoints, your hooks, tool-call limits and the web tools. | server |
 | `web_secrets` (secret) — Web search key | Agents & sandbox > Harness rules | (none) | write-only | The Brave Search API key used by the web_search tool (write-only). | server |
 | `sandbox_config` — Sandbox | Agents & sandbox > Sandbox | empty | managed by its own page | Which kind of sandbox commands run in (Docker container or the experimental micro VM), its memory, CPU and process limits, and the read-only root file system option. | server |
@@ -126,6 +133,7 @@ Every change is recorded in **Settings → Backup & history** (secret values are
 - `voice_chars_month` — Bookkeeping for the monthly cap.
 - `onboarding` — Where you are in the first-run guide.
 - `mcp_catalog_installed` — Which MCP servers came from the catalog, and whether writes were allowed for each.
+- `science_components` — Which optional science components are installed in their own environments and the licence you accepted (per machine, never exported).
 
 ## Settings kept elsewhere
 

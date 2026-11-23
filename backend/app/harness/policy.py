@@ -25,9 +25,10 @@ MODES = ("full", "accept_edits", "plan")
 EDIT_TOOLS = {"write_file", "edit_file"}
 SHELL_AND_EXTEND = {"run_shell", "create_skill", "propose_mcp_server", "propose_openapi_mcp", "call_remote_agent"}
 NETWORK = {"web_fetch", "web_search"}
-WRITES = EDIT_TOOLS | SHELL_AND_EXTEND | {"memory_save", "memory_forget", "memory_notes", "save_artifact"}
-PROPOSE = {"canvas_create", "canvas_replace_selection", "canvas_insert", "canvas_patch"}          # canvas edits are proposals the user reviews, so even plan mode may make them
-READ_ONLY = {"canvas_read", "read_file", "list_dir", "glob_files", "search_text", "load_skill", "rag_search", "rag_list", "memory_search", "repo_map", "todo_write",
+WRITES = EDIT_TOOLS | SHELL_AND_EXTEND | {"memory_save", "memory_forget", "memory_notes", "save_artifact", "app_create", "app_undo"}
+PROPOSE = {"canvas_create", "canvas_replace_selection", "canvas_insert", "canvas_patch", "app_write_file", "app_patch_file", "app_delete_file", "app_set_manifest", "app_components", "app_theme", "app_connect_agent", "app_connect_data"}          # canvas edits are proposals the user reviews, so even plan mode may make them
+SCIENCE_RECORDING = {"science_sources", "science_start", "science_search", "science_calc", "science_add_evidence", "science_add_claim", "science_add_hypothesis", "science_compare", "science_check_citations", "science_report"}   # lab records only: allowed even in plan mode
+READ_ONLY = {*SCIENCE_RECORDING, "canvas_read", "app_agents", "app_list", "app_tree", "app_read_file", "app_check", "app_plan", "app_plan_done", "app_verify", "app_data_sources", "read_file", "list_dir", "glob_files", "search_text", "load_skill", "rag_search", "rag_list", "memory_search", "repo_map", "todo_write",
              "web_fetch", "web_search"}
 INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md")
 MAX_INSTRUCTIONS = 12_000

@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse, Response
 from ..budget import BudgetExceeded
 from . import builder as B
 from . import nodes as NODES
+from . import runs as RUNS
 from .core import DRAFT_PROMPT, AUTONOMY, WorkflowError, clean, parse_draft, template_draft
 from .hooks import RateLimiter
 from .sources import InUse
@@ -240,11 +241,44 @@ def register(app: FastAPI) -> None:
     def templates():
         return {"templates": [dict(id=t["id"], name=t["name"], description=t["description"], nodes=len(t["doc"]["nodes"]), doc=t["doc"]) for t in B.TEMPLATES]}
 
+    @r.get("/runs")
+    def all_runs(request: Request, workflow: str = "", status: str = "", origin: str = "", since: float | None = None, until: float | None = None, q: str = "", needs_you: bool = False,
+                 sort: str = "started", order: str = "desc", limit: int = 25, offset: int = 0):
+        """Every run of every workflow (the Runs tab): filters, sort, paging, and the counts for the status chips."""
+        try:
+            return RUNS.list_runs(S(request).wf_runner, workflow=workflow, status=status, origin=origin, since=since, until=until, q=q, needs_you=needs_you, sort=sort, order=order, limit=limit, offset=offset)
+        except WorkflowError as e:
+            return _bad(str(e))
+
+    @r.post("/runs/delete")
+    def delete_many_runs(body: dict, request: Request):
+        ids = body.get("ids")
+        if not isinstance(ids, list) or not ids or len(ids) > 500 or not all(isinstance(i, str) for i in ids):
+            return _bad("give the ids of 1 to 500 runs")
+        return RUNS.delete_runs(S(request).wf_runner, ids)
+
     @r.get("/runs/{rid}")
     def get_run(rid: str, request: Request):
-        s = S(request)
-        run = s.wf_runner.runs.get(rid)
-        return run.public() if run else (s.wf_runner.saved_run(rid) or _bad("unknown run", 404))
+        return RUNS.detail(S(request).wf_runner, rid) or _bad("unknown run", 404)
+
+    @r.delete("/runs/{rid}")
+    def delete_run(rid: str, request: Request):
+        out = RUNS.delete_runs(S(request).wf_runner, [rid])
+        if out["skipped"]:
+            reason = out["skipped"][0]["reason"]
+            return _bad(reason, 404 if reason == "no such run" else 409)
+        return {"ok": True}
+
+    @r.post("/runs/{rid}/rerun")
+    async def rerun_run(rid: str, body: dict, request: Request):
+        """Run the same task again (on the workflow as it is now), or from one box ("failed" = the first box that failed) reusing this run's earlier outputs."""
+        node = body.get("from_node")
+        try:
+            return RUNS.rerun(S(request).wf_runner, rid, str(node) if node else None).public()
+        except KeyError:
+            return _bad("unknown run", 404)
+        except WorkflowError as e:
+            return _bad(str(e))
 
     @r.post("/runs/{rid}/decide")
     def decide(rid: str, body: dict, request: Request):
@@ -425,6 +459,7 @@ def register(app: FastAPI) -> None:
         if used and not force:
             return JSONResponse(status_code=409, content={"detail": f"'{wid}' is used by {', '.join(used)}: remove it there first, or delete anyway", "used_by": used})
         s.workflows.delete(wid)
+        s.wf_runner.forget(wid)                                                  # its finished runs go with it (the saved ones were deleted with the workflow)
         return {"ok": True}
 
     @r.post("/{wid}/duplicate")
@@ -580,7 +615,7 @@ def register(app: FastAPI) -> None:
         if len(raw) > cfg["hook_max_body_kb"] * 1024:
             return _bad("that is too large for this workflow's webhook", 413)
         try:
-            run = s.wf_runner.start(wid, _hook_task(entry, raw, dict(request.query_params), dict(request.headers)), None)
+            run = s.wf_runner.start(wid, _hook_task(entry, raw, dict(request.query_params), dict(request.headers)), None, origin="webhook")
         except WorkflowError as e:
             return _bad(str(e))
         s.wf_hooks.touch(wid)

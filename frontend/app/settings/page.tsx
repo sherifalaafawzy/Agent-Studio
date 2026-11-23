@@ -18,7 +18,9 @@ import MemorySettings from "@/components/MemorySettings";
 import ArtifactSettings from "@/components/ArtifactSettings";
 import AccessSettings from "@/components/AccessSettings";
 import HarnessRules from "@/components/HarnessRules";
+import AppsSettings from "@/components/AppsSettings";
 import CanvasSettings from "@/components/CanvasSettings";
+import UiKitSettings from "@/components/UiKitSettings";
 import FrameworksPanel from "@/components/FrameworksPanel";
 import OcsfSettings from "@/components/OcsfSettings";
 import GuardrailSettings from "@/components/GuardrailSettings";
@@ -489,6 +491,8 @@ export default function SettingsPage() {
         </div>
         <HarnessRules />
         <CanvasSettings />
+        <AppsSettings />
+        <UiKitSettings />
         <FrameworksPanel />
         <div className="row small mut">Tools come from <a href="/mcp/">MCP servers</a>; reusable know-how from <a href="/skills/">Skills</a>.</div>
       </>)}

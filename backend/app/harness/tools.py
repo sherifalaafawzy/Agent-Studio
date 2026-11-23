@@ -57,6 +57,38 @@ TOOL_INFO: dict[str, tuple[str, bool]] = {
     "canvas_replace_selection": ("Propose a replacement for the text you selected in the canvas", False),
     "canvas_insert": ("Propose text to add to the canvas", False),
     "canvas_patch": ("Propose exact-text edits to the canvas", False),
+    "app_agents": ("List your agents, to choose which ones an app should call", True),
+    "app_list": ("List your apps", True),
+    "app_create": ("Start a new app from a standard template", False),
+    "app_tree": ("List the files of an app", True),
+    "app_read_file": ("Read a file of an app", True),
+    "app_write_file": ("Propose a new or replaced file in an app", False),
+    "app_patch_file": ("Propose exact-text edits to a file of an app", False),
+    "app_delete_file": ("Propose deleting a file of an app", False),
+    "app_set_manifest": ("Propose a change to an app's manifest (its agents, permissions, variables)", False),
+    "app_check": ("Check an app: manifest, files, secrets, remote code, callable agents", True),
+    "app_plan": ("Write down the plan for an app (steps, pages, features) before building it", False),
+    "app_plan_done": ("Tick steps off the plan of an app", False),
+    "app_verify": ("Check an app's files and the errors its running preview reported, so problems can be fixed", True),
+    "app_components": ("List the ready-made parts (table, chart, tabs...) or propose adding some to an app", False),
+    "app_theme": ("List the colour themes or propose a theme, font and corner style for an app", False),
+    "app_connect_agent": ("Propose letting an app call one of your agents (never switches API access on)", False),
+    "app_data_sources": ("List your data sources an app can read, and which ones it uses", True),
+    "app_connect_data": ("Propose letting an app read one of your data sources (read-only)", False),
+    "app_undo": ("Go back one version of an app (only while changes apply at once)", False),
+    "science_sources": ("List the open science data sources (biology, chemistry, physics, maths, literature) and their limits", True),
+    "science_start": ("Open a Science Lab investigation: a question with its evidence and report", False),
+    "science_search": ("Search or look up an open science data source (PubMed, PubChem, UniProt, arXiv, OEIS...), read-only", True),
+    "science_calc": ("Exact local calculations: expressions, units, constants, molar mass, sequence stats, numeric calculus", True),
+    "science_run_python": ("Run Python in the sandbox with a reproducibility record", False),
+    "science_add_evidence": ("Attach evidence (from a recorded source call or run) to an investigation", False),
+    "science_add_claim": ("Record a claim; its label (established, single source, inference...) is worked out from the evidence", False),
+    "science_add_hypothesis": ("Add a candidate hypothesis to rank", False),
+    "science_compare": ("Record which of two hypotheses the evidence supports better (Elo ranking)", False),
+    "science_check_citations": ("Check the DOIs and PMIDs in the evidence against Crossref and PubMed", True),
+    "science_report": ("Build the investigation report (claims with labels, evidence, computations, limits), optionally keep it as artifacts", False),
+    "render_ui": ("Show a chart, table, time series, map or card in the answer", True),
+    "ui_catalog": ("List the chart, map and card types the agent can show", True),
     "run_workflow": ("Run one of your saved workflows (a drawn graph of agents, tools and API calls)", False),
     "call_remote_agent": ("Ask another agent over the A2A protocol (agents registered in Settings > API & A2A)", False),
 }
@@ -91,6 +123,13 @@ class ToolContext:
     canvas: object | None = None                       # the CanvasService, when the canvas is on
     on_canvas: object | None = None                    # callback(event dict): the canvas changed or opened, shown in the chat
     can_apply: bool = True                             # False in plan mode: the agent may only propose canvas changes
+    apps: object | None = None                         # the AppStore, when apps are on
+    on_app: object | None = None                       # callback(event dict): an app was created or changed, shown in the chat
+    agui_components: bool = True                       # False: this agent's AG-UI components are switched off (see agui_flags.py)
+    uikit: object | None = None                        # the UiKitService, when rich components are available (render_ui, ui_catalog)
+    on_ui: object | None = None                        # callback(spec dict) -> False when full: a component was shown in the chat
+    science: object | None = None                      # the ScienceService, when the Science Lab is on
+    on_science: object | None = None                   # callback(event dict): an investigation changed, shown in the chat
 
 
 def build_tools(ctx: ToolContext, allowed: list[str]) -> list:
@@ -421,6 +460,15 @@ def build_tools(ctx: ToolContext, allowed: list[str]) -> list:
     if ctx.canvas is not None:                                    # canvas tools exist only while the canvas is on
         from ..canvas.tools import canvas_tools
         registry.update(canvas_tools(ctx))
+    if ctx.apps is not None and ctx.apps.config()["enabled"]:            # app tools exist only while apps are on
+        from ..apps.tools import app_tools
+        registry.update(app_tools(ctx))
+    if ctx.science is not None and ctx.science.config()["enabled"]:      # science tools exist only while the Science Lab is on
+        from ..science.tools import science_tools
+        registry.update(science_tools(ctx))
+    if ctx.uikit is not None and ctx.uikit.config()["enabled"]:    # rich components exist only while the kit is on
+        from ..uikit.tools import uikit_tools
+        registry.update(uikit_tools(ctx))
     ids = ctx.remotes.enabled_ids(ctx.agent_id or "") if ctx.remotes is not None else []
     wf_ids = ctx.workflows.store.ids() if ctx.workflows is not None else []
     if wf_ids:                                                    # run_workflow exists only once a workflow is saved

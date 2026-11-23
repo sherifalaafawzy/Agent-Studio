@@ -3,10 +3,13 @@
 
 export type ColType = "text" | "number" | "date" | "boolean";
 export type Cell = string | number | boolean | null;
-export type Col = { key: string; label: string; type: ColType };
+export type Fmt = "currency" | "percent" | "number" | "bytes" | "duration" | "badge" | "link" | "progress" | "date" | "datetime";
+export const FORMATS: Fmt[] = ["currency", "percent", "number", "bytes", "duration", "badge", "link", "progress", "date", "datetime"];
+/** `format` changes how a cell is shown (never what an export contains); `color` adds data bars or a colour scale to a number column. */
+export type Col = { key: string; label: string; type: ColType; format?: Fmt; currency?: string; decimals?: number; unit?: string; color?: "bar" | "scale"; min?: number; max?: number };
 export type Table = { title: string; columns: Col[]; rows: Cell[][]; truncated: boolean };
 
-export const MAX_ROWS = 5000, MAX_COLS = 50, MAX_CELL = 2000;
+export const MAX_ROWS = 20000, MAX_COLS = 50, MAX_CELL = 2000;       // the server's own limit (a setting, 5000 by default) applies first
 const NUMBER = /^-?\d+(\.\d+)?$/, DATE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?/;
 const TYPES = ["text", "number", "date", "boolean"];
 
@@ -47,7 +50,14 @@ export function parseTable(raw: unknown, title = ""): { table?: Table; error?: s
   const columns: Col[] = colsIn.slice(0, MAX_COLS).map((c: any, i) => {
     if (c && typeof c === "object") {
       const key = String(c.key ?? c.label ?? i).slice(0, 60);
-      return { key, label: String(c.label ?? key).slice(0, 80), type: TYPES.includes(c.type) ? c.type : ("" as ColType) };
+      const col: Col = { key, label: String(c.label ?? key).slice(0, 80), type: TYPES.includes(c.type) ? c.type : ("" as ColType) };
+      if (FORMATS.includes(c.format)) col.format = c.format;
+      if (typeof c.currency === "string" && /^[A-Za-z]{3}$/.test(c.currency)) col.currency = c.currency.toUpperCase();
+      if (Number.isInteger(c.decimals) && c.decimals >= 0 && c.decimals <= 8) col.decimals = c.decimals;
+      if (typeof c.unit === "string") col.unit = c.unit.slice(0, 12);
+      if (c.color === "bar" || c.color === "scale") col.color = c.color;
+      for (const k of ["min", "max"] as const) if (typeof c[k] === "number" && Number.isFinite(c[k])) col[k] = c[k];
+      return col;
     }
     return { key: String(c).slice(0, 60), label: String(c).slice(0, 80), type: "" as ColType };
   });

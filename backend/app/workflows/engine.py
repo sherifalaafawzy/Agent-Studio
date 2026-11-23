@@ -44,6 +44,8 @@ class Run:
     started: float = field(default_factory=time.time)
     ended: float | None = None
     cost_usd: float = 0.0
+    tokens: int = 0
+    origin: str = "manual"                   # manual | webhook | agent | run_from: what started this run
     decisions: dict = field(default_factory=dict)
     stop: asyncio.Event = field(default_factory=asyncio.Event)
     task_ref: Any = None
@@ -58,7 +60,8 @@ class Run:
 
     def public(self) -> dict:
         return dict(id=self.id, workflow=self.workflow, task=self.task, autonomy=self.autonomy, status=self.status, final=self.final, error=self.error, plan=self.plan, started=self.started,
-                    ended=self.ended, cost_usd=round(self.cost_usd, 6), version=self.version, parent=self.parent, from_node=self.from_node, nodes={k: dict(v) for k, v in self.nodes.items()})
+                    ended=self.ended, cost_usd=round(self.cost_usd, 6), tokens=self.tokens, origin=self.origin, version=self.version, parent=self.parent, from_node=self.from_node,
+                    nodes={k: dict(v) for k, v in self.nodes.items()})
 
 
 def _json_or_none(text: str) -> Any:
@@ -125,7 +128,8 @@ class Runner:
         return dict(mcp=mcp, knowledge={k["id"] for k in s.rag.list_kbs()}, data_source={x["id"] for x in s.data.public()}, guardrail={p.id for p in s.guardrails.profiles()}, credential=s.wf_config.ids())
 
     # -- starting and steering
-    def start(self, wid: str, task: str, autonomy: str | None = None, *, depth: int = 0, parent: str | None = None, from_node: str | None = None, base: str | None = None) -> Run:
+    def start(self, wid: str, task: str, autonomy: str | None = None, *, depth: int = 0, parent: str | None = None, from_node: str | None = None, base: str | None = None,
+              origin: str = "manual") -> Run:
         doc = self.store.get(wid)
         if doc is None:
             raise KeyError(wid)
@@ -139,7 +143,7 @@ class Runner:
         errs = [p for p in self.check(doc) if p["severity"] == "error"]
         if errs:
             raise WorkflowError("fix these first: " + "; ".join(f"{e['node'] or 'workflow'}: {e['message']}" for e in errs[:4]))
-        run = Run(uuid.uuid4().hex[:10], wid, task.strip(), autonomy, version=doc.get("version", 0), depth=depth, parent=parent, name=doc["name"])
+        run = Run(uuid.uuid4().hex[:10], wid, task.strip(), autonomy, version=doc.get("version", 0), depth=depth, parent=parent, name=doc["name"], origin="run_from" if from_node else origin)
         run.nodes = {n["id"]: dict(status="pending", output="", error=None, started=None, ended=None, label=n["label"], type=n["type"], ports=[], attempts=0, input="")
                      for n in doc["nodes"] if n["type"] != "note"}
         if from_node:
@@ -230,22 +234,29 @@ class Runner:
         return run
 
     # -- saved runs
+    def forget(self, wid: str) -> None:
+        """A deleted workflow's finished runs leave the list of runs kept in memory too (the ones still working finish on their own)."""
+        for rid in [i for i, r in self.runs.items() if r.workflow == wid and r.ended is not None]:
+            self.runs.pop(rid, None)
+
     def _persist(self, run: Run) -> None:
         if run.parent:
             return
         db = self.store.db
-        db.execute("INSERT OR REPLACE INTO workflow_runs(id,wf_id,wf_version,status,autonomy,task,started,ended,cost_usd,error,final,nodes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                   (run.id, run.workflow, run.version, run.status, run.autonomy, run.task[:2000], run.started, run.ended, run.cost_usd, run.error, run.final, json.dumps(run.public()["nodes"], default=str)))
+        db.execute("INSERT OR REPLACE INTO workflow_runs(id,wf_id,wf_version,status,autonomy,task,started,ended,cost_usd,error,final,nodes,origin,tokens,from_node) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                   (run.id, run.workflow, run.version, run.status, run.autonomy, run.task[:20_000], run.started, run.ended, run.cost_usd, run.error, run.final, json.dumps(run.public()["nodes"], default=str),
+                    run.origin, run.tokens, run.from_node or ""))
         db.execute("DELETE FROM workflow_runs WHERE wf_id=? AND id NOT IN (SELECT id FROM workflow_runs WHERE wf_id=? ORDER BY started DESC LIMIT ?)", (run.workflow, run.workflow, C.LIMITS["run_retention"]))
 
     def saved_runs(self, wid: str, limit: int = 20) -> list[dict]:
-        return [dict(id=r["id"], status=r["status"], autonomy=r["autonomy"], task=r["task"][:200], started=r["started"], ended=r["ended"], cost_usd=r["cost_usd"], version=r["wf_version"], error=r["error"])
+        return [dict(id=r["id"], status=r["status"], autonomy=r["autonomy"], task=r["task"][:200], started=r["started"], ended=r["ended"], cost_usd=r["cost_usd"], version=r["wf_version"], error=r["error"], origin=r["origin"])
                 for r in self.store.db.query("SELECT * FROM workflow_runs WHERE wf_id=? ORDER BY started DESC LIMIT ?", (wid, limit))]
 
     def saved_run(self, rid: str) -> dict | None:
         r = self.store.db.one("SELECT * FROM workflow_runs WHERE id=?", (rid,))
         return None if r is None else dict(id=r["id"], workflow=r["wf_id"], task=r["task"], autonomy=r["autonomy"], status=r["status"], final=r["final"], error=r["error"], plan=[],
-                                           started=r["started"], ended=r["ended"], cost_usd=r["cost_usd"], version=r["wf_version"], parent=None, nodes=json.loads(r["nodes"]))
+                                           started=r["started"], ended=r["ended"], cost_usd=r["cost_usd"], tokens=r["tokens"], origin=r["origin"], version=r["wf_version"], parent=None, from_node=r["from_node"] or None,
+                                           nodes=json.loads(r["nodes"]))
 
     # -- one run
     @staticmethod
@@ -573,6 +584,7 @@ class Runner:
         child = self.start(wid, task or "(no task)", "auto", depth=run.depth + 1, parent=run.id)
         await child.task_ref
         run.cost_usd += child.cost_usd
+        run.tokens += child.tokens
         if run.stop.is_set():                                                    # the child ended because this run was stopped (a stopped run swallows the cancellation)
             raise asyncio.CancelledError()
         if child.status != "done":
@@ -620,7 +632,9 @@ class Runner:
             if agent is None:
                 raise WorkflowError(f"agent '{step['agent']}' does not exist")
             res = await self.s.chat.send(pick_provider(self.s, agent), None, X.render(step["prompt"], sc), None, None, agent.id, None)
-            run.cost_usd += float((res.get("usage") or {}).get("cost_usd") or 0)
+            usage = res.get("usage") or {}
+            run.cost_usd += float(usage.get("cost_usd") or 0)
+            run.tokens += int(usage.get("input_tokens") or 0) + int(usage.get("output_tokens") or 0)
             return res.get("reply") or ""
         if k == "tool":
             return json.dumps(await self._tool(step, sc), default=str)[:MAX_TEXT]
@@ -651,7 +665,7 @@ def workflow_tool(runner: Runner, ids: list[str]):
     """`run_workflow` for agents: run a saved workflow in auto mode and return its result."""
     async def run_workflow(workflow: str, task: str) -> dict:
         try:
-            run = runner.start(workflow, task, "auto")
+            run = runner.start(workflow, task, "auto", origin="agent")
         except (KeyError, WorkflowError) as e:
             return {"ok": False, "error": f"{e}. Workflows: {ids}"}
         await run.task_ref

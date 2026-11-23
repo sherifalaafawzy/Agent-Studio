@@ -54,8 +54,9 @@ def interrupt_schema(ev: dict) -> dict:
 class AguiTranslator:
     """Turns the events of one chat job into AG-UI events. Feed it our events in order; it returns the AG-UI events to send."""
 
-    def __init__(self, thread_id: str, run_id: str, parent_run_id: str | None = None):
+    def __init__(self, thread_id: str, run_id: str, parent_run_id: str | None = None, components: bool = True):
         self.thread_id, self.run_id, self.parent_run_id = thread_id, run_id, parent_run_id
+        self.components = components                        # False: the agent has AG-UI components switched off, so its answer stays plain text (no rich.* / ui.component activity)
         self.text_id: dict[str, str | None] = {}            # run key -> the open text message
         self.text_buf: dict[str, str] = {}                  # run key -> the text of that message so far (for rich blocks)
         self.reasoning_id: str | None = None
@@ -79,7 +80,7 @@ class AguiTranslator:
         mid = self.text_id.pop(key)                         # callers only close messages that are open
         text = self.text_buf.pop(key, "")
         return [TextMessageEndEvent(message_id=mid, subagent_run_id=self._sub(key)),
-                *[ActivitySnapshotEvent(message_id=uuid.uuid4().hex, activity_type=f"rich.{kind}", content=content) for kind, content in extract_blocks(text)]]
+                *[ActivitySnapshotEvent(message_id=uuid.uuid4().hex, activity_type="ui.component" if kind == "ui" else f"rich.{kind}", content=content) for kind, content in (extract_blocks(text) if self.components else [])]]
 
     def _close_reasoning(self) -> list[BaseEvent]:
         if not self.reasoning_id:
@@ -167,11 +168,15 @@ class AguiTranslator:
             self.state["artifacts"].append(brief)
             return out + [ActivitySnapshotEvent(message_id=uuid.uuid4().hex, activity_type="artifact", content={**brief, "sha256": a.get("sha256"), "path": a.get("path"), "version": a.get("version")}),
                           self._delta(("add", "/artifacts/-", brief))]
+        if t == "ui":
+            if not self.components:
+                return out
+            return out + [ActivitySnapshotEvent(message_id=uuid.uuid4().hex, activity_type="ui.component", content=ev.get("spec") or {})]
         if t == "canvas":
             c = {k: v for k, v in ev.items() if k not in ("type", "seq")}
             self.state.setdefault("canvases", {})[str(c.get("canvas_id"))] = {k: c.get(k) for k in ("title", "version", "pending") if c.get(k) is not None}
             return out + [ActivitySnapshotEvent(message_id=uuid.uuid4().hex, activity_type="canvas", content=c), self._delta(("add", "/canvases", self.state["canvases"]))]
-        if t in ("memory", "guardrail"):
+        if t in ("memory", "guardrail", "app"):
             return out + [ActivitySnapshotEvent(message_id=uuid.uuid4().hex, activity_type=t, content={k: v for k, v in ev.items() if k not in ("type", "seq")})]
         if t == "external_ask":
             self.paused = True

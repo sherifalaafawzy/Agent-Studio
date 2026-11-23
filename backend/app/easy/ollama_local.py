@@ -25,10 +25,10 @@ def _base(base: str | None) -> str:
     return (base or OLLAMA_URL).rstrip("/")
 
 
-def _req(method: str, base: str | None, path: str, body: dict | None = None, timeout: float = 15) -> dict:
+def _req(method: str, base: str | None, path: str, body: dict | None = None, timeout: float = 15, headers: dict | None = None) -> dict:
     try:
         with httpx.Client(transport=TRANSPORT, timeout=timeout) as c:
-            r = c.request(method, _base(base) + path, json=body)
+            r = c.request(method, _base(base) + path, json=body, headers=headers)
     except httpx.HTTPError as e:
         raise LocalError(f"Ollama isn't reachable ({type(e).__name__}). Start it first.") from e
     if r.status_code >= 400:
@@ -43,10 +43,10 @@ def _req(method: str, base: str | None, path: str, body: dict | None = None, tim
         return {}
 
 
-def installed(base: str | None = None) -> list[dict]:
-    """Installed models with size, family, parameter size and quantisation (from /api/tags)."""
+def installed(base: str | None = None, headers: dict | None = None) -> list[dict]:
+    """Installed models with size, family, parameter size and quantisation (from /api/tags). `headers`: for a server behind a proxy that wants a key."""
     out = []
-    for m in _req("GET", base, "/api/tags").get("models", []):
+    for m in _req("GET", base, "/api/tags", headers=headers).get("models", []):
         d = m.get("details") or {}
         out.append(dict(name=m["name"], size=int(m.get("size") or 0), modified=m.get("modified_at"), family=d.get("family"),
                         parameters=d.get("parameter_size"), quantization=d.get("quantization_level"), capabilities=m.get("capabilities") or []))
@@ -93,7 +93,7 @@ class Progress:
         return dict(type="progress", status=self.status, completed=done, total=total, percent=round(done * 100 / total, 1) if total else None)
 
 
-async def pull(name: str, base: str | None = None) -> AsyncIterator[dict]:
+async def pull(name: str, base: str | None = None, headers: dict | None = None) -> AsyncIterator[dict]:
     """Stream {type: progress|done|error}. Closing the generator stops the download; Ollama keeps what it fetched, so a retry resumes."""
     if not NAME_RE.match(name):
         yield dict(type="error", message="That is not a valid model name.")
@@ -101,7 +101,7 @@ async def pull(name: str, base: str | None = None) -> AsyncIterator[dict]:
     prog = Progress()
     try:
         async with httpx.AsyncClient(transport=ATRANSPORT, timeout=httpx.Timeout(None, connect=10)) as c:
-            async with c.stream("POST", _base(base) + "/api/pull", json={"model": name, "stream": True}) as r:
+            async with c.stream("POST", _base(base) + "/api/pull", json={"model": name, "stream": True}, headers=headers) as r:
                 if r.status_code >= 400:
                     yield dict(type="error", message=f"Ollama {r.status_code}: {(await r.aread()).decode(errors='replace')[:200]}")
                     return

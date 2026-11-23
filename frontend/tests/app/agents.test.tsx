@@ -249,3 +249,43 @@ describe("Agents: creating and deleting", () => {
     expect(within(document.body).queryByRole("button", { name: "Delete" })).toBeNull();
   });
 });
+
+
+describe("Agents: AG-UI switches", () => {
+  const quiet = { ...reviewer, id: "quiet", name: "Quiet", agui: { components: false, endpoint: true } };
+  const closed = { ...reviewer, id: "closed", name: "Closed", agui: { components: true, endpoint: false } };
+  const off = { ...reviewer, id: "off", name: "Off", agui: { components: false, endpoint: false } };
+
+  it("marks agents that have something switched off in the list", async () => {
+    setup({ agents: () => jsonResponse([engineer, quiet, closed, off]) });
+    render(<AgentsPage />);
+    await screen.findByDisplayValue("Engineer");
+    const badges = screen.getAllByTestId("agui-badge").map((b) => b.textContent);
+    expect(badges).toEqual(["no components", "no AG-UI stream", "AG-UI off"]);               // the engineer has everything on: no badge
+  });
+
+  it("has an AG-UI section in the editor and saves what you change", async () => {
+    const { calls } = setup({ agents: () => jsonResponse([engineer, quiet]) });
+    render(<AgentsPage />);
+    await screen.findByDisplayValue("Engineer");
+    await userEvent.click(pick("Quiet"));
+    await screen.findByDisplayValue("Quiet");
+    const section = screen.getByTestId("agent-agui");
+    expect(within(section).getByLabelText("Rich components in answers")).not.toBeChecked();
+    expect(within(section).getByLabelText("AG-UI stream for other apps")).toBeChecked();
+    await userEvent.click(within(section).getByLabelText("AG-UI stream for other apps"));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url.pathname === "/api/agents/quiet")).toBe(true));
+    expect((calls.find((c) => c.method === "PUT" && c.url.pathname === "/api/agents/quiet")!.body as { agui: unknown }).agui).toEqual({ components: false, endpoint: false });
+  });
+
+  it("shows older agents (no stored setting) as everything on", async () => {
+    setup();
+    render(<AgentsPage />);
+    await screen.findByDisplayValue("Engineer");
+    const section = screen.getByTestId("agent-agui");
+    expect(within(section).getByLabelText("Rich components in answers")).toBeChecked();
+    expect(within(section).getByLabelText("AG-UI stream for other apps")).toBeChecked();
+    expect(screen.queryByTestId("agui-badge")).toBeNull();
+  });
+});

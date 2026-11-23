@@ -63,6 +63,24 @@ def _blob_apply(s, key: str, value: dict) -> None:
             s.canvas.set_config(value)
         except CanvasError as e:
             raise SettingError(str(e))
+    elif key == "apps_config" and getattr(s, "apps", None) is not None:
+        from .apps.store import AppError
+        try:
+            s.apps.set_config(value)
+        except AppError as e:
+            raise SettingError(str(e))
+    elif key == "science_config" and getattr(s, "science", None) is not None:
+        from .science.service import ScienceError
+        try:
+            s.science.set_config(value)               # the safety level can only be raised: an imported file can never lower it
+        except ScienceError as e:
+            raise SettingError(str(e))
+    elif key == "uikit_config" and getattr(s, "uikit", None) is not None:
+        from .uikit.service import UiKitError
+        try:
+            s.uikit.set_config(value)
+        except UiKitError as e:
+            raise SettingError(str(e))
     elif key == "harness_policy":
         from .harness.policy import set_policy
         set_policy(s.db, value)

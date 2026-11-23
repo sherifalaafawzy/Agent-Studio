@@ -2,6 +2,7 @@
 what a model answered, the arguments of a tool call) and says whether it is acceptable. It never edits the text itself."""
 from __future__ import annotations
 
+import contextvars
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 
@@ -11,6 +12,27 @@ MODES = ("off", "monitor", "block")
 
 class GuardError(Exception):
     """The guard could not give a verdict (not installed, unreachable, bad credentials, an answer it cannot read). Safe to show."""
+
+
+class GuardPreparing(GuardError):
+    """The guard is not ready YET: a safety model is downloading or the decision model is loading. This is not a failure. Until it is
+    ready the check is skipped, or blocked when the profile stops on "cannot answer". `notice` is the short line shown to people."""
+
+    def __init__(self, notice: str, what: str, state: dict | None = None):
+        super().__init__(notice)
+        self.notice, self.what, self.state = notice, what, state or {}         # what: "downloading" | "loading"
+
+
+class GuardNotInstalled(GuardError):
+    """The guard needs something that was never installed. `install` names where to install it (the UI links there)."""
+
+    def __init__(self, message: str, install: str):
+        super().__init__(message)
+        self.install = install
+
+
+# True while a person is pressing a Test / Try it button: a guard may then wait for a model to load instead of skipping the check.
+WAIT_FOR_LOAD: contextvars.ContextVar[bool] = contextvars.ContextVar("guard_wait_for_load", default=False)
 
 
 @dataclass
@@ -47,6 +69,7 @@ class Env:
     aws_clients: Callable[..., Callable[[str], Any]] | None = None         # aws_clients(region, ...) -> (service -> boto3 client)
     google_token: Callable[[str], Callable[[], str]] | None = None         # google_token(service_account_json) -> () -> token
     decide: Callable[[str, str, dict, float], Awaitable[dict]] | None = None   # d1: (model, state, questions, timeout) -> reply
+    pulls: Any = None                                                      # GuardPuller: downloads a missing Ollama model in the background (None = no auto-pull)
 
 
 class Guard:

@@ -15,6 +15,8 @@ import Link from "next/link";
 import { buildLanes, fmtDur, RunThread, RunTimeline, type Run as TRun } from "@/components/Runs";
 import { IAgents, IArrowUp, ICheck, IChevron, ICopy, IFolder, ISave, IStop, ITimeline, ITool, IX, Spark } from "@/components/Icons";
 import InfoTip from "@/components/InfoTip";
+import UiBlock from "@/components/uikit/UiBlock";
+import { PlainRichContext } from "@/components/rich/PlainContext";
 import { ArtifactList, KeepContext, ReplyContext, StatePanel, type RunState } from "@/components/RichBlocks";
 import type { Artifact } from "@/lib/artifacts";
 import { CanvasContext, type OpenCanvas } from "@/components/rich/BlockActions";
@@ -28,8 +30,8 @@ type Run = {
   run_id: string; parent: string | null; agent: string; spawned: boolean; definition?: any; task: string; status: string;
   steps: Step[]; texts: string[]; calls: Call[]; result?: string | null; cost_usd: number; started?: number; ended?: number | null; instruction?: string;
 };
-type Msg = { role: "user" | "bot" | "refused" | "summary" | "handoff" | "fallback"; text: string; suggestions?: { provider: string; label: string; model: string }[]; title?: string; hint?: string; raw?: string; retryable?: boolean; meta?: string; thinking?: string; thinkStart?: number; thinkSecs?: number; steps?: Step[]; calls?: Call[]; warnings?: string[]; runs?: Run[]; status?: string; streaming?: boolean; route?: AutoRoute; memory?: MemEvent[]; guardrails?: GuardEvent[]; artifacts?: Artifact[] };
-type Agent = { id: string; name: string; tier: string; description: string; sub_agents: string[]; can_spawn?: boolean };
+type Msg = { role: "user" | "bot" | "refused" | "summary" | "handoff" | "fallback"; text: string; suggestions?: { provider: string; label: string; model: string }[]; title?: string; hint?: string; raw?: string; retryable?: boolean; meta?: string; thinking?: string; thinkStart?: number; thinkSecs?: number; steps?: Step[]; calls?: Call[]; warnings?: string[]; runs?: Run[]; status?: string; streaming?: boolean; route?: AutoRoute; memory?: MemEvent[]; guardrails?: GuardEvent[]; artifacts?: Artifact[]; uis?: any[] };
+type Agent = { id: string; name: string; tier: string; description: string; sub_agents: string[]; can_spawn?: boolean; agui?: { components?: boolean; endpoint?: boolean } };
 
 const metaLine = (calls: Call[], usage: any, billing?: any) =>
   `${calls[0]?.model ?? ""}${calls.length ? " · " : ""}${calls.length} call${calls.length === 1 ? "" : "s"} · ${usage?.input_tokens ?? 0}→${usage?.output_tokens ?? 0} tok · ${usd(usage?.cost_usd ?? 0)}` +
@@ -161,6 +163,7 @@ function ChatPage() {
   const isAuto = pid === AUTO_ID;
   const canSend = isAuto || !!prov?.enabled;                              // Auto is only ever selected while it is available
   const ag = agents.find((a) => a.id === agent);
+  const plainRich = ag?.agui?.components === false;                         // this agent has AG-UI components switched off: its answers stay plain Markdown
   const announce = () => window.dispatchEvent(new Event("as:sessions"));
 
   const newChat = useCallback(() => {
@@ -186,7 +189,7 @@ function ChatPage() {
         if (m.role === "summary") return { role: "summary" as const, text: m.text,
           meta: mt.covered ? `${mt.covered} earlier messages condensed` : undefined };
         return m.role === "bot"
-          ? { role: "bot", text: m.text, thinking: mt.thinking ?? undefined, status: mt.status, steps: mt.steps, calls: mt.calls, warnings: mt.warnings, runs: mt.runs, route: mt.route ?? undefined, memory: mt.memory ?? undefined, guardrails: mt.guardrails ?? undefined, artifacts: mt.artifacts ?? undefined,
+          ? { role: "bot", text: m.text, thinking: mt.thinking ?? undefined, status: mt.status, steps: mt.steps, calls: mt.calls, warnings: mt.warnings, runs: mt.runs, route: mt.route ?? undefined, memory: mt.memory ?? undefined, guardrails: mt.guardrails ?? undefined, artifacts: mt.artifacts ?? undefined, uis: mt.uis ?? undefined,
               meta: metaLine(mt.calls ?? [], mt.usage) + (mt.status && mt.status !== "ok" ? ` · ${mt.status}` : "") }
           : { role: m.role, text: m.text };
       });
@@ -226,6 +229,9 @@ function ChatPage() {
         break;
       case "canvas":                                             // an agent opened or changed the canvas: show it and refresh it
         setCanvasId(e.canvas_id); setCanvasTick((t) => t + 1); if (e.action === "open") setPane("canvas");
+        break;
+      case "ui":                                                 // a chart, map or card the agent showed (render_ui)
+        setMsgs((m) => { const c = [...m]; const l = c[c.length - 1]; if (l?.streaming) c[c.length - 1] = { ...l, uis: [...(l.uis ?? []), e.spec] }; return c; });
         break;
       case "artifact":                                           // a file the agent produced: shown under the answer as it happens
         setMsgs((m) => { const c = [...m]; const l = c[c.length - 1]; if (l?.streaming) c[c.length - 1] = { ...l, artifacts: [...(l.artifacts ?? []), e.artifact] }; return c; });
@@ -270,7 +276,7 @@ function ChatPage() {
                 hint: "It ran its steps but didn't write a reply, even after one retry for the answer. Try again, or ask it to summarise what it found so far.",
                 retryable: true, meta: metaLine(e.model_calls, e.usage, e.billing) + " · the work it did is still in the Agents panel",
                 steps: e.steps, runs: e.runs }
-            : { role: "bot", text: e.reply, meta: metaLine(e.model_calls, e.usage, e.billing), steps: e.steps, calls: e.model_calls, warnings: e.warnings, runs: e.runs, route: e.route ?? l?.route, memory: e.memory?.length ? e.memory : l?.memory, guardrails: e.guardrails?.length ? e.guardrails : l?.guardrails, artifacts: e.artifacts?.length ? e.artifacts : l?.artifacts,
+            : { role: "bot", text: e.reply, meta: metaLine(e.model_calls, e.usage, e.billing), steps: e.steps, calls: e.model_calls, warnings: e.warnings, runs: e.runs, route: e.route ?? l?.route, memory: e.memory?.length ? e.memory : l?.memory, guardrails: e.guardrails?.length ? e.guardrails : l?.guardrails, artifacts: e.artifacts?.length ? e.artifacts : l?.artifacts, uis: e.uis?.length ? e.uis : l?.uis,
             thinking: e.thinking ?? l?.thinking, thinkSecs: secs },
           ...(e.halted ? [{ role: "refused" as const, text: "Turn stopped early: " + e.halted.message, meta: "Partial progress above is real; nothing further was sent to any provider." }] : [])]; });
         setRuns(e.runs ?? []);
@@ -484,6 +490,7 @@ function ChatPage() {
     <ReplyContext.Provider value={(t) => { void send(t); }}>
     <KeepContext.Provider value={{ agent: agent || "", session: session ?? "" }}>
     <CanvasContext.Provider value={openInCanvas}>
+    <PlainRichContext.Provider value={plainRich}>
     <div className={`cv${canvasId ? " with-canvas" : ""} show-${pane}`}>
       {canvasId && <div className="cv-tabs seg" role="group" aria-label="Chat or canvas"><button className={pane === "chat" ? "on" : ""} aria-pressed={pane === "chat"} onClick={() => setPane("chat")}>Chat</button>
         <button className={pane === "canvas" ? "on" : ""} aria-pressed={pane === "canvas"} onClick={() => setPane("canvas")}>Canvas</button></div>}
@@ -554,6 +561,7 @@ function ChatPage() {
                     </div>))}
                   {m.text && <Markdown text={m.text} />}
                   {m.streaming && m.text && <span className="cursor" />}
+                  {!plainRich && m.uis && m.uis.length > 0 && m.uis.map((u, j) => <UiBlock key={j} spec={u} />)}
                   {m.artifacts && m.artifacts.length > 0 && <ArtifactList items={m.artifacts} />}
                   {!m.streaming && m.runs && (m.runs.length > 1 || (m.steps ?? []).length > 0) && <StatePanel state={runState(m)} />}
                   {m.warnings?.map((w, j) => <div key={j} className="small" style={{ color: "var(--warn)", fontFamily: "var(--sans)" }}>⚠ {w}</div>)}
@@ -601,6 +609,7 @@ function ChatPage() {
           </Suspense>
         </div></>)}
     </div>
+    </PlainRichContext.Provider>
     </CanvasContext.Provider>
     </KeepContext.Provider>
     </ReplyContext.Provider>

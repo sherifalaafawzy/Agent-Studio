@@ -191,3 +191,115 @@ describe("GuardrailSettings", () => {
     expect(await screen.findByText("Nothing yet.")).toBeInTheDocument();
   });
 });
+
+const PREP_PULL = { what: "downloading", notice: "Guard model llama-guard3:8b is downloading", key: "k1", model: "llama-guard3:8b", base: "http://127.0.0.1:11434", where: "on this PC", status: "downloading",
+  completed: 0, total: 0, percent: null, speed_bps: null, eta_s: null, size_hint_gb: 4.9, licence: "Llama community licence", message: "", error_kind: "" };
+const PULL = { ...PREP_PULL, percent: 40, total: 4_900_000_000, completed: 1_960_000_000 };
+
+async function openTry(text = "check this") {
+  const [basic] = await screen.findAllByTestId("profile");
+  await userEvent.click(within(basic).getByRole("button", { name: "Try it" }));
+  await userEvent.type(within(basic).getByLabelText("Text to check"), text);
+  return basic;
+}
+
+describe("Try it waits for a guard that is not ready yet", () => {
+  it("downloads a missing guard model, shows the progress and runs the check when it has arrived", async () => {
+    let tests = 0, started = 0;
+    setup({}, {
+      "POST /api/guardrails/test": () => { if (!started) started = Date.now(); return jsonResponse(++tests === 1 ? { ok: false, error: "Guard model llama-guard3:8b is downloading", preparing: PREP_PULL } : { ok: true, flagged: false, ms: 9 }); },
+      "GET /api/guardrails/pulls": () => jsonResponse({ pulls: !started ? [] : [Date.now() - started < 120 ? PULL : { ...PULL, status: "done", percent: 100 }] }),
+    });
+    render(<GuardrailSettings />);
+    const basic = await openTry();
+    await userEvent.click(within(basic).getByRole("button", { name: "Check it" }));
+    expect(await within(basic).findByText("Downloading llama-guard3:8b")).toBeInTheDocument();
+    expect(within(basic).getByText(/Licence: Llama community licence/)).toBeInTheDocument();
+    expect(await within(basic).findByText(/Nothing found - it would be let through · 9 ms/)).toBeInTheDocument();
+    expect(tests).toBe(2);
+  });
+
+  it("can cancel the download", async () => {
+    const net = setup({}, {
+      "POST /api/guardrails/test": () => jsonResponse({ ok: false, error: "downloading", preparing: PREP_PULL }),
+      "GET /api/guardrails/pulls": () => jsonResponse({ pulls: [PULL] }),
+      "POST /api/guardrails/pulls/cancel": () => jsonResponse({ cancelled: true }),
+    });
+    render(<GuardrailSettings />);
+    const basic = await openTry();
+    await userEvent.click(within(basic).getByRole("button", { name: "Check it" }));
+    await userEvent.click(await within(basic).findByRole("button", { name: "Cancel download" }));
+    await waitFor(() => expect(net.calls.some((c) => c.url.pathname === "/api/guardrails/pulls/cancel")).toBe(true));
+    await waitFor(() => expect(within(basic).getByRole("button", { name: "Check it" })).toBeEnabled());
+  });
+
+  it("stops and says why when the download failed, without trying again in a loop", async () => {
+    let tests = 0;
+    setup({}, {
+      "POST /api/guardrails/test": () => { tests++; return jsonResponse({ ok: false, error: "downloading", preparing: PREP_PULL }); },
+      "GET /api/guardrails/pulls": () => jsonResponse({ pulls: [{ ...PULL, status: "error", error_kind: "disk", message: "Not enough free disk space." }] }),
+    });
+    render(<GuardrailSettings />);
+    const card = await openTry("x");
+    await userEvent.click(within(card).getByRole("button", { name: "Check it" }));
+    await waitFor(() => expect(within(card).getAllByRole("alert").some((a) => /Not enough free disk space/.test(a.textContent ?? ""))).toBe(true));
+    expect(tests).toBe(1);
+  });
+
+  it("treats a download that has disappeared from the list as finished and asks again", async () => {
+    let tests = 0;
+    setup({}, {
+      "POST /api/guardrails/test": () => jsonResponse(++tests === 1 ? { ok: false, error: "d", preparing: PREP_PULL } : { ok: true, flagged: true, category: "S1", reason: "violent crimes", would: "block", ms: 4 }),
+      "GET /api/guardrails/pulls": () => jsonResponse({ pulls: [] }),
+    });
+    render(<GuardrailSettings />);
+    const basic = await openTry();
+    await userEvent.click(within(basic).getByRole("button", { name: "Check it" }));
+    expect(await within(basic).findByText(/Flagged \(S1\): violent crimes - would block/)).toBeInTheDocument();
+  });
+
+  it("waits for the decision model to load, shows how long the first load takes, and carries on when it is ready", async () => {
+    let tests = 0;
+    setup({}, {
+      "POST /api/guardrails/test": async () => {
+        await new Promise((r) => setTimeout(r, 20));
+        return jsonResponse(++tests < 3 ? { ok: false, error: "Decision model is loading", preparing: { what: "loading", notice: "Decision model is loading", load_seconds: 41.2, loading_for_s: 25.4 } } : { ok: true, flagged: false, ms: 11 });
+      },
+    });
+    render(<GuardrailSettings />);
+    const basic = await openTry();
+    await userEvent.click(within(basic).getByRole("button", { name: "Check it" }));
+    const msg = await within(basic).findByTestId("d1-loading");
+    expect(msg).toHaveTextContent("Loading the decision model…");
+    expect(msg).toHaveTextContent("The first load takes about 41 s on this PC · 25 s so far");
+    expect(await within(basic).findByText(/Nothing found - it would be let through · 11 ms/)).toBeInTheDocument();
+    expect(tests).toBe(3);
+  });
+
+  it("says a first load can take minutes when it has never been timed, and lets you stop waiting", async () => {
+    setup({}, { "POST /api/guardrails/test": async () => { await new Promise((r) => setTimeout(r, 30)); return jsonResponse({ ok: false, error: "loading", preparing: { what: "loading", notice: "Decision model is loading" } }); } });
+    render(<GuardrailSettings />);
+    const basic = await openTry();
+    await userEvent.click(within(basic).getByRole("button", { name: "Check it" }));
+    const msg = await within(basic).findByTestId("d1-loading");
+    expect(msg).toHaveTextContent("The first load can take from several seconds to a few minutes");
+    await userEvent.click(within(basic).getByRole("button", { name: "Stop waiting" }));
+    expect(await within(basic).findByText(/Stopped waiting. The decision model keeps loading in the background./)).toBeInTheDocument();
+  });
+
+  it("points to the Decision model page when it is not installed", async () => {
+    setup({}, { "POST /api/guardrails/test": () => jsonResponse({ ok: false, error: "The decision model is not installed yet. Install it under MCP servers > Decision model, then try again.", install: "d1" }) });
+    render(<GuardrailSettings />);
+    const basic = await openTry();
+    await userEvent.click(within(basic).getByRole("button", { name: "Check it" }));
+    expect(await within(basic).findByText(/not installed yet/)).toBeInTheDocument();
+    expect(within(basic).getByRole("link", { name: "Open the Decision model page" })).toHaveAttribute("href", "/mcp/?server=d1");
+  });
+
+  it("shows guard downloads at the top of the card, including ones a chat started", async () => {
+    setup({}, { "GET /api/guardrails/pulls": () => jsonResponse({ pulls: [PULL] }) });
+    render(<GuardrailSettings />);
+    const strip = await screen.findByTestId("guard-downloads");
+    expect(within(strip).getByText("Downloading llama-guard3:8b")).toBeInTheDocument();
+  });
+});

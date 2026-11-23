@@ -1,11 +1,12 @@
 "use client";
 // Guardrails: checks on what goes into a model, what comes out and what tools are asked to do. Profiles (a guard + where it looks +
 // record-only or block), a master switch, a "try it" box, and the latest things they caught.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "./Nav";
 import InfoTip from "./InfoTip";
 import KindFields, { type KField } from "./KindFields";
+import GuardDownloads, { POLL_MS, PullRow, type PullState } from "./GuardPulls";
 
 export type Profile = { id: string; name: string; kind: string; params: Record<string, any>; stages: Record<string, boolean>; mode: string; fail: string; default: boolean;
   secrets_set: string[]; leaves_pc: boolean; stored: boolean };
@@ -13,7 +14,9 @@ export type GKind = { id: string; label: string; summary: string; where: string;
 type Cfg = { enabled: boolean; profiles: Profile[]; kinds: GKind[] };
 type Ev = { ts: number; stage: string; agent: string; profile: string; action: string; category: string; reason: string };
 type Stats = { days: number; flagged: number; blocked: number; errors: number; top_categories: { category: string; count: number }[] };
-type TestResult = { ok: boolean; error?: string; flagged?: boolean; category?: string; reason?: string; would?: string; ms?: number };
+type Preparing = Partial<PullState> & { what: "downloading" | "loading"; notice: string; load_seconds?: number | null; loading_for_s?: number | null };
+type TestResult = { ok: boolean; error?: string; flagged?: boolean; category?: string; reason?: string; would?: string; ms?: number; preparing?: Preparing; install?: string };
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const MODES: [string, string][] = [["off", "Off"], ["monitor", "Record only"], ["block", "Block"]];
 const STAGES: [string, string][] = [["input", "Messages and tool results going in"], ["output", "Answers coming out"], ["tool", "Tool calls"]];
@@ -24,21 +27,66 @@ function TryIt({ body }: { body: () => Record<string, unknown> }) {
   const [text, setText] = useState("");
   const [stage, setStage] = useState("input");
   const [res, setRes] = useState<TestResult | null>(null);
-  const run = async () => {
-    try { setRes(await api<TestResult>("/api/guardrails/test", { method: "POST", body: JSON.stringify({ profile: body(), text, stage }) })); }
-    catch (e) { setRes({ ok: false, error: (e as Error).message }); }
+  const [pull, setPull] = useState<PullState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const stop = useRef(false);
+  // Pressing "Check it" is an explicit ask, so a guard that is not ready is waited for: a missing Ollama model is downloaded (progress
+  // shown here), a decision model that is still loading is waited for (the server holds each request up to 25 s, then we ask again).
+  const waitForPull = async (key: string): Promise<string> => {
+    while (!stop.current) {
+      await wait(POLL_MS);
+      const list = await api<{ pulls: PullState[] }>("/api/guardrails/pulls").catch(() => null);
+      const mine = list?.pulls.find((p) => p.key === key);
+      if (!mine) return "done";
+      setPull(mine);
+      if (mine.status !== "downloading") return mine.status;
+    }
+    return "cancelled";
   };
+  const run = async () => {
+    stop.current = false; setBusy(true); setPull(null);
+    try {
+      for (let i = 0; i < 80 && !stop.current; i++) {
+        const r = await api<TestResult>("/api/guardrails/test", { method: "POST", body: JSON.stringify({ profile: body(), text, stage }) });
+        if (stop.current && r.preparing) {                       // the answer of a request that was already on its way when you stopped waiting
+          setRes({ ok: false, error: "Stopped waiting. The decision model keeps loading in the background." });
+          break;
+        }
+        setRes(r);
+        if (!r.preparing) break;
+        if (r.preparing.what === "downloading") {
+          setPull(r.preparing as PullState);
+          if ((await waitForPull(r.preparing.key as string)) !== "done") break;
+        }
+      }
+    } catch (e) { setRes({ ok: false, error: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  const cancel = () => {
+    stop.current = true;
+    if (pull?.status === "downloading") api("/api/guardrails/pulls/cancel", { method: "POST", body: JSON.stringify({ base: pull.base, model: pull.model }) }).catch(() => {});
+    setRes((r) => (r?.preparing?.what === "loading" ? { ok: false, error: "Stopped waiting. The decision model keeps loading in the background." } : r));
+  };
+  const prep = res?.preparing;
   return (
     <div className="cat-panel" data-testid="try-it">
       <div className="lbl">Try it on some text</div>
-      <textarea rows={2} value={text} aria-label="Text to check" placeholder="Paste something a user or a tool might send" onChange={(e) => { setText(e.target.value); setRes(null); }} />
+      <textarea rows={2} value={text} aria-label="Text to check" placeholder="Paste something a user or a tool might send" onChange={(e) => { setText(e.target.value); setRes(null); setPull(null); }} />
       <div className="row" style={{ marginTop: 6 }}>
         <select aria-label="Where to check it" value={stage} onChange={(e) => setStage(e.target.value)}>{STAGES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-        <button disabled={!text.trim()} onClick={run}>Check it</button>
-        {res && (res.ok
+        <button disabled={!text.trim() || busy} onClick={run}>Check it</button>
+        {res && !prep && !res.install && (res.ok
           ? <span className={`pill ${res.flagged ? "warn" : "ok"}`} role="status">{res.flagged ? `Flagged (${res.category}): ${res.reason} - would ${res.would}` : "Nothing found - it would be let through"} · {res.ms} ms</span>
           : <span className="pill bad" role="status">{res.error}</span>)}
       </div>
+      {res?.install && <p className="small" role="status">{res.error} <a href="/mcp/?server=d1">Open the Decision model page</a></p>}
+      {prep?.what === "downloading" && busy && pull && <PullRow s={pull} onCancel={cancel} />}
+      {prep?.what === "downloading" && !busy && pull && <PullRow s={pull} />}
+      {prep?.what === "loading" && busy && (
+        <div className="small" role="status" data-testid="d1-loading">
+          <b>Loading the decision model…</b> {prep.load_seconds ? `The first load takes about ${Math.round(prep.load_seconds)} s on this PC` : "The first load can take from several seconds to a few minutes"}
+          {prep.loading_for_s ? ` · ${Math.round(prep.loading_for_s)} s so far` : ""}. The check runs as soon as it is ready. <button className="small" onClick={cancel}>Stop waiting</button>
+        </div>)}
     </div>
   );
 }
@@ -88,13 +136,14 @@ export default function GuardrailSettings() {
   const [err, setErr] = useState("");
   const [editing, setEditing] = useState<Draft | null>(null);
   const [testing, setTesting] = useState("");
+  const [pullsTick, setPullsTick] = useState(0);                // bumped after a save or the switch, so new downloads show up at once
 
   const load = useCallback(() => Promise.all([api<Cfg>("/api/guardrails"), api<{ events: Ev[] }>("/api/guardrails/events?limit=6"), api<Stats>("/api/guardrails/stats")])
     .then(([c, e, s]) => { setCfg(c); setEvents(e.events); setStats(s); setErr(""); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); }, [load]);
 
   const put = async (path: string, init: RequestInit, ok: string) => {
-    try { setCfg(await api<Cfg>(path, init)); setErr(""); toast(ok); return true; }
+    try { setCfg(await api<Cfg>(path, init)); setErr(""); toast(ok); setPullsTick((n) => n + 1); return true; }
     catch (e) { setErr((e as Error).message); toast((e as Error).message, "err"); return false; }
   };
   if (!cfg) return err ? <p className="err" role="alert">{err}</p> : null;
@@ -118,6 +167,7 @@ export default function GuardrailSettings() {
         <div className="grow"><b>Check inputs, answers and tool calls</b><div className="small mut">Off by default. Nothing is checked until you turn this on.</div></div>
         <label className="switch"><input type="checkbox" aria-label="Guardrails on" checked={cfg.enabled} onChange={(e) => put("/api/guardrails/enabled", { method: "PUT", body: JSON.stringify({ enabled: e.target.checked }) }, e.target.checked ? "Guardrails are on" : "Guardrails are off")} /><i /></label>
       </div>
+      <GuardDownloads reload={pullsTick} />
       {stats && <div className="small mut" style={{ marginBottom: 8 }}>Last {stats.days} days: {stats.flagged} flagged · {stats.blocked} blocked · {stats.errors} checks that could not answer{stats.top_categories[0] ? ` · most common: ${stats.top_categories[0].category}` : ""}</div>}
 
       <div className="lbl">Profiles</div>

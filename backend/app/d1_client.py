@@ -2,7 +2,7 @@
 answers one-shot "decide" requests with a timeout.
 
 State: idle -> loading -> ready | failed. A cold worker is NEVER waited for: loading the weights takes seconds to minutes, so
-`decide` raises WorkerUnavailable("still loading") immediately and the caller falls back (Auto mode then uses its built-in rules
+`decide` raises WorkerLoading ("still loading") immediately and the caller falls back (Auto mode then uses its built-in rules
 and says so). The process dies with the backend: its stdin pipe closes and the worker's loop ends.
 """
 from __future__ import annotations
@@ -31,6 +31,10 @@ class WorkerTimeout(WorkerUnavailable):
     """A decision did not come back in time."""
 
 
+class WorkerLoading(WorkerUnavailable):
+    """The model is loading right now. Not a failure: it will answer once it is in memory."""
+
+
 def default_spawn(model: str) -> Callable[[], subprocess.Popen]:
     def spawn() -> subprocess.Popen:
         from .d1_setup import BACKEND_DIR, _child_env
@@ -57,6 +61,7 @@ class D1Worker:
         self._waiting: set[int] = set()
         self._ids = itertools.count(1)
         self._failed_at = 0.0
+        self._loading_since: float | None = None
         self._stderr: collections.deque[str] = collections.deque(maxlen=8)
 
     # ------------------------------------------------------------ process plumbing
@@ -132,7 +137,7 @@ class D1Worker:
                 return
             if self.state == "failed" and self._clock() - self._failed_at < RETRY_AFTER_S:
                 return
-            self.state, self.error = "loading", ""
+            self.state, self.error, self._loading_since = "loading", "", self._clock()
         threading.Thread(target=self._warm_thread, name="d1-warm", daemon=True).start()
 
     def _warm_thread(self) -> None:
@@ -143,19 +148,40 @@ class D1Worker:
         except Exception as e:  # noqa: BLE001 - a spawn error, a timeout, a dead worker
             with self._cv:
                 self._fail(str(e) or type(e).__name__)
+                self._cv.notify_all()
             return
         with self._cv:
             if reply.get("ok"):
                 self.state, self.device, self.load_seconds = "ready", reply.get("device"), reply.get("load_seconds")
             else:
                 self._fail(str(reply.get("error") or "the model could not be loaded"))
+            self._cv.notify_all()
 
-    def decide(self, state: Any, questions: dict, timeout: float) -> dict:
-        """One forward pass. A worker that is not ready raises WorkerUnavailable at once (and starts loading)."""
+    def wait_ready(self, max_s: float) -> None:
+        """Wait (up to `max_s`) for the model to finish loading. Raises WorkerLoading when it is still loading, WorkerUnavailable when it failed."""
+        deadline = self._clock() + max_s
+        with self._cv:
+            while self.state != "ready":
+                if self.state == "failed":
+                    raise WorkerUnavailable(f"the decision model could not be loaded: {self.error or 'unknown error'}")
+                if self.state == "idle":
+                    raise WorkerUnavailable("the decision model was stopped")
+                left = deadline - self._clock()
+                if left <= 0:
+                    raise WorkerLoading("the decision model is still loading")
+                self._cv.wait(min(left, 0.25))
+
+    def decide(self, state: Any, questions: dict, timeout: float, wait_for_load: bool = False, load_wait: float | None = None) -> dict:
+        """One forward pass. A worker that is not ready raises at once (and starts loading): WorkerLoading while it loads, WorkerUnavailable
+        when it failed. A person who pressed a Test button passes `wait_for_load=True` to wait up to `load_wait` seconds for the load instead."""
         if self.state != "ready":
             self.warm()
-            raise WorkerUnavailable("the decision model is still loading" if self.state == "loading"
-                                    else f"the decision model is not available: {self.error or self.state}")
+            if wait_for_load:
+                self.wait_ready(LOAD_TIMEOUT_S if load_wait is None else load_wait)
+            elif self.state == "loading":
+                raise WorkerLoading("the decision model is still loading")
+            else:
+                raise WorkerUnavailable(f"the decision model could not be loaded: {self.error or self.state}")
         return self.request({"op": "decide", "state": state, "questions": questions}, timeout)
 
     def close(self) -> None:
@@ -174,4 +200,5 @@ class D1Worker:
                 pass
 
     def public(self) -> dict:
-        return {"model": self.model, "state": self.state, "error": self.error, "device": self.device, "load_seconds": self.load_seconds}
+        return {"model": self.model, "state": self.state, "error": self.error, "device": self.device, "load_seconds": self.load_seconds,
+                "loading_for_s": round(self._clock() - self._loading_since, 1) if self.state == "loading" and self._loading_since is not None else None}

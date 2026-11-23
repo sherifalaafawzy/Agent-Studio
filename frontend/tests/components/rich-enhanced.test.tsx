@@ -57,7 +57,7 @@ describe("DataTable", () => {
   it("pages through big results and changes the page size", async () => {
     render(<DataTable table={table(120, { truncated: true })} />);
     expect(screen.getAllByRole("row")).toHaveLength(26);
-    expect(screen.getByText(/120 rows \(the first 5000 only\)/)).toBeInTheDocument();
+    expect(screen.getByText(/120 rows \(the first 120 only\)/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Page 2 of 5")).toBeInTheDocument();
     expect(screen.getByText("item 025")).toBeInTheDocument();

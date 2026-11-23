@@ -5,6 +5,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from . import agui_flags
 from .db import Database
 from .harness.tools import ALL_TOOLS, READ_ONLY_TOOLS
 from .identity.model import clean_identity
@@ -26,6 +27,14 @@ ARTIFACT_RULES = """
   and ```audio / ```video blocks that play a file you saved: put the artifact id (12 characters, from `save_artifact`) as the body, or JSON {"artifact": "<id>", "title": "...", "captions": "<id of a .vtt file>"}.
 - Never use remote images, remote audio or video, or HTML outside an html-preview block: they are not shown.
 """
+
+# Saving results is one thing, showing rich blocks in the answer another: an agent with AG-UI components switched off is only told the first.
+ARTIFACT_KEEP = ARTIFACT_RULES.split("- Besides Markdown")[0].replace("## Results and rich answers", "## Results")
+
+
+def artifact_rules(components: bool = True) -> str:
+    return ARTIFACT_RULES if components else ARTIFACT_KEEP
+
 
 HARNESS_RULES = """
 
@@ -66,6 +75,7 @@ class AgentDef:
     runtime: str = "local"                                # where it runs: local, docker, agentcore, vertex or foundry (see runtimes/)
     sandbox: str = ""                                     # where its commands run: "" = the default sandbox, docker-container, docker-microvm (see sandboxes/)
     data: list[str] = field(default_factory=list)         # data sources it may read (see datasources/); ["*"] = all of them
+    agui: dict = field(default_factory=dict)              # AG-UI switches {components, endpoint}: rich components in its answers, and the AG-UI stream endpoint (see agui_flags.py)
 
     @classmethod
     def from_row(cls, r) -> "AgentDef":
@@ -76,11 +86,22 @@ class AgentDef:
                    rag=json.loads(r["rag"] or "[]"), memory=json.loads(r["memory"] or "{}"),
                    guardrails=json.loads(r["guardrails"] or "[]"), identity=json.loads(r["identity"] or "{}"),
                    framework=r["framework"] or "adk", api_access=bool(r["api_access"]), a2a=bool(r["a2a"]),
-                   runtime=r["runtime"] or "local", sandbox=r["sandbox"] or "", data=json.loads(r["data"] or "[]"))
+                   runtime=r["runtime"] or "local", sandbox=r["sandbox"] or "", data=json.loads(r["data"] or "[]"),
+                   agui=agui_flags.flags(json.loads(r["agui"] or "{}")))
 
 
 # Wording of the Super Engineer's "Build" step before the coding harnesses were added: existing databases are upgraded
 # only if their instruction still contains it verbatim (user edits are never overwritten).
+OLD_APP_BUILDER = ("You build small, clear web apps for the user. Work only through the app_* tools. First understand what the app should do and which of the user's agents it should call "
+                   "(app_agents), start from the closest template (app_create) or open the user's app (app_list, app_tree, app_read_file), then make focused changes with app_write_file / "
+                   "app_patch_file and declare the agents and permissions with app_set_manifest. Keep the page accessible, readable on a phone and free of external scripts, styles and fonts; "
+                   "keep secrets out of files; use no third-party packages. When you finish run app_check, fix what it reports, and tell the user what you built, which agents it calls and what it may reach.")
+APP_BUILDER_TOOLS = ["app_agents", "app_list", "app_create", "app_tree", "app_read_file", "app_write_file", "app_patch_file", "app_delete_file", "app_set_manifest", "app_check",
+                     "app_plan", "app_plan_done", "app_verify", "app_components", "app_theme", "app_connect_agent", "app_data_sources", "app_connect_data", "app_undo", "load_skill"]
+NEW_APP_BUILDER = ("You are App Builder, a careful senior front-end developer who builds small web apps with the user. Work only through the app_* tools and follow the Apps rules you are given: "
+                   "plan first (app_plan), scaffold from a template, add ready-made components, then change files in small patches; run app_verify after each round and fix exactly what it reports, "
+                   "stopping honestly when it says give_up. Keep the result accessible, readable on a phone, without external scripts, styles or fonts and without secrets. "
+                   "Finish by saying, briefly, what you built, which agents and data it uses and what it may reach.")
 OLD_SE_STEP = (
     "or create a specialist with spawn_agent when the work needs a distinct focus. For large self-contained work, or a "
     "second opinion from another model, use call_external_agent (see the delegate-to-external-agents skill) — and verify "
@@ -119,6 +140,19 @@ SEEDS = [
         id="assistant", name="Assistant", tier="flash", builtin=True,
         description="Plain conversational assistant (no tools).",
         instruction="You are Agent Studio's assistant. Be concise and accurate."),
+    AgentDef(
+        id="app_builder", name="App Builder", tier="pro", builtin=True,
+        description="Builds small web apps with you from standard templates: static pages that call your agents, or a tiny Node / Python server. Writes only inside the app's folder; you review its changes.",
+        instruction=NEW_APP_BUILDER,
+        tools=list(APP_BUILDER_TOOLS)),
+    AgentDef(
+        id="science_lab", name="Science Lab", tier="pro", builtin=True,
+        description="A careful research scientist for biology, chemistry, physics and maths: reads open databases, computes locally, keeps the evidence for every claim and writes a labelled report.",
+        instruction=("You are a research scientist working in the Science Lab. Start an investigation (science_start), find what is known with science_search (science_sources lists the sources), "
+                     "compute with science_calc or science_run_python, keep competing hypotheses and judge them against the evidence (science_add_hypothesis, science_compare), attach evidence "
+                     "(science_add_evidence) and record claims (science_add_claim), check citations (science_check_citations), then answer from science_report. Never state what the evidence does not say."),
+        tools=["science_sources", "science_start", "science_search", "science_calc", "science_run_python", "science_add_evidence", "science_add_claim", "science_add_hypothesis", "science_compare",
+               "science_check_citations", "science_report", "render_ui", "ui_catalog", "load_skill"], skills=["science-literature-review", "science-hypothesis-ranking"]),
     AgentDef(
         id="security_auditor", name="Security Auditor", tier="pro", builtin=True,
         description="Read-only security specialist: scans code and dependencies (Semgrep, Snyk), verifies each finding by reading the code, and reports exploitable issues with fixes.",
@@ -161,6 +195,20 @@ class AgentStore:
             if not self.get(a.id):
                 self._insert(a)
         self._upgrade_super_engineer()
+        self._upgrade_app_builder()
+
+    def _upgrade_app_builder(self) -> None:
+        """Existing databases keep the seed they were created with: give the built-in App Builder the smarter builder's tools (only ever added, never removed) and its new
+        instruction (only where it still has the old seed wording, so a text you edited is left alone)."""
+        row = self.db.one("SELECT instruction, tools FROM agents WHERE id='app_builder' AND builtin=1")
+        if not row:
+            return
+        tools = json.loads(row["tools"] or "[]")
+        add = [t for t in APP_BUILDER_TOOLS if t not in tools] if "app_plan" not in tools else []        # one-time: a tool you later remove stays removed
+        if add:
+            self.db.execute("UPDATE agents SET tools=? WHERE id='app_builder'", (json.dumps(tools + add),))
+        if row["instruction"] == OLD_APP_BUILDER:
+            self.db.execute("UPDATE agents SET instruction=? WHERE id='app_builder'", (NEW_APP_BUILDER,))
 
     def _upgrade_super_engineer(self) -> None:
         """Existing databases keep the seed they were created with: bring the built-in Super Engineer up to date with the
@@ -179,10 +227,10 @@ class AgentStore:
 
     def _insert(self, a: AgentDef) -> None:
         self.db.execute(
-            "INSERT INTO agents(id,name,description,instruction,provider,tier,model,tools,mcp,skills,sub_agents,builtin,can_spawn,acp_agents,acp_policy,rag,memory,guardrails,identity,framework,api_access,a2a,runtime,sandbox,data) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO agents(id,name,description,instruction,provider,tier,model,tools,mcp,skills,sub_agents,builtin,can_spawn,acp_agents,acp_policy,rag,memory,guardrails,identity,framework,api_access,a2a,runtime,sandbox,data,agui) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (a.id, a.name, a.description, a.instruction, a.provider, a.tier, a.model, json.dumps(a.tools), json.dumps(a.mcp),
              json.dumps(a.skills), json.dumps(a.sub_agents), int(a.builtin), int(a.can_spawn), json.dumps(a.acp_agents), a.acp_policy,
-             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data)))
+             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data), json.dumps(agui_flags.flags(a.agui))))
 
     def list(self) -> list[AgentDef]:
         return [AgentDef.from_row(r) for r in self.db.query("SELECT * FROM agents ORDER BY builtin DESC, rowid")]
@@ -225,6 +273,7 @@ class AgentStore:
         from .sandboxes.base import SANDBOX_KINDS
         if a.sandbox and a.sandbox not in SANDBOX_KINDS:
             raise ValueError(f"sandbox must be empty (the default) or one of {', '.join(SANDBOX_KINDS)}")
+        a.agui = agui_flags.normalise(a.agui)
         from .datasources.base import DS_REF
         if not isinstance(a.data, list) or any(not isinstance(d, str) or not (d == "*" or DS_REF.match(d)) for d in a.data):
             raise ValueError("data must be a list of data source ids (or ['*'] for all of them)")
@@ -266,10 +315,10 @@ class AgentStore:
         a = AgentDef(**d)
         self.validate(a)
         self.db.execute(
-            "UPDATE agents SET name=?,description=?,instruction=?,provider=?,tier=?,model=?,tools=?,mcp=?,skills=?,sub_agents=?,can_spawn=?,acp_agents=?,acp_policy=?,rag=?,memory=?,guardrails=?,identity=?,framework=?,api_access=?,a2a=?,runtime=?,sandbox=?,data=? WHERE id=?",
+            "UPDATE agents SET name=?,description=?,instruction=?,provider=?,tier=?,model=?,tools=?,mcp=?,skills=?,sub_agents=?,can_spawn=?,acp_agents=?,acp_policy=?,rag=?,memory=?,guardrails=?,identity=?,framework=?,api_access=?,a2a=?,runtime=?,sandbox=?,data=?,agui=? WHERE id=?",
             (a.name, a.description, a.instruction, a.provider, a.tier, a.model, json.dumps(a.tools), json.dumps(a.mcp),
              json.dumps(a.skills), json.dumps(a.sub_agents), int(a.can_spawn), json.dumps(a.acp_agents), a.acp_policy,
-             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data), aid))
+             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data), json.dumps(a.agui), aid))
         return self.get(aid)  # type: ignore[return-value]
 
     def delete(self, aid: str) -> None:

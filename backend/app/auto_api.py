@@ -28,6 +28,7 @@ class RouteTry(BaseModel):
     agent: bool = False                            # pretend an agent (tools) is selected
     engine: str | None = None                      # try a different engine / preference without saving it
     preference: str | None = None
+    wait: bool = False                             # "Try it" pressed by a person: wait for the decision model to load instead of falling back at once
 
 
 def _auto(request: Request) -> AutoRouter:
@@ -59,7 +60,7 @@ def register(app: FastAPI) -> None:
         """What would Auto pick for this message? Nothing is sent to any provider (a d1 engine runs locally, for free)."""
         override = {k: v for k, v in (("engine", body.engine), ("preference", body.preference)) if v}
         try:
-            return (await r.route(body.message, [], body.agent, False, None, None, override)).public()
+            return (await r.route(body.message, [], body.agent, False, None, None, override, 0, body.wait)).public()
         except AutoError as e:
             raise HTTPException(422, str(e))
 

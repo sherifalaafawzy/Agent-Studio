@@ -415,6 +415,14 @@ describe("Workflow editor", () => {
     expect(screen.getByTestId("builder-chat")).toBeInTheDocument();
   });
 
+  it("opens straight into the Versions dialog from a run's detail", async () => {
+    search = "id=wf_one&versions=1";
+    setup({ "GET /api/workflows/wf_one/versions": () => jsonResponse({ versions: [{ version: 1, ts: 1, nodes: 2, label: "First", note: "" }] }) });
+    render(<EditPage />);
+    expect(await screen.findByTestId("versions")).toBeInTheDocument();
+    search = "id=wf_one";
+  });
+
   it("opens straight into the Run dialog from the Flows table, and the rail toggles the chat and drawer", async () => {
     search = "id=wf_one&run=1";
     setup();

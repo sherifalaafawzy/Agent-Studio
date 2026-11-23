@@ -26,8 +26,8 @@ class D1Gate(Guard):
             reply = await self.env.decide(self.model, state, QUESTIONS, self.timeout)
         except GuardError:
             raise
-        except Exception as e:  # noqa: BLE001 - the worker is loading, died, or timed out
-            raise GuardError(f"the decision model is not available: {str(e)[:120] or type(e).__name__}") from e
+        except Exception as e:  # noqa: BLE001 - the worker died or timed out
+            raise GuardError(f"the decision model could not answer: {str(e)[:120] or type(e).__name__}") from e
         if not reply.get("ok"):
             raise GuardError(str(reply.get("error") or "the decision model gave no answer"))
         try:
@@ -63,6 +63,6 @@ KIND = Kind(
     fields=(
         Field("model", "Decision model", "choice", default="d1-2b", choices=tuple(d1_spec.MODELS)),
         Field("threshold", "Flag when at least this sure (0-1)", "number", default=0.6, help="Lower catches more and also flags more harmless text."),
-        Field("timeout_s", "Wait at most (seconds)", "number", default=8, help="A model that is still loading is skipped for that check (see 'if the guard cannot answer')."),
+        Field("timeout_s", "Wait at most (seconds)", "number", default=8, help="While the model is still loading, a check is skipped (or blocked, see 'if the guard cannot answer'); pressing Try it waits for the load instead."),
     ),
     make=_make)
