@@ -156,8 +156,9 @@ describe("SideAgent request and streaming", () => {
     const post = routes.calls.find((c) => c.method === "POST")!;
     expect(post.url.pathname).toBe("/api/sidebot");
     expect(post.body.messages.at(-1)).toMatchObject({ role: "user", content: "Take me to MCP servers." });
-    expect(post.body.context).toEqual([{ description: "current page", value: "/mcp/" }]);
-    expect(post.body.tools.map((t: { name: string }) => t.name)).toEqual(["navigate", "start_tour", "explain"]);
+    expect(post.body.context[0]).toEqual({ description: "current page", value: "/mcp/" });
+    expect(post.body.context[1].description).toMatch(/what is on the screen/);
+    expect(post.body.tools.map((t: { name: string }) => t.name)).toEqual(TOOLS.map((t) => t.name));
   });
 
   it("sends a typed message when the Send button is clicked", async () => {
@@ -242,11 +243,11 @@ describe("SideAgent tool calls", () => {
 
     expect(await within(panel).findByText("Opened MCP for you.")).toBeInTheDocument();
     expect(nav.push).toHaveBeenCalledWith("/mcp/");
-    expect(within(panel).getByText("navigate: opened /mcp/", { selector: ".sa-msg.note" })).toBeInTheDocument();
+    expect(within(panel).getByText("navigate: opened /mcp/. Call read_page to see it.", { selector: ".sa-msg.note" })).toBeInTheDocument();
 
     const posts = routes.calls.filter((c) => c.method === "POST");
     expect(posts).toHaveLength(2);
-    expect(posts[1].body.messages.at(-1)).toMatchObject({ role: "tool", toolCallId: "call-1", content: "opened /mcp/" });
+    expect(posts[1].body.messages.at(-1)).toMatchObject({ role: "tool", toolCallId: "call-1", content: "opened /mcp/. Call read_page to see it." });
   });
 
   it("reports an unknown page to the model without navigating", async () => {
@@ -319,21 +320,22 @@ describe("SideAgent error paths", () => {
     expect(within(panel).getByRole("button", { name: "Send" })).toBeEnabled();
   });
 
-  it("stops after four model rounds even if the model keeps calling tools", async () => {
+  it("stops after six model rounds even if the model keeps calling tools", async () => {
     const routes = model(
       toolRound("navigate", { page: "/" }, "c1"),
       toolRound("navigate", { page: "/" }, "c2"),
       toolRound("navigate", { page: "/" }, "c3"),
       toolRound("navigate", { page: "/" }, "c4"),
       toolRound("navigate", { page: "/" }, "c5"),
+      toolRound("navigate", { page: "/" }, "c6"),
     );
     const user = userEvent.setup();
     render(<SideAgent />);
     const panel = await openPanel(user);
     await user.click(within(panel).getByRole("button", { name: "What can I do here?" }));
     await waitFor(() => expect(within(panel).queryByText("working…")).not.toBeInTheDocument());
-    expect(routes.calls.filter((c) => c.method === "POST")).toHaveLength(4);
-    expect(nav.push).toHaveBeenCalledTimes(4);
+    expect(routes.calls.filter((c) => c.method === "POST")).toHaveLength(6);
+    expect(nav.push).toHaveBeenCalledTimes(6);
   });
 
   it("aborts the in-flight request when unmounted", async () => {
@@ -360,7 +362,7 @@ describe("SideAgent error paths", () => {
 
 describe("runTool", () => {
   it("exposes the navigate, start_tour and explain tools with the known routes and targets", () => {
-    expect(TOOLS.map((t) => t.name)).toEqual(["navigate", "start_tour", "explain"]);
+    expect(TOOLS.map((t) => t.name)).toEqual(["navigate", "start_tour", "explain", "guide_me", "read_page", "open_docs", "search_docs", "set_field", "fill_form", "open_canvas"]);
     expect(ROUTES.map((r) => r.path)).toContain("/settings/");
     expect(TARGETS).toEqual(expect.arrayContaining(["sidebar", "composer", "assistant"]));
     expect(new Set(TARGETS).size).toBe(TARGETS.length);

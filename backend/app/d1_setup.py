@@ -64,7 +64,7 @@ def probe_hardware() -> dict:
                            capture_output=True, text=True, timeout=15).stdout.strip().splitlines()
     except (OSError, subprocess.SubprocessError):
         return none
-    m = re.search(r"CUDA Version:\s*(\d+)\.(\d+)", plain)
+    m = re.search(r"CUDA (?:UMD )?Version:\s*(\d+)\.(\d+)", plain)      # newer drivers print "CUDA UMD Version"
     parts = [p.strip() for p in q[0].split(",")] if q else []
     if len(parts) < 3 or not m:
         return none

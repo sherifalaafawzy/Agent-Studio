@@ -920,6 +920,22 @@ describe("Settings page: Assistant tab", () => {
     expect(screen.getByText("on", { selector: ".pill" })).toBeInTheDocument();
   });
 
+  it("lets you stop the assistant seeing what is on screen, and shows it as on by default", async () => {
+    const { calls } = await open();
+    expect(toggle(/^Assistant can see what is on screen$/)).toBeChecked();          // an older server that says nothing means "on"
+    await userEvent.click(toggle(/^Assistant can see what is on screen$/));
+    expect(await screen.findByText("The assistant can no longer see what is on screen")).toBeInTheDocument();
+    expect(lastSent(calls, "PUT", "/api/settings")).toEqual({ sidebot_page_context: false });
+  });
+
+  it("switches screen reading back on, and reports a failure", async () => {
+    const { calls } = await open({ sidebot_page_context: false });
+    expect(toggle(/^Assistant can see what is on screen$/)).not.toBeChecked();
+    await userEvent.click(toggle(/^Assistant can see what is on screen$/));
+    expect(await screen.findByText("The assistant can see what is on screen")).toBeInTheDocument();
+    expect(lastSent(calls, "PUT", "/api/settings")).toEqual({ sidebot_page_context: true });
+  });
+
   it("says where the assistant runs right now", async () => {
     await open();
     expect(document.body).toHaveTextContent("Right now it runs on: openai · gpt-x.");
@@ -929,6 +945,14 @@ describe("Settings page: Assistant tab", () => {
   it("says when no provider is available to the assistant", async () => {
     await open({ sidebot_resolved: { provider: null, model: null } });
     expect(document.body).toHaveTextContent("no provider available — add one under Model providers");
+  });
+
+  it("reports a failed screen-reading switch", async () => {
+    setup({ routes: { "PUT /api/settings": () => jsonResponse({ detail: "nope" }, { status: 500 }) } });
+    render(<SettingsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: /^Assistant/ }));
+    await userEvent.click(toggle(/^Assistant can see what is on screen$/));
+    expect(await screen.findByText("⚠ nope")).toBeInTheDocument();
   });
 
   it("reports a failed on/off switch for the assistant", async () => {

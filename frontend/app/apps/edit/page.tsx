@@ -20,6 +20,7 @@ import PreviewPanel from "@/components/apps/PreviewPanel";
 import { BUILD_KEY } from "@/components/apps/SimpleCreate";
 import SettingsPanel from "@/components/apps/SettingsPanel";
 import StudioPanel from "@/components/apps/StudioPanel";
+import { usePageContext } from "@/lib/pagectx";
 
 type Tab = "build" | "files" | "changes" | "versions" | "design" | "connect" | "settings" | "git" | "export";
 const ADVANCED: [Tab, string][] = [["build", "Build"], ["files", "Files"], ["changes", "Changes"], ["versions", "Versions"], ["design", "Design"], ["connect", "Connect"], ["settings", "Settings"], ["git", "Git"], ["export", "Export"]];
@@ -34,6 +35,7 @@ function Workspace() {
   const [files, setFiles] = useState<TreeFile[]>([]);
   const [err, setErr] = useState("");
   const [tab, setTab] = useState<Tab>("build");
+  usePageContext("app", () => ({ name: app?.name, openTab: tab, files: files.length }));
   const [tick, setTick] = useState(0);
   const [consoleTick, setConsoleTick] = useState(0);
   const [start, setStart] = useState<BuildStart | null>(null);

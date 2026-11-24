@@ -47,7 +47,7 @@ describe("switched-off assistant tools", () => {
     await ask();
     await waitFor(() => expect(calls.some((c) => c.url.pathname === "/api/sidebot")).toBe(true));
     const sent = calls.find((c) => c.url.pathname === "/api/sidebot")!.body;
-    expect(sent.tools.map((t: { name: string }) => t.name)).toEqual(["start_tour", "explain"]);
+    expect(sent.tools.map((t: { name: string }) => t.name)).toEqual(["start_tour", "explain", "guide_me", "read_page", "open_docs", "search_docs", "set_field", "fill_form", "open_canvas"]);
   });
 
   it("offers every tool when the settings do not list any (an older server)", async () => {
@@ -55,7 +55,7 @@ describe("switched-off assistant tools", () => {
     render(<SideAgent />);
     await ask();
     await waitFor(() => expect(calls.some((c) => c.url.pathname === "/api/sidebot")).toBe(true));
-    expect(calls.find((c) => c.url.pathname === "/api/sidebot")!.body.tools.map((t: { name: string }) => t.name)).toEqual(["navigate", "start_tour", "explain"]);
+    expect(calls.find((c) => c.url.pathname === "/api/sidebot")!.body.tools.map((t: { name: string }) => t.name)).toEqual(["navigate", "start_tour", "explain", "guide_me", "read_page", "open_docs", "search_docs", "set_field", "fill_form", "open_canvas"]);
   });
 
   it("refuses in the browser too if the model calls a switched-off tool anyway, and tells the model", async () => {

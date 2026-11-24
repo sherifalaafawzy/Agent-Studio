@@ -51,7 +51,7 @@ describe("SideAgent: current page context", () => {
     const panel = await openPanel(user);
     await user.click(within(panel).getByRole("button", { name: "What can I do here?" }));
     await waitFor(() => expect(routes.calls.some((c) => c.method === "POST")).toBe(true));
-    expect(routes.calls.find((c) => c.method === "POST")!.body.context).toEqual([{ description: "current page", value: "/" }]);
+    expect(routes.calls.find((c) => c.method === "POST")!.body.context[0]).toEqual({ description: "current page", value: "/" });
   });
 });
 

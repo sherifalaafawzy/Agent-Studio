@@ -5,7 +5,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from . import agui_flags
+from . import agui_flags, live_profile
 from .db import Database
 from .harness.tools import ALL_TOOLS, READ_ONLY_TOOLS
 from .identity.model import clean_identity
@@ -75,6 +75,7 @@ class AgentDef:
     runtime: str = "local"                                # where it runs: local, docker, agentcore, vertex or foundry (see runtimes/)
     sandbox: str = ""                                     # where its commands run: "" = the default sandbox, docker-container, docker-microvm (see sandboxes/)
     data: list[str] = field(default_factory=list)         # data sources it may read (see datasources/); ["*"] = all of them
+    live: dict = field(default_factory=dict)              # Live profile: engine, voice-or-avatar mode, voice, language, budget ... ({} = none; see live_profile.py)
     agui: dict = field(default_factory=dict)              # AG-UI switches {components, endpoint}: rich components in its answers, and the AG-UI stream endpoint (see agui_flags.py)
 
     @classmethod
@@ -87,7 +88,7 @@ class AgentDef:
                    guardrails=json.loads(r["guardrails"] or "[]"), identity=json.loads(r["identity"] or "{}"),
                    framework=r["framework"] or "adk", api_access=bool(r["api_access"]), a2a=bool(r["a2a"]),
                    runtime=r["runtime"] or "local", sandbox=r["sandbox"] or "", data=json.loads(r["data"] or "[]"),
-                   agui=agui_flags.flags(json.loads(r["agui"] or "{}")))
+                   agui=agui_flags.flags(json.loads(r["agui"] or "{}")), live=live_profile.profile(json.loads(r["live"] or "{}")))
 
 
 # Wording of the Super Engineer's "Build" step before the coding harnesses were added: existing databases are upgraded
@@ -227,10 +228,10 @@ class AgentStore:
 
     def _insert(self, a: AgentDef) -> None:
         self.db.execute(
-            "INSERT INTO agents(id,name,description,instruction,provider,tier,model,tools,mcp,skills,sub_agents,builtin,can_spawn,acp_agents,acp_policy,rag,memory,guardrails,identity,framework,api_access,a2a,runtime,sandbox,data,agui) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO agents(id,name,description,instruction,provider,tier,model,tools,mcp,skills,sub_agents,builtin,can_spawn,acp_agents,acp_policy,rag,memory,guardrails,identity,framework,api_access,a2a,runtime,sandbox,data,agui,live) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (a.id, a.name, a.description, a.instruction, a.provider, a.tier, a.model, json.dumps(a.tools), json.dumps(a.mcp),
              json.dumps(a.skills), json.dumps(a.sub_agents), int(a.builtin), int(a.can_spawn), json.dumps(a.acp_agents), a.acp_policy,
-             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data), json.dumps(agui_flags.flags(a.agui))))
+             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data), json.dumps(agui_flags.flags(a.agui)), json.dumps(live_profile.profile(a.live))))
 
     def list(self) -> list[AgentDef]:
         return [AgentDef.from_row(r) for r in self.db.query("SELECT * FROM agents ORDER BY builtin DESC, rowid")]
@@ -274,6 +275,7 @@ class AgentStore:
         if a.sandbox and a.sandbox not in SANDBOX_KINDS:
             raise ValueError(f"sandbox must be empty (the default) or one of {', '.join(SANDBOX_KINDS)}")
         a.agui = agui_flags.normalise(a.agui)
+        a.live = live_profile.normalise(a.live)
         from .datasources.base import DS_REF
         if not isinstance(a.data, list) or any(not isinstance(d, str) or not (d == "*" or DS_REF.match(d)) for d in a.data):
             raise ValueError("data must be a list of data source ids (or ['*'] for all of them)")
@@ -315,10 +317,10 @@ class AgentStore:
         a = AgentDef(**d)
         self.validate(a)
         self.db.execute(
-            "UPDATE agents SET name=?,description=?,instruction=?,provider=?,tier=?,model=?,tools=?,mcp=?,skills=?,sub_agents=?,can_spawn=?,acp_agents=?,acp_policy=?,rag=?,memory=?,guardrails=?,identity=?,framework=?,api_access=?,a2a=?,runtime=?,sandbox=?,data=?,agui=? WHERE id=?",
+            "UPDATE agents SET name=?,description=?,instruction=?,provider=?,tier=?,model=?,tools=?,mcp=?,skills=?,sub_agents=?,can_spawn=?,acp_agents=?,acp_policy=?,rag=?,memory=?,guardrails=?,identity=?,framework=?,api_access=?,a2a=?,runtime=?,sandbox=?,data=?,agui=?,live=? WHERE id=?",
             (a.name, a.description, a.instruction, a.provider, a.tier, a.model, json.dumps(a.tools), json.dumps(a.mcp),
              json.dumps(a.skills), json.dumps(a.sub_agents), int(a.can_spawn), json.dumps(a.acp_agents), a.acp_policy,
-             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data), json.dumps(a.agui), aid))
+             json.dumps(a.rag), json.dumps(a.memory), json.dumps(a.guardrails), json.dumps(a.identity), a.framework, int(a.api_access), int(a.a2a), a.runtime, a.sandbox, json.dumps(a.data), json.dumps(a.agui), json.dumps(a.live), aid))
         return self.get(aid)  # type: ignore[return-value]
 
     def delete(self, aid: str) -> None:

@@ -81,6 +81,12 @@ def _blob_apply(s, key: str, value: dict) -> None:
             s.uikit.set_config(value)
         except UiKitError as e:
             raise SettingError(str(e))
+    elif key == "live_gemini_prices":
+        from . import live_cost
+        try:
+            live_cost.save_prices(s.db, live_cost.validate_prices(value))           # the same checks as the Live page's price editor
+        except ValueError as e:
+            raise SettingError(str(e))
     elif key == "harness_policy":
         from .harness.policy import set_policy
         set_policy(s.db, value)

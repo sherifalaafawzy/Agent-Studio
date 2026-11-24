@@ -352,6 +352,32 @@ def test_free_port_skips_busy_ports_and_gives_up():
     assert R.free_port(40000) >= 40000
 
 
+def test_free_port_lets_the_os_choose_when_the_whole_stretch_is_reserved(monkeypatch):
+    """Windows reserves 100-port blocks, so every port from `preferred` on can refuse a bind (this made the test above flaky)."""
+    real = socket.socket
+
+    class Reserved:
+        def __init__(self):
+            self.s = real()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            self.s.close()
+            return False
+
+        def bind(self, addr):
+            if addr[1] != 0:
+                raise OSError("reserved")
+            self.s.bind(addr)
+
+        def getsockname(self):
+            return self.s.getsockname()
+    monkeypatch.setattr(R.socket, "socket", lambda: Reserved())
+    assert R.free_port(50000) > 0
+
+
 def test_free_port_gives_up_when_nothing_is_free(monkeypatch):
     class Never:
         def __enter__(self):

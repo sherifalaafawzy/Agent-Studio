@@ -25,3 +25,6 @@ backend/.playwright-mcp/
 
 .cov_*
 backend/.cov_*
+
+frontend/.next-shots
+.next-shots

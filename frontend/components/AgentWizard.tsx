@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, streamSse } from "@/lib/api";
 import AgentAgui, { aguiBadge, type AguiFlags } from "./AgentAgui";
+import AgentLive, { liveBadge } from "./AgentLive";
+import type { LiveProfile } from "@/lib/live";
 import InfoTip from "./InfoTip";
 import { MemoryPicker, type MemCfg } from "./MemoryUI";
 import ModelSelect from "./ModelSelect";
@@ -11,7 +13,7 @@ import { toast } from "./Nav";
 
 export type NewAgent = {
   id: string; name: string; description: string; instruction: string; provider: string | null; tier: string; model: string | null; tools: string[]; mcp: string[];
-  skills: string[]; sub_agents: string[]; builtin: boolean; can_spawn: boolean; acp_agents: string[]; acp_policy: string; rag: string[]; memory?: MemCfg; agui?: AguiFlags;
+  skills: string[]; sub_agents: string[]; builtin: boolean; can_spawn: boolean; acp_agents: string[]; acp_policy: string; rag: string[]; memory?: MemCfg; live?: Partial<LiveProfile>; agui?: AguiFlags;
 };
 type Template = { id: string; name: string; tagline: string; color: string; risk: string; agent: Partial<NewAgent> & { name: string } };
 type Tool = { name: string; label: string; plain: string; risk: string; risk_text: string };
@@ -61,6 +63,7 @@ export default function AgentWizard({ agents, mcp, skills, kbs, ext, onCreated, 
   const [spawn, setSpawn] = useState(false);
   const [acp, setAcp] = useState<string[]>([]);
   const [policy, setPolicy] = useState("ask");
+  const [live, setLive] = useState<Partial<LiveProfile>>({});                      // {} = no Live profile
   const [agui, setAgui] = useState<AguiFlags | undefined>(undefined);       // untouched = the default chosen in Settings
   const [instr, setInstr] = useState("");
   const [drafting, setDrafting] = useState(false);
@@ -105,7 +108,7 @@ export default function AgentWizard({ agents, mcp, skills, kbs, ext, onCreated, 
   const def = (): NewAgent => ({
     id, name: name.trim(), description: desc.trim() || goal.trim().slice(0, 200), instruction: instr, builtin: false,
     provider: brain === "same" ? null : brain === "local" ? "ollama" : provider, tier: brain === "same" ? tier : "custom", model: brain === "same" ? null : model,
-    tools, mcp: mcps, skills: sk, sub_agents: subs, can_spawn: spawn, acp_agents: acp, acp_policy: policy, rag, memory, ...(agui ? { agui } : {}),
+    tools, mcp: mcps, skills: sk, sub_agents: subs, can_spawn: spawn, acp_agents: acp, acp_policy: policy, rag, memory, ...(agui ? { agui } : {}), ...(Object.keys(live).length ? { live } : {}),
   });
 
   async function create() {
@@ -212,6 +215,7 @@ export default function AgentWizard({ agents, mcp, skills, kbs, ext, onCreated, 
             {acp.length > 0 && <label style={{ marginTop: 8 }}>When they ask permission
               <select value={policy} onChange={(e) => setPolicy(e.target.value)}><option value="ask">ask me each time</option><option value="reads_auto">allow reading, ask for the rest</option><option value="readonly">refuse anything that changes things</option></select><InfoTip id="acp-policy" /></label>}</>}
         <AgentAgui agent={{ agui }} isNew compact onChange={setAgui} />
+        <AgentLive agent={{ live }} compact onChange={setLive} />
       </div>)}
 
       {step === 5 && (<div>
@@ -237,6 +241,7 @@ export default function AgentWizard({ agents, mcp, skills, kbs, ext, onCreated, 
           {acp.length > 0 && <><dt>Outside agents</dt><dd>{acp.join(", ")}</dd></>}
           <dt>Builds helpers</dt><dd>{spawn ? "yes" : "no"}</dd>
           {agui && aguiBadge({ agui }) && <><dt>AG-UI</dt><dd>{aguiBadge({ agui })}</dd></>}
+          {liveBadge({ live }) && <><dt>Live</dt><dd>{liveBadge({ live })}</dd></>}
         </dl>
         {!instr.trim() && <div className="small" style={{ color: "var(--warn)" }}>No instructions yet. It will still work, but it will not know its job. Go back to add some.</div>}
       </div>)}

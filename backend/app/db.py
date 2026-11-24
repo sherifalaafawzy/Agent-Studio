@@ -563,6 +563,8 @@ class Database:
                 self.conn.execute("ALTER TABLE agents ADD COLUMN data TEXT NOT NULL DEFAULT '[]'")
             if "agui" not in acols:  # AG-UI switches: {"components": bool, "endpoint": bool}; '{}' = both on (see agui_flags.py)
                 self.conn.execute("ALTER TABLE agents ADD COLUMN agui TEXT NOT NULL DEFAULT '{}'")
+            if "live" not in acols:  # Live profile: how the agent behaves in live mode (engine, voice or avatar, voice, budget); '{}' = none (see live_profile.py)
+                self.conn.execute("ALTER TABLE agents ADD COLUMN live TEXT NOT NULL DEFAULT '{}'")
             ocols = {r["name"] for r in self.conn.execute("PRAGMA table_info(openapi_sources)")}
             for col, ddl in (("spec", "TEXT NOT NULL DEFAULT ''"), ("origin", "TEXT NOT NULL DEFAULT 'url'"), ("auth", "TEXT NOT NULL DEFAULT '{}'"),
                              ("servers", "TEXT NOT NULL DEFAULT '[]'"), ("refreshed", "REAL"), ("updated", "REAL"), ("overrides", "TEXT NOT NULL DEFAULT '{}'"),

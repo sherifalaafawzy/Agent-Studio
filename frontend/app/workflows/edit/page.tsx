@@ -12,6 +12,7 @@ import FlowCanvas from "@/components/workflows/FlowCanvas";
 import { BuilderChat, Drawer, NodePanel, Palette, Versions, type DrawerTab } from "@/components/workflows/EditorParts";
 import type { Ctx } from "@/components/workflows/Fields";
 import { AUTONOMY, defaultConfig, ENTRY, NO_REFS, portsOf, tidy, uniqueId, type Catalog, type Doc, type NodeSpec, type Problem, type Refs, type Run, type WEdge, type WNode } from "@/lib/workflows";
+import { usePageContext } from "@/lib/pagectx";
 
 const EMPTY: Catalog = { groups: [], nodes: [] };
 
@@ -24,6 +25,7 @@ function Editor() {
   const [past, setPast] = useState<Doc[]>([]), [future, setFuture] = useState<Doc[]>([]);
   const [dirty, setDirty] = useState(false), [restored, setRestored] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  usePageContext("workflow", () => ({ name: doc?.name, boxes: doc?.nodes.length, selectedBox: doc?.nodes.find((n) => n.id === sel)?.label ?? null }));
   const [catalog, setCatalog] = useState<Catalog>(EMPTY);
   const [ctx, setCtx] = useState<Ctx>({ agents: [], tools: [], srcs: [], workflows: [], refs: NO_REFS });
   const [selIds, setSelIds] = useState<string[]>([]);

@@ -286,7 +286,7 @@ describe("Command palette", () => {
     openPalette();
     const list = within(palette());
     expect(list.getByText("New chat")).toBeInTheDocument();
-    expect(list.getByText("Telemetry")).toBeInTheDocument();
+    expect(list.getByText("Live")).toBeInTheDocument();
     expect(list.getAllByText("page").length).toBeGreaterThan(0);
   });
 

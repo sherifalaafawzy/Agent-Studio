@@ -1,0 +1,116 @@
+// Builds lib/docs/generated.ts from docs-src/*.md (the documentation) and docs-src/shots.json (the screenshot list).
+//   node scripts/build-docs.mjs          write lib/docs/generated.ts
+//   node scripts/build-docs.mjs --check  fail if the file on disk is out of date (used by a test)
+// Page format: a few "key: value" lines between --- lines, then Markdown. "## " and "### " headings become anchors.
+// Links:  [text](doc:slug#anchor) to another page,  [text](app:/agents/) to a screen of the app,  ![alt](shot:id) to a screenshot.
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+export const ROOT = path.resolve(here, "..");
+export const SECTIONS = ["Start here", "Work", "Build", "Observe and protect", "How-to", "Reference"];
+
+export function slugify(s) {
+  return s.toLowerCase().replace(/`/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "section";
+}
+
+export function parsePage(file, raw) {
+  const text = raw.replace(/\r\n/g, "\n");
+  const m = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) throw new Error(`${file}: the page must start with a --- header`);
+  const meta = {};
+  for (const line of m[1].split("\n")) {
+    const kv = line.match(/^([a-z]+):\s*(.*)$/);
+    if (kv) meta[kv[1]] = kv[2].trim();
+  }
+  const slug = path.basename(file, ".md");
+  for (const k of ["title", "section", "summary"]) if (!meta[k]) throw new Error(`${file}: missing "${k}:" in the header`);
+  if (!SECTIONS.includes(meta.section)) throw new Error(`${file}: unknown section "${meta.section}" (use one of ${SECTIONS.join(", ")})`);
+  const list = (v) => (v ? v.split(",").map((x) => x.trim()).filter(Boolean) : []);
+  const body = m[2].trim();
+  const lines = body.split("\n");
+  const intro = [];
+  const sections = [];
+  const used = new Set();
+  let cur = null, fence = false;
+  for (const line of lines) {
+    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
+    const h = !fence && line.match(/^(#{2,3})\s+(.*?)\s*$/);
+    if (h) {
+      let id = slugify(h[2]);
+      for (let n = 2; used.has(id); n++) id = `${slugify(h[2])}-${n}`;
+      used.add(id);
+      cur = { id, level: h[1].length, heading: h[2].replace(/`/g, ""), lines: [] };
+      sections.push(cur);
+    } else (cur ? cur.lines : intro).push(line);
+  }
+  const shots = [...body.matchAll(/!\[[^\]]*\]\(shot:([\w-]+)\)/g)].map((x) => x[1]);
+  return {
+    slug, title: meta.title, section: meta.section, order: Number(meta.order || 100), summary: meta.summary,
+    routes: list(meta.routes), tags: list(meta.tags), intro: intro.join("\n").trim(),
+    sections: sections.map((s) => ({ id: s.id, level: s.level, heading: s.heading, body: s.lines.join("\n").trim() })),
+    shots, words: body.split(/\s+/).filter(Boolean).length,
+  };
+}
+
+export function loadShots(dir) {
+  const f = path.join(dir, "shots.json");
+  if (!fs.existsSync(f)) return { shots: [] };
+  return JSON.parse(fs.readFileSync(f, "utf8"));
+}
+
+/** Everything the pages promise must exist: screenshots in shots.json, linked pages and anchors. Returns a list of problems. */
+export function validate(pages, shotIds) {
+  const problems = [];
+  const bySlug = new Map(pages.map((p) => [p.slug, p]));
+  const seen = new Set();
+  for (const p of pages) {
+    if (seen.has(p.slug)) problems.push(`duplicate page ${p.slug}`);
+    seen.add(p.slug);
+    const all = [p.intro, ...p.sections.map((s) => s.body)].join("\n");
+    for (const id of p.shots) if (!shotIds.has(id)) problems.push(`${p.slug}: screenshot "${id}" is not in shots.json`);
+    for (const l of all.matchAll(/\]\(doc:([\w-]+)(?:#([\w-]+))?\)/g)) {
+      const t = bySlug.get(l[1]);
+      if (!t) problems.push(`${p.slug}: link to the unknown page "${l[1]}"`);
+      else if (l[2] && !t.sections.some((s) => s.id === l[2])) problems.push(`${p.slug}: link to the unknown anchor ${l[1]}#${l[2]}`);
+    }
+    for (const l of all.matchAll(/\]\(app:([^)\s]*)\)/g)) if (!/^\/[\w\-/]*(\?[\w=&%-]+)?(#[\w-]+)?$/.test(l[1])) problems.push(`${p.slug}: bad app link ${l[1]}`);
+    if (!p.intro && p.sections.length === 0) problems.push(`${p.slug}: the page is empty`);
+  }
+  return problems;
+}
+
+export function buildDocs(dir = path.join(ROOT, "docs-src")) {
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".md")).sort();
+  const pages = files.map((f) => parsePage(f, fs.readFileSync(path.join(dir, f), "utf8")));
+  pages.sort((a, b) => SECTIONS.indexOf(a.section) - SECTIONS.indexOf(b.section) || a.order - b.order || a.title.localeCompare(b.title));
+  const shots = loadShots(dir).shots;
+  const problems = validate(pages, new Set(shots.map((s) => s.id)));
+  if (problems.length) throw new Error("The documentation has problems:\n- " + problems.join("\n- "));
+  return { pages, shots: shots.map((s) => ({ id: s.id, alt: s.alt, file: s.file ?? `${s.id}.webp`, mobile: !!s.mobile })) };
+}
+
+export function render(data) {
+  return `// GENERATED by scripts/build-docs.mjs from docs-src/. Do not edit: change docs-src/*.md and run \`npm run docs\`.
+import type { DocPage, DocShot } from "./types";
+
+export const DOC_PAGES: DocPage[] = ${JSON.stringify(data.pages, null, 1)};
+
+export const DOC_SHOTS: DocShot[] = ${JSON.stringify(data.shots, null, 1)};
+`;
+}
+
+const OUT = path.join(ROOT, "lib", "docs", "generated.ts");
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const text = render(buildDocs());
+  if (process.argv.includes("--check")) {
+    const now = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8") : "";
+    if (now !== text) { console.error("lib/docs/generated.ts is out of date: run `npm run docs`"); process.exit(1); }
+    console.log("docs up to date");
+  } else {
+    fs.writeFileSync(OUT, text);
+    const d = JSON.parse(text.split("DOC_PAGES: DocPage[] = ")[1].split(";\n\nexport const DOC_SHOTS")[0]);
+    console.log(`wrote ${d.length} pages to lib/docs/generated.ts`);
+  }
+}

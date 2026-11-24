@@ -51,6 +51,27 @@ Every change is recorded in **Settings → Backup & history** (secret values are
 | `voice_auto_read` — Read answers aloud automatically | Voice | off | on / off | Every answer is spoken as soon as it arrives. | server |
 | `voice_dictation` — Show the dictation button | Voice | on | on / off | Lets you speak your messages. | server |
 | `voice_char_cap` — Monthly character cap (0 = none) | Voice | 0 | 0 to 1e+08 | Voice stops for the month once this many characters are spoken. | server |
+| `live_provider` — Live mode: provider | Live page | "ollama" | text, at most 80 characters | Which provider's model talks in live mode (Ollama keeps it on this PC). | server |
+| `live_model` — Live mode: model | Live page | empty | text, at most 120 characters | The model for live mode; empty = the provider's default. Pick a fast one. | server |
+| `live_voice` — Live mode: voice | Live page | "af_heart" | text, at most 40 characters | The Kokoro voice used in live mode. | server |
+| `live_speed` — Live mode: speaking speed | Live page | 1.0 | 0.6 to 1.6 | 1.0 is normal speed. | server |
+| `live_hangover_ms` — Live mode: end-of-speech wait (ms) | Live page | 350 | 150 to 1500 | How long a pause means you finished. Shorter answers sooner but may cut you off. | server |
+| `live_barge_in` — Live mode: let me interrupt | Live page | on | on / off | Talking over the assistant stops it. Headphones work best. | server |
+| `live_avatar` — Live mode: show the avatar | Live page | off | on / off | Start live mode with the animated avatar instead of voice only. | server |
+| `live_agent` — Live mode: agent | Live page | empty | text, at most 80 characters | An agent whose instructions shape what is said (live mode uses no tools); empty = none. | server |
+| `live_engine` — Live mode: where it runs | Live page | "local" | local, gemini | This PC (Whisper, Ollama and Kokoro: nothing leaves it) or Google Gemini Live (cloud). | server |
+| `live_gemini_provider` — Gemini Live: Vertex provider | Live page | "vertex_ai" | text, at most 80 characters | Which Google Vertex provider supplies the project and the credentials. | server |
+| `live_gemini_model` — Gemini Live: model | Live page | "gemini-3.8-live" | text, at most 80 characters | The Gemini Live model id. | server |
+| `live_gemini_voice` — Gemini Live: voice | Live page | "Puck" | text, at most 40 characters | One of Gemini Live's 30 prebuilt voices. | server |
+| `live_gemini_language` — Gemini Live: language | Live page | "en-US" | text, at most 12 characters | BCP-47 language code of the speech. | server |
+| `live_gemini_avatar_name` — Gemini Live: avatar name | Live page | empty | text, at most 80 characters | A prebuilt Live Avatar (Google's documented example is Ben); used when the avatar is on. | server |
+| `live_gemini_location` — Gemini Live: region | Live page | empty | text, at most 40 characters | Empty = the provider's region (or us-central1). Gemini Live needs a regional endpoint. | server |
+| `live_gemini_endpoint` — Gemini Live: endpoint override | Live page | empty | text, at most 200 characters | Empty = Google. A ws:// or wss:// address for a proxy or a test server. | server |
+| `live_gemini_max_minutes` — Gemini Live: longest session (minutes) | Live page | 10.0 | 1 to 60 | A session is ended after this long. | server |
+| `live_gemini_cost_cap_usd` — Gemini Live: cost limit per session ($) | Live page | 1.0 | 0.05 to 100 | A session is ended when Google's usage report puts its cost above this (an estimate at list prices). | server |
+| `live_gemini_video_bitrate` — Gemini Live: avatar video bitrate (bps, 0 = Google's default) | Live page | 0 | 0 to 2e+07 | AvatarConfig.video_bitrate_bps. | server |
+| `live_gemini_audio_bitrate` — Gemini Live: avatar audio bitrate (bps, 0 = Google's default) | Live page | 0 | 0 to 1e+06 | AvatarConfig.audio_bitrate_bps. | server |
+| `live_gemini_prices` — Gemini Live: price table | Live page | empty | managed by its own page | Dollars per million tokens by modality, the token rates used to estimate between usage reports, and the date they were read from Google's pricing page. | server |
 
 ## Telemetry
 
@@ -70,6 +91,7 @@ Every change is recorded in **Settings → Backup & history** (secret values are
 | Setting | Where | Default | Allowed | What it does | Enforced |
 |---|---|---|---|---|---|
 | `sidebot_enabled` — Side assistant on | Assistant | on | on / off | Shows the helper that can guide you around the app. | server |
+| `sidebot_page_context` — Assistant can see what is on screen | Assistant | on | on / off | Lets the assistant read the headings, buttons, form fields and errors of the screen you are on, so its help fits. Passwords, keys and other secrets are never included. | server |
 | `sidebot_provider` — Assistant provider | Assistant | empty | text, at most 60 characters | Which provider runs the assistant (empty = the first enabled one). | server |
 | `sidebot_model` — Assistant model | Assistant | empty | text, at most 200 characters | Which model runs the assistant (empty = the provider's default). | server |
 | `sidebot_guidance` — Assistant guidance | Assistant > Its instructions | empty | text, at most 4000 characters | Your own instructions, added after the fixed safety rules (empty = the default guidance). | server |

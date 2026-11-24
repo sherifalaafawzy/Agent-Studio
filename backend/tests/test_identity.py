@@ -399,7 +399,7 @@ def test_api(client, state):
     at, _ = idn.mint_local(expl, "agent-studio")
     g = "urn:ietf:params:oauth:grant-type:token-exchange"
     r = client.post("/api/identity/token", json={"grant_type": g, "subject_token": st, "actor_token": at, "audience": "agent:explorer", "scope": "files:read"})
-    assert r.status_code == 200 and r.json()["token_type"] == "Bearer" and r.json()["scope"] == "files:read" and r.json()["expires_in"] == 120
+    assert r.status_code == 200 and r.json()["token_type"] == "Bearer" and r.json()["scope"] == "files:read" and 119 <= r.json()["expires_in"] <= 120   # capped by the subject token, so a clock-second tick between mint and exchange gives 119
     assert client.post("/api/identity/token", json={"grant_type": "password"}).status_code == 400
     assert client.post("/api/identity/token", json={"grant_type": g, "subject_token": st}).status_code == 400
     bad = client.post("/api/identity/token", json={"grant_type": g, "subject_token": st, "actor_token": at, "audience": ""})

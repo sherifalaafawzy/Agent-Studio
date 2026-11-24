@@ -36,7 +36,7 @@ export function XAxis({ ticks, x, y0 = M.t, y1, fmt = fmtNum }: { ticks: number[
 
 /** The legend under a chart: shown for two or more series, so identity never rests on colour alone. */
 export function LegendRow({ items }: { items: Legend[] }) {
-  return items.length > 1 ? <span className="chart-legend">{items.map((l) => <span key={l.name}><i className="chart-swatch" style={{ background: l.color }} />{l.name}</span>)}</span> : null;
+  return items.length > 1 ? <span className="chart-legend">{items.map((l) => <span key={l.name}><i className="chart-swatch" suppressHydrationWarning style={{ background: l.color }} />{l.name}</span>)}</span> : null;
 }
 
 type Tip = { y: number; lines: string[] };

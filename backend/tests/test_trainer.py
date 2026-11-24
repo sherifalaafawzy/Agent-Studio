@@ -65,7 +65,8 @@ def trainer(**kw) -> T.Trainer:
 
 def install(t: T.Trainer, fw="pytorch", **kw):
     t.start_install(fw, kw.pop("accepted", True), **kw)
-    t.thread.join(10)
+    t.thread.join(30)
+    assert not t.thread.is_alive(), "the install thread did not finish (a timeout here used to be ignored and surfaced as a confusing assertion later)"
 
 
 def mark_ready(fw: str) -> None:

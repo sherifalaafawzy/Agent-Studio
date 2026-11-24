@@ -21,6 +21,7 @@ import { ArtifactList, KeepContext, ReplyContext, StatePanel, type RunState } fr
 import type { Artifact } from "@/lib/artifacts";
 import { CanvasContext, type OpenCanvas } from "@/components/rich/BlockActions";
 import { DEFAULT_WIDTH, MAX_WIDTH, MIN_WIDTH, type Canvas } from "@/lib/canvas";
+import { usePageContext } from "@/lib/pagectx";
 
 const CanvasPanel = lazy(() => import("@/components/canvas/CanvasPanel"));   // the editor is only loaded when a canvas is opened
 
@@ -112,6 +113,7 @@ function ChatPage() {
   const [selLane, setSelLane] = useState("");
   const [showPanel, setShowPanel] = useState(false);
   const [canvasId, setCanvasId] = useState("");                       // the canvas open beside the chat ("" = none)
+  usePageContext("chat", () => ({ agent: agent || "plain chat", chatId: session ?? null, canvasOpen: !!canvasId }));
   const [canvasTick, setCanvasTick] = useState(0);                    // bumped when an agent changes it, so the panel reloads
   const [pane, setPane] = useState<"chat" | "canvas">("chat");        // on a phone only one of the two shows at a time
   const [canvasW, setCanvasW] = useState(() => { try { return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(localStorage.getItem("canvas_w")) || DEFAULT_WIDTH)); } catch { return DEFAULT_WIDTH; } });

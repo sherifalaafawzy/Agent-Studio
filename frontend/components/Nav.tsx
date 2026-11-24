@@ -3,14 +3,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { IAgents, IBook, IChat, ICoin, IGear, IGrid, IHelp, ISetup, IKnowledge, IMonitor, IMoon, IPlug, IPlus, IPulse, IServer, ISide, ISun, ITimeline, IX, Spark, IBrain, IShield, ICatalog, ILock, IFlask, IArchive, IFlow, IApp, IAtom } from "./Icons";
+import { IAgents, IBook, IChat, ICoin, IGear, IGrid, IHelp, ISetup, IKnowledge, IMonitor, IMoon, IPlug, IPlus, IPulse, IServer, ISide, ISun, ITimeline, IX, Spark, IBrain, IShield, ICatalog, ILock, IFlask, IMic, IArchive, IFlow, IApp, IAtom } from "./Icons";
 import { startTour } from "./TourRunner";
 
 type NavItem = [string, string, (p: { size?: number }) => React.ReactElement];
 const groups: [string, NavItem[]][] = [
-  ["Work", [["/dashboard/", "Dashboard", IGrid], ["/", "Chat", IChat], ["/runs/", "Runs", ITimeline], ["/artifacts/", "Artifacts", IArchive], ["/external/", "External agents", IPlug]]],
+  ["Work", [["/dashboard/", "Dashboard", IGrid], ["/", "Chat", IChat], ["/live/", "Live", IMic], ["/runs/", "Runs", ITimeline], ["/artifacts/", "Artifacts", IArchive], ["/external/", "External agents", IPlug]]],
   ["Build", [["/agents/", "Agent Studio", IAgents], ["/workflows/", "Workflows", IFlow], ["/apps/", "Apps", IApp], ["/science/", "Science", IAtom], ["/skills/", "Skills", IBook], ["/knowledge/", "Knowledge", IKnowledge], ["/mcp/", "MCP servers", IServer], ["/catalog/", "Catalog", ICatalog], ["/memory/", "Memory", IBrain]]],
-  ["Observe", [["/telemetry/", "Telemetry", IPulse], ["/billing/", "Billing", ICoin], ["/security/", "Security", ILock], ["/evals/", "Evaluations", IFlask], ["/discovery/", "AI-BOM", IShield], ["/settings/", "Settings", IGear]]],
+  ["Observe", [["/telemetry/", "Telemetry", IPulse], ["/billing/", "Billing", ICoin], ["/security/", "Security", ILock], ["/evals/", "Evaluations", IFlask], ["/discovery/", "AI-BOM", IShield], ["/settings/", "Settings", IGear], ["/docs/", "Docs", IBook]]],
 ];
 const items: NavItem[] = groups.flatMap(([, list]) => list);
 
@@ -63,6 +63,7 @@ function Palette({ rows }: { rows: Row[] }) {
   const all = [{ label: "New chat", href: `/?new=${Date.now()}`, k: "action" },
     ...items.map(([href, label]) => ({ label, href, k: "page" })),
     { label: "Set-up guide", href: "/setup/", k: "help" },
+    { label: "Documentation (side panel: Ctrl+/)", href: "/docs/", k: "help" },
     ...rows.slice(0, 30).map((r) => ({ label: r.title, href: `/?s=${r.id}`, k: r.running ? "running chat" : "chat" }))];
   const hits = all.filter((x) => !q || x.label.toLowerCase().includes(q.toLowerCase())).slice(0, 16);
   const go = (href: string) => { setOpen(false); router.push(href); };
@@ -157,6 +158,7 @@ function SidebarInner() {
         <span className={`dot ${online ? "ok" : online === false ? "bad" : ""}`} title={online ? "backend connected" : "backend offline"} />
         <span className="hide-min grow">{online ? "Connected" : online === false ? "Offline" : "…"} <kbd title="Command palette">Ctrl K</kbd></span>
         <Link href="/setup/" className="icon-btn" title="Set-up guide: install Ollama, add a model, install coding agents" aria-label="Set-up guide"><ISetup size={16} /></Link>
+        <button className="icon-btn" onClick={() => window.dispatchEvent(new CustomEvent("as:docs", { detail: {} }))} title="Documentation beside this screen (Ctrl+/)" aria-label="Open the documentation beside this screen"><IBook size={16} /></button>
         <button className="icon-btn" onClick={() => startTour("welcome")} title="Take the guided tour" aria-label="Take the guided tour"><IHelp size={16} /></button>
         <button className="icon-btn" onClick={cycleTheme} title={`Theme: ${theme}`}>{theme === "light" ? <ISun size={16} /> : theme === "dark" ? <IMoon size={16} /> : <IMonitor size={16} />}</button>
       </div>
@@ -171,5 +173,5 @@ export default function Nav() {
 /** Normal pages get a centered reading column; the chat page is full-bleed. */
 export function Frame({ children }: { children: React.ReactNode }) {
   const path = usePathname() ?? "/";
-  return path === "/" || path.startsWith("/runs") ? <>{children}</> : <div className="page">{children}</div>;
+  return path === "/" || path.startsWith("/runs") || path.startsWith("/docs") ? <>{children}</> : <div className="page">{children}</div>;
 }

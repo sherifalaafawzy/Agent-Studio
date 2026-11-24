@@ -194,7 +194,7 @@ function waterfall(spec: Spec): Built {
     svg: (<>
       <YAxis ticks={sc.ticks} y={y} /><line className="viz-axis" x1={M.l} x2={W - M.r} y1={y(0)} y2={y(0)} />
       {bars.map((b, i) => { const cx = M.l + g * (i + 0.5), top = Math.min(y(b.from), y(b.to)), hh = Math.max(1, Math.abs(y(b.to) - y(b.from))); return (
-        <g key={i}><rect x={cx - bw / 2} y={top} width={bw} height={hh} rx={2} style={{ fill: col(b) }}><title>{`${b.label}: ${b.total ? "total " : b.value >= 0 ? "+" : ""}${fmtNum(b.total ? b.to : b.value)}${unit} (running ${fmtNum(b.to)})`}</title></rect>
+        <g key={i}><rect x={cx - bw / 2} y={top} width={bw} height={hh} rx={2} suppressHydrationWarning style={{ fill: col(b) }}><title>{`${b.label}: ${b.total ? "total " : b.value >= 0 ? "+" : ""}${fmtNum(b.total ? b.to : b.value)}${unit} (running ${fmtNum(b.to)})`}</title></rect>
           <text className="chart-tick" x={cx} y={top - 3} textAnchor="middle">{b.total ? fmtNum(b.to) : `${b.value >= 0 ? "+" : "−"}${fmtNum(Math.abs(b.value))}`}</text>
           <text className="chart-tick" x={cx} y={H - 10} textAnchor="middle">{short(b.label, 10)}</text></g>); })}
     </>),
@@ -245,7 +245,7 @@ function histogram(spec: Spec): Built {
     summary: `${ttl(spec, "Histogram")}: ${vals.length} values from ${fmtNum(lo)} to ${fmtNum(hi)}${unit} in ${bins} bins; the tallest bin holds ${Math.max(...counts)}`,
     svg: (<>
       <YAxis ticks={sc.ticks} y={y} /><line className="viz-axis" x1={M.l} x2={W - M.r} y1={y(0)} y2={y(0)} />
-      {counts.map((c, i) => <rect key={i} x={x(edge(i)) + 0.75} y={y(c)} width={Math.max(1, x(edge(i + 1)) - x(edge(i)) - 1.5)} height={Math.max(0, y(0) - y(c))} rx={2} style={{ fill: seriesColor(0) }}><title>{`${fmtNum(edge(i))} to ${fmtNum(edge(i + 1))}${unit}: ${c}`}</title></rect>)}
+      {counts.map((c, i) => <rect key={i} x={x(edge(i)) + 0.75} y={y(c)} width={Math.max(1, x(edge(i + 1)) - x(edge(i)) - 1.5)} height={Math.max(0, y(0) - y(c))} rx={2} suppressHydrationWarning style={{ fill: seriesColor(0) }}><title>{`${fmtNum(edge(i))} to ${fmtNum(edge(i + 1))}${unit}: ${c}`}</title></rect>)}
       {ticks.map((t, i) => <text key={i} className="chart-tick" x={x(t)} y={H - 10} textAnchor="middle">{fmtNum(t)}</text>)}
     </>),
   };
@@ -313,7 +313,7 @@ function bullet(spec: Spec): Built {
       {rows.map((r, i) => { const cy = M.t + band * (i + 0.5), bands = [...r.ranges].reverse(); return (
         <g key={i}><text className="chart-tick" x={L - 6} y={cy + 3} textAnchor="end">{short(r.label, 20)}</text>
           {bands.map((rg, j) => <rect key={j} x={x(0)} y={cy - 14} width={Math.max(0, x(rg) - x(0))} height={28} style={{ fill: "var(--viz-other)" }} fillOpacity={0.12 + 0.12 * (bands.length - j)} />)}
-          <rect x={x(0)} y={cy - 5} width={Math.max(1, x(r.value) - x(0))} height={10} rx={2} style={{ fill: seriesColor(0) }}><title>{`${r.label}: ${fmtNum(r.value)}`}</title></rect>
+          <rect x={x(0)} y={cy - 5} width={Math.max(1, x(r.value) - x(0))} height={10} rx={2} suppressHydrationWarning style={{ fill: seriesColor(0) }}><title>{`${r.label}: ${fmtNum(r.value)}`}</title></rect>
           {finite(r.target) && <line x1={x(r.target)} x2={x(r.target)} y1={cy - 12} y2={cy + 12} strokeWidth={3} style={{ stroke: "var(--fg)" }}><title>{`target ${fmtNum(r.target)}`}</title></line>}</g>); })}
     </>),
   };
@@ -336,12 +336,12 @@ function heatmap(spec: Spec): Built {
   return {
     h, table: mkTable(ttl(spec, "Heatmap"), ["", ...xs], ys.map((yy, r) => [yy, ...grid[r]])),
     summary: `${ttl(spec, "Heatmap")}: ${ys.length} rows by ${xs.length} columns, values from ${fmtNum(lo)} to ${fmtNum(hi)}`,
-    foot: <span className="chart-ramp" aria-hidden="true"><span>{fmtNum(lo)}</span><i style={{ background: `linear-gradient(90deg, ${seqColor(0)}, ${seqColor(1)})` }} /><span>{fmtNum(hi)}</span></span>,
+    foot: <span className="chart-ramp" aria-hidden="true"><span>{fmtNum(lo)}</span><i suppressHydrationWarning style={{ background: `linear-gradient(90deg, ${seqColor(0)}, ${seqColor(1)})` }} /><span>{fmtNum(hi)}</span></span>,
     svg: (<>
       {xs.map((l, c) => <text key={`x${c}`} className="chart-tick" x={L + cw * (c + 0.5)} y={M.t + ys.length * ch + 14} textAnchor="middle">{short(l, 8)}</text>)}
       {ys.map((l, r) => <text key={`y${r}`} className="chart-tick" x={L - 6} y={M.t + ch * (r + 0.5) + 3} textAnchor="end">{short(l, 16)}</text>)}
       {grid.map((row, r) => row.map((v, c) => v === null ? null : (
-        <g key={`${r}-${c}`}><rect x={L + cw * c + 1} y={M.t + ch * r + 1} width={cw - 2} height={ch - 2} rx={3} style={{ fill: seqColor(0.08 + 0.92 * t(v)) }}><title>{`${ys[r]} · ${xs[c]}: ${fmtNum(v)}`}</title></rect>
+        <g key={`${r}-${c}`}><rect x={L + cw * c + 1} y={M.t + ch * r + 1} width={cw - 2} height={ch - 2} rx={3} suppressHydrationWarning style={{ fill: seqColor(0.08 + 0.92 * t(v)) }}><title>{`${ys[r]} · ${xs[c]}: ${fmtNum(v)}`}</title></rect>
           {labelCells && <text className="chart-tick" x={L + cw * (c + 0.5)} y={M.t + ch * (r + 0.5) + 3} textAnchor="middle" style={{ fill: t(v) > 0.55 ? "#fff" : "var(--fg)" }}>{fmtNum(v)}</text>}</g>)))}
     </>),
   };
@@ -357,11 +357,11 @@ function calendar(spec: Spec): Built {
   for (let w = 0; w < weeks; w++) { const m = new Date(start + w * 7 * DAY).getUTCMonth(); if (m !== lastM) { lastM = m; months.push(<text key={w} className="chart-tick" x={L + w * (cell + 2)} y={M.t + 7 * (cell + 2) + 14}>{new Date(start + w * 7 * DAY).toLocaleString(undefined, { month: "short", timeZone: "UTC" })}</text>); } }
   const cells: Any[] = [];
   for (let i = 0; i < weeks * 7; i++) { const d = by.get(i), w = Math.floor(i / 7), r = i % 7; if (start + i * DAY < first || start + i * DAY > last) continue;
-    cells.push(<rect key={i} x={L + w * (cell + 2)} y={M.t + r * (cell + 2)} width={cell} height={cell} rx={2} style={{ fill: d ? seqColor(0.12 + 0.88 * t(d.v)) : "var(--panel2)" }}><title>{`${new Date(start + i * DAY).toISOString().slice(0, 10)}: ${d ? fmtNum(d.v) : "no data"}`}</title></rect>); }
+    cells.push(<rect key={i} x={L + w * (cell + 2)} y={M.t + r * (cell + 2)} width={cell} height={cell} rx={2} suppressHydrationWarning style={{ fill: d ? seqColor(0.12 + 0.88 * t(d.v)) : "var(--panel2)" }}><title>{`${new Date(start + i * DAY).toISOString().slice(0, 10)}: ${d ? fmtNum(d.v) : "no data"}`}</title></rect>); }
   return {
     h, table: mkTable(ttl(spec, "Calendar"), ["Date", "Value"], days.map((d) => [d.date, d.v])),
     summary: `${ttl(spec, "Calendar chart")}: ${days.length} days with values from ${fmtNum(Math.min(...days.map((d) => d.v)))} to ${fmtNum(hi)}`,
-    foot: <span className="chart-ramp" aria-hidden="true"><span>less</span><i style={{ background: `linear-gradient(90deg, ${seqColor(0.12)}, ${seqColor(1)})` }} /><span>more</span></span>,
+    foot: <span className="chart-ramp" aria-hidden="true"><span>less</span><i suppressHydrationWarning style={{ background: `linear-gradient(90deg, ${seqColor(0.12)}, ${seqColor(1)})` }} /><span>more</span></span>,
     svg: (<>{["Mon", "Wed", "Fri"].map((d, i) => <text key={d} className="chart-tick" x={L - 6} y={M.t + (i * 2 + 1) * (cell + 2) + cell - 2} textAnchor="end">{d}</text>)}{months}{cells}</>),
   };
 }
@@ -381,7 +381,7 @@ function gantt(spec: Spec): Built {
       {tasks.map((t, i) => { const cy = M.t + band * (i + 0.5), c = groups.color(t.group || "Tasks"), w = Math.max(3, x(t.e) - x(t.s)); return (
         <g key={i}><text className="chart-tick" x={L - 6} y={cy + 3} textAnchor="end">{short(t.name, 24)}</text>
           <rect x={x(t.s)} y={cy - 8} width={w} height={16} rx={3} fillOpacity={0.35} style={{ fill: c }}><title>{`${t.name}: ${fmtD(t.s)} to ${fmtD(t.e)}${t.p ? `, ${Math.round(t.p * 100)}% done` : ""}`}</title></rect>
-          {t.p > 0 && <rect x={x(t.s)} y={cy - 8} width={w * t.p} height={16} rx={3} style={{ fill: c }} />}</g>); })}
+          {t.p > 0 && <rect x={x(t.s)} y={cy - 8} width={w * t.p} height={16} rx={3} suppressHydrationWarning style={{ fill: c }} />}</g>); })}
     </>),
   };
 }

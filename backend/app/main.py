@@ -21,6 +21,7 @@ from .telemetry import MAX_BODY, LOOPBACK, SIGNALS, Telemetry
 from .chat import ChatService
 from .chat_job import make_chat_work
 from .agui_api import register as register_agui
+from .live_api import register as register_live
 from .artifacts.api import register as register_artifacts
 from .artifacts.service import ArtifactService
 from .apps.api import register as register_apps
@@ -62,6 +63,7 @@ from .easy.api import register as register_easy
 from .frameworks.api import register as register_frameworks
 from .apiaccess.a2a import A2AMiddleware, RemoteAgents, register as register_a2a
 from .apiaccess.api import register as register_access
+from .claude_code.api import register as register_claude_code
 from .apiaccess.keys import ApiKeys
 from .datasources.api import register as register_data
 from .datasources.service import DataService
@@ -267,6 +269,7 @@ class AgentIn(BaseModel):
     runtime: str | None = None                      # local | docker | agentcore | vertex | foundry (where it runs; see /api/runtimes)
     sandbox: str | None = None                      # "" = the default sandbox | docker-container | docker-microvm
     data: list[str] | None = None                   # data source ids this agent may read; ["*"] = all
+    live: dict | None = None                        # Live profile {enabled, engine, mode, voice, language, avatar_name, agent_turns, budget_usd} (see live_profile.py)
     agui: dict | None = None                        # {components, endpoint}: rich components in its answers / the AG-UI stream endpoint (both on by default)
 
 
@@ -412,6 +415,7 @@ class SettingsPatch(BaseModel):
     agent_spawning_enabled: bool | None = None
     max_spawns_per_turn: int | None = Field(default=None, ge=1, le=20)
     sidebot_enabled: bool | None = None
+    sidebot_page_context: bool | None = None       # may the assistant read what is on the screen (never secrets)?
     sidebot_provider: str | None = Field(default=None, max_length=60)            # "" = the first enabled provider
     sidebot_model: str | None = Field(default=None, max_length=200)               # "" = that provider's default model
     sidebot_guidance: str | None = Field(default=None, max_length=4000)     # "" = the default guidance; added AFTER the fixed safety rules
@@ -1107,6 +1111,8 @@ def create_app(state: State | None = None) -> FastAPI:
             s.db.set_setting("agents_can_call_external", "1" if body.agents_can_call_external else "0")
         if body.sidebot_enabled is not None:
             s.db.set_setting("sidebot_enabled", "1" if body.sidebot_enabled else "0")
+        if body.sidebot_page_context is not None:
+            s.db.set_setting("sidebot_page_context", "1" if body.sidebot_page_context else "0")
         if body.sidebot_provider is not None:
             if body.sidebot_provider and s.providers.get(body.sidebot_provider) is None:
                 raise HTTPException(422, f"unknown provider '{body.sidebot_provider}'")
@@ -1137,6 +1143,7 @@ def create_app(state: State | None = None) -> FastAPI:
         return dict(sidebot_guidance=guidance, sidebot_tools=[dict(name=n, description=d, enabled=n not in off) for n, d in sb.SIDEBOT_TOOLS.items()],
                     sidebot_prompt=dict(core=sb.CORE_RULES, default_guidance=sb.DEFAULT_GUIDANCE, effective=sb.compose_prompt(guidance), max_guidance=sb.GUIDANCE_MAX),
                     sidebot_enabled=s.db.get_setting("sidebot_enabled", "1") == "1",
+                    sidebot_page_context=s.db.get_setting("sidebot_page_context", "1") == "1",
                     sidebot_provider=s.db.get_setting("sidebot_provider", "") or "",
                     sidebot_model=s.db.get_setting("sidebot_model", "") or "",
                     sidebot_resolved={"provider": pid, "model": model})
@@ -1487,12 +1494,14 @@ def create_app(state: State | None = None) -> FastAPI:
     register_canvas(app)      # /api/canvas/*: the shared document (versions, proposals, live updates)
     register_uikit(app)       # /api/uikit/*: rich component settings, catalog and validator
     register_agui(app)        # /api/agui: the chat run as an AG-UI event stream (any AG-UI client can render it)
+    register_live(app, ALLOWED_ORIGINS)   # /api/live/*: local voice install + settings + self-test; /api/live/ws is the live conversation
     register_identity(app)    # /api/identity/*: agent identities, tokens, delegation (RFC 8693), identity providers
     register_memory(app)    # /api/memories/*: memory kinds, scopes, backends, review queue, notes, export/import
     register_settings(app)  # /api/settings/registry|export|import|reset|history: every setting described, backed up, reset
     trainer_mod.register(app)   # /api/trainer/*: install ML frameworks, train jobs
     register_workflows(app)     # /api/workflows/*: drag-and-drop workflow builder (graphs, runs, wizard, imported APIs)
     register_harness(app)       # /api/harness/*: permission mode, loop guard, hooks, web tools, checkpoints (rewind)
+    register_claude_code(app)   # /api/agents/{id}/claude-code/*: deploy an agent to Claude Code; /agent-mcp/{id}: a live agent as an MCP server
     register_access(app)        # /v1/*: OpenAI-compatible API for agents (keys, scopes, rate limits); /api/access/*: its settings
     register_a2a(app)           # /api/access/remotes/*: other A2A agents our agents can call
     register_data(app)          # /api/data/*: data sources (read-only), data products, who can see what, audit

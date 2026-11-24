@@ -54,6 +54,12 @@ def free_port(preferred: int) -> int:
                 return p
             except OSError:
                 continue
+    with socket.socket() as s:                      # Windows reserves whole 100-port blocks (Hyper-V / WSL), so a whole stretch can be unusable: let the OS pick
+        try:
+            s.bind(("127.0.0.1", 0))
+            return s.getsockname()[1]
+        except OSError:
+            pass
     raise AppError("no free port was found for the app")
 
 

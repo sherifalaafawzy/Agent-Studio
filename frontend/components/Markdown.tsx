@@ -1,12 +1,16 @@
 "use client";
 // Small, safe Markdown renderer: builds React elements only (never injects HTML), so model output can't run script.
 // Supports headings, paragraphs, fenced code (with copy), lists, quotes, rules, tables, inline code / bold / italic / links.
-import { Fragment, useContext, useState } from "react";
+import { createContext, Fragment, useContext, useState } from "react";
 import { ICheck, ICopy } from "./Icons";
 import { PlainRichContext } from "./rich/PlainContext";
 import { isRichLang, RichFence, SafeImage } from "./RichBlocks";
 import { CanvasContext } from "./rich/BlockActions";
 import { canvasKindFor } from "@/lib/canvas";
+import { docHref } from "@/lib/docs/links";
+
+/** The documentation pages set this so their own links (doc:slug#anchor, app:/page/) open inside the app; in chat answers it is null and only web links are live. */
+export const DocNavContext = createContext<((href: string) => void) | null>(null);
 
 function CodeBlock({ lang, code }: { lang: string; code: string }) {
   const [ok, setOk] = useState(false);
@@ -32,7 +36,9 @@ const TEX: [RegExp, string][] = [[/\\times/g, "×"], [/\\cdot/g, "·"], [/\\div/
   [/\^\{?2\}?/g, "²"], [/\^\{?3\}?/g, "³"], [/\\[,;!]/g, " "], [/\\text\{([^}]*)\}/g, "$1"], [/[{}]/g, ""]];
 const tex = (s: string) => TEX.reduce((acc, [re, to]) => acc.replace(re, to), s);
 
-function inline(text: string, key = 0): React.ReactNode[] {
+const INTERNAL = /^(doc:[\w-]+(#[\w-]+)?|app:\/[^\s]*|#[\w-]+)$/;
+
+function inline(text: string, key = 0, nav: ((href: string) => void) | null = null): React.ReactNode[] {
   const out: React.ReactNode[] = [];
   // order matters: code first (its content is literal), then links, bold, italic
   // underscores only emphasise at word boundaries, so snake_case identifiers stay intact
@@ -45,9 +51,10 @@ function inline(text: string, key = 0): React.ReactNode[] {
     if (m[14]) out.push(<SafeImage key={k} alt={m[15]} url={m[16]} />);
     else if (m[1]) out.push(<code key={k}>{m[1].slice(1, -1)}</code>);
     else if (m[2] !== undefined) out.push(<span key={k} className="math">{tex(m[2])}</span>);
-    else if (m[3]) out.push(SAFE_URL.test(m[5]) ? <a key={k} href={m[5]} target="_blank" rel="noreferrer noopener">{inline(m[4], i)}</a> : <Fragment key={k}>{m[4]}</Fragment>);
-    else if (m[6] || m[8]) out.push(<strong key={k}>{inline(m[7] ?? m[9], i)}</strong>);
-    else if (m[10] || m[12]) out.push(<em key={k}>{inline(m[11] ?? m[13], i)}</em>);
+    else if (m[3] && nav && INTERNAL.test(m[5])) { const to = m[5]; out.push(<a key={k} href={docHref(to)} data-internal="1" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); nav(to); }}>{inline(m[4], i, nav)}</a>); }
+    else if (m[3]) out.push(SAFE_URL.test(m[5]) ? <a key={k} href={m[5]} target="_blank" rel="noreferrer noopener">{inline(m[4], i, nav)}</a> : <Fragment key={k}>{m[4]}</Fragment>);
+    else if (m[6] || m[8]) out.push(<strong key={k}>{inline(m[7] ?? m[9], i, nav)}</strong>);
+    else if (m[10] || m[12]) out.push(<em key={k}>{inline(m[11] ?? m[13], i, nav)}</em>);
     last = re.lastIndex;
   }
   if (last < text.length) out.push(text.slice(last));
@@ -58,6 +65,8 @@ const isTableSep = (l: string) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?
 const cells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 
 export default function Markdown({ text }: { text: string }) {
+  const nav = useContext(DocNavContext);
+  const inl = (t: string, k = 0) => inline(t, k, nav);
   const plain = useContext(PlainRichContext);                 // AG-UI components are off for this agent: a rich fence is just code
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const blocks: React.ReactNode[] = [];
@@ -75,14 +84,14 @@ export default function Markdown({ text }: { text: string }) {
     }
     if (!line.trim()) { i++; continue; }
     const h = line.match(/^(#{1,4})\s+(.*)$/);
-    if (h) { const T = (`h${h[1].length}`) as "h1"; blocks.push(<T key={k++}>{inline(h[2])}</T>); i++; continue; }
+    if (h) { const T = (`h${h[1].length}`) as "h1"; blocks.push(<T key={k++}>{inl(h[2])}</T>); i++; continue; }
     if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) { blocks.push(<hr key={k++} />); i++; continue; }
     if (line.includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1])) {
       const head = cells(line); i += 2;
       const rows: string[][] = [];
       while (i < lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(cells(lines[i++]));
-      blocks.push(<table key={k++}><thead><tr>{head.map((c, j) => <th key={j}>{inline(c)}</th>)}</tr></thead>
-        <tbody>{rows.map((r, a) => <tr key={a}>{r.map((c, j) => <td key={j}>{inline(c)}</td>)}</tr>)}</tbody></table>);
+      blocks.push(<table key={k++}><thead><tr>{head.map((c, j) => <th key={j}>{inl(c)}</th>)}</tr></thead>
+        <tbody>{rows.map((r, a) => <tr key={a}>{r.map((c, j) => <td key={j}>{inl(c)}</td>)}</tr>)}</tbody></table>);
       continue;
     }
     if (/^\s*>/.test(line)) {
@@ -102,13 +111,13 @@ export default function Markdown({ text }: { text: string }) {
         else break;
       }
       const L = ordered ? "ol" : "ul";
-      blocks.push(<L key={k++}>{items.map((t, j) => <li key={j}>{t.split("\n").map((s, x) => <Fragment key={x}>{x > 0 && <br />}{inline(s)}</Fragment>)}</li>)}</L>);
+      blocks.push(<L key={k++}>{items.map((t, j) => <li key={j}>{t.split("\n").map((s, x) => <Fragment key={x}>{x > 0 && <br />}{inl(s)}</Fragment>)}</li>)}</L>);
       continue;
     }
     const para: string[] = [];
     while (i < lines.length && lines[i].trim() && !/^(\s*(```|~~~)|#{1,4}\s|\s*>|\s*([-*+]|\d+[.)])\s)/.test(lines[i])) para.push(lines[i++]);
     if (!para.length) { para.push(lines[i++]); }
-    blocks.push(<p key={k++}>{para.map((s, x) => <Fragment key={x}>{x > 0 && <br />}{inline(s, x)}</Fragment>)}</p>);
+    blocks.push(<p key={k++}>{para.map((s, x) => <Fragment key={x}>{x > 0 && <br />}{inl(s, x)}</Fragment>)}</p>);
   }
   return <div className="md">{blocks}</div>;
 }

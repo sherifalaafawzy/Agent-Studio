@@ -10,6 +10,7 @@ import ServerList, { type AccessFilter } from "@/components/mcp/ServerList";
 import ServerDetail from "@/components/mcp/ServerDetail";
 import AddServerFlow from "@/components/mcp/AddServerFlow";
 import { GROUPS, access, buildRows, type Filter, type Issue, type Mcp, type Row } from "@/components/mcp/shared";
+import { usePageContext } from "@/lib/pagectx";
 
 const DOMAIN_LABEL: Record<string, string> = { accounting: "Accounting", sales: "Sales", marketing: "Marketing", manufacturing: "Manufacturing", engineering: "Engineering", data: "Data", "machine-learning": "Machine learning", "deep-learning": "Deep learning" };
 const isPhone = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 820px)").matches;
@@ -22,6 +23,7 @@ function Mcps() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [sel, setSel] = useState<string | null>(wanted);
   const [view, setView] = useState<"list" | "detail">(wanted ? "detail" : "list");
+  usePageContext("mcp", () => ({ selectedServer: sel, screen: view, filter }));
   const [filter, setFilter] = useState<Filter>("all");
   const [acc, setAcc] = useState<AccessFilter>("any");
   const [domain, setDomain] = useState("");

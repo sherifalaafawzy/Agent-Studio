@@ -14,6 +14,9 @@ vi.mock("@xyflow/react", () => ({
       <button onClick={() => onNodesChange([{ type: "remove", id: nodes[0].id }])}>remove first</button>
       <button onClick={() => onNodesChange([{ type: "remove", id: nodes[nodes.length - 1].id }])}>remove last</button>
       <button onClick={() => onNodesChange([{ type: "dimensions", id: nodes[0].id }])}>measure</button>
+      <button onClick={() => onNodesChange([{ type: "dimensions", id: nodes[0].id, dimensions: { width: 210, height: 90 } }])}>measure sized</button>
+      <button onClick={() => onNodesChange([{ type: "dimensions", id: nodes[0].id, dimensions: { width: 230, height: 90 } }])}>measure resized</button>
+      <span data-testid="measured">{nodes.map((n: any) => `${n.id}:${n.measured ? `${n.measured.width}x${n.measured.height}` : "-"}/${n.initialWidth}x${n.initialHeight}`).join(",")}</span>
       <button onClick={() => onConnect({ source: nodes[0].id, target: nodes[nodes.length - 1].id, sourceHandle: "out" })}>connect</button>
       <button onClick={() => onConnect({ source: nodes[1].id, target: nodes[2].id, sourceHandle: "true" })}>connect port</button>
       <button onClick={() => onConnect({ source: nodes[0].id, target: nodes[0].id })}>connect self</button>
@@ -173,6 +176,18 @@ describe("Workflow editor", () => {
     expect(screen.getByTestId("edges").textContent).not.toContain("start>agent1");
     await user.click(screen.getByText("remove last"));
     expect(screen.getByTestId("edges").textContent).not.toContain("result");
+  });
+
+  it("gives the minimap the measured size of each box (and a starting size before the first measurement)", async () => {
+    setup();
+    await load();
+    expect(screen.getByTestId("measured").textContent).toContain("start:-/220x72");        // not measured yet: a starting size so the minimap draws something
+    await userEvent.setup().click(screen.getByText("measure sized"));
+    expect(screen.getByTestId("measured").textContent).toContain("start:210x90/220x72");
+    await userEvent.setup().click(screen.getByText("measure sized"));                       // the same size again changes nothing
+    expect(screen.getByTestId("measured").textContent).toContain("start:210x90/");
+    await userEvent.setup().click(screen.getByText("measure resized"));
+    expect(screen.getByTestId("measured").textContent).toContain("start:230x90/");
   });
 
   it("palette: search, add a box after the selected one (following the right port), add an API endpoint, drag and drop, keyboard", async () => {

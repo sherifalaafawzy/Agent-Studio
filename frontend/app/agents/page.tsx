@@ -8,8 +8,11 @@ import { MemoryPicker, type MemCfg } from "@/components/MemoryUI";
 import AgentSecurity, { type Identity } from "@/components/AgentSecurity";
 import AgentAccess from "@/components/AgentAccess";
 import AgentAgui, { aguiBadge } from "@/components/AgentAgui";
+import AgentLive, { liveBadge } from "@/components/AgentLive";
 import AgentRuntime from "@/components/AgentRuntime";
+import DeployClaude from "@/components/DeployClaude";
 import { A2AConnect, AgentCreateChoice, RemotePanel, type Remote } from "@/components/RemoteAgents";
+import { usePageContext } from "@/lib/pagectx";
 
 type Agent = {
   id: string; name: string; description: string; instruction: string; provider: string | null; tier: string; model: string | null;
@@ -17,6 +20,7 @@ type Agent = {
   acp_agents: string[]; acp_policy: string; rag?: string[]; memory?: MemCfg; guardrails?: string[]; identity?: Identity;
   framework?: string; api_access?: boolean; a2a?: boolean; runtime?: string; sandbox?: string; data?: string[];
   agui?: { components: boolean; endpoint: boolean };
+  live?: Partial<import("@/lib/live").LiveProfile>;
 };
 type Tool = { name: string; description: string; read_only: boolean };
 type Mcp = { id: string; label: string; ready: boolean; enabled: boolean; status: string };
@@ -59,12 +63,14 @@ export default function AgentsPage() {
   const [sel, setSel] = useState<string>("engineer");
   const [f, setF] = useState<Agent>(blank);
   const [isNew, setIsNew] = useState(false);
+  usePageContext("agents", () => ({ editing: isNew ? "a new agent" : { id: sel, name: f.name, tier: f.tier }, wizardOpen: wizard, chooserOpen: choose }));
   const [msg, setMsg] = useState("");
   const [wizard, setWizard] = useState(false);                     // the guided creator is the default way to make a new agent
   const [choose, setChoose] = useState(false);                     // "+ New" first asks: wizard, or connect an A2A agent?
   const [a2a, setA2a] = useState(false);                           // the connect-an-A2A-agent form
   const [remotes, setRemotes] = useState<Remote[]>([]);            // remote A2A agents (they run elsewhere)
   const [selRemote, setSelRemote] = useState("");
+  const [deploy, setDeploy] = useState<{ id: string; name: string } | null>(null);   // the "Deploy to Claude Code" dialog
   const [scores, setScores] = useState<Record<string, Score>>({});      // each agent's own security score (a badge that opens its scorecard)
   const pending = useRef<{ id: string; hash: string } | null>(null);     // /agents/?agent=<id>#<section> from a scorecard's "fix" link
 
@@ -119,7 +125,10 @@ export default function AgentsPage() {
                 {a.name} <span className={`pill ${a.tier === "pro" ? "ok" : ""}`}>{a.tier}</span>
                 {a.sub_agents.length > 0 && <span className="mut small"> · {a.sub_agents.length} sub</span>}
                 {a.can_spawn && <span className="mut small" title="can create its own sub-agents"> · ⚙</span>}
+                {liveBadge(a) && <span className={`pill ${liveBadge(a) === "Live off" ? "" : "ok"}`} data-testid="live-badge" title="This agent's Live profile (see its Live section)">{liveBadge(a)}</span>}
                 {aguiBadge(a) && <span className="pill" data-testid="agui-badge" title="AG-UI is partly or fully switched off for this agent (see its AG-UI section)">{aguiBadge(a)}</span>}
+                {!isNew && !selRemote && sel === a.id && <div><button className="ghost small" data-testid="deploy-claude-list" aria-label={`Deploy ${a.name} to Claude Code`}
+                  onClick={(e) => { e.stopPropagation(); setDeploy({ id: a.id, name: a.name }); }}>Deploy to Claude Code…</button></div>}
                 {scores[a.id] && <a className={`pill ag-score ${SCORE_TONE[scores[a.id].band] ?? ""}`} href={`/security/?agent=${a.id}`} onClick={(e) => e.stopPropagation()}
                   title="Security score: open this agent's scorecard" aria-label={`Security score ${scores[a.id].percent} percent: open the scorecard of ${a.name}`}>{scores[a.id].percent}%</a>}
               </div>
@@ -250,16 +259,19 @@ export default function AgentsPage() {
 
           <AgentAccess agent={f} onChange={(patch) => setF((s) => ({ ...s, ...patch }))} />
           <AgentAgui agent={f} isNew={isNew} onChange={(agui) => setF((s) => ({ ...s, agui }))} />
+          <AgentLive agent={f} onChange={(live) => setF((s) => ({ ...s, live }))} />
           <AgentRuntime agent={f} isNew={isNew} onChange={(patch) => setF((s) => ({ ...s, ...patch }))} />
 
           <div className="row" style={{ marginTop: 14 }}>
             <button className="pri" onClick={save}>{isNew ? "Create" : "Save"}</button>
+            {!isNew && <button onClick={() => setDeploy({ id: f.id, name: f.name || f.id })} title="Copy this agent into Claude Code, or let Claude Code call it live">Deploy to Claude Code…</button>}
             {!isNew && !f.builtin && <button onClick={del}>Delete</button>}
             <span className="small mut">{msg}</span>
           </div>
         </div>
         )}
       </div>
+      {deploy && <DeployClaude agent={deploy} onClose={() => setDeploy(null)} />}
     </div>
   );
 }

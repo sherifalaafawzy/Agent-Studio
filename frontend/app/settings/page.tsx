@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePageContext } from "@/lib/pagectx";
 import { api, Provider } from "@/lib/api";
 import ModelSelect, { forgetModels } from "@/components/ModelSelect";
 import { VoiceCard } from "@/components/Voice";
+import LiveSettingsCard from "@/components/LiveSettings";
 import FolderPicker from "@/components/FolderPicker";
 import { toast } from "@/components/Nav";
 import OllamaPull from "@/components/OllamaPull";
@@ -283,6 +285,10 @@ function AssistantCard({ s, ps, onSave }: { s: any; ps: Provider[]; onSave: (pat
     try { await onSave({ sidebot_enabled: v }); setMsg(v ? "Assistant is on" : "Assistant is off"); }
     catch (e) { setMsg("⚠ " + (e as Error).message); }
   };
+  const toggleScreen = async (v: boolean) => {
+    try { await onSave({ sidebot_page_context: v }); setMsg(v ? "The assistant can see what is on screen" : "The assistant can no longer see what is on screen"); }
+    catch (e) { setMsg("⚠ " + (e as Error).message); }
+  };
   const prompt = s.sidebot_prompt ?? { core: "", default_guidance: "", effective: "", max_guidance: 4000 };
   const [guide, setGuide] = useState<string>(s.sidebot_guidance || prompt.default_guidance);
   useEffect(() => { setGuide(s.sidebot_guidance || prompt.default_guidance); }, [s.sidebot_guidance, prompt.default_guidance]);
@@ -301,8 +307,9 @@ function AssistantCard({ s, ps, onSave }: { s: any; ps: Provider[]; onSave: (pat
   return (
     <div className="card">
       <div className="card-head"><b>Assistant</b><InfoTip id="assistant" /><span className={`pill ${s.sidebot_enabled ? "ok" : ""}`}>{s.sidebot_enabled ? "on" : "off"}</span></div>
-      <p className="card-desc">The side agent. It answers questions about the app, opens pages for you, starts guided tours, and highlights things on screen. It runs on the model you choose here, under the same spend caps as chat.</p>
+      <p className="card-desc">The side agent. It answers questions about the app, opens pages and the documentation for you, starts guided tours, highlights things on screen and, only when you approve a before-and-after card, fills in form fields. It runs on the model you choose here, under the same spend caps as chat.</p>
       <Toggle checked={!!s.sidebot_enabled} onChange={toggle} label="Assistant on" hint="Off hides the assistant and refuses its requests." />
+      <Toggle checked={s.sidebot_page_context !== false} onChange={toggleScreen} label="Assistant can see what is on screen" hint="It reads the headings, buttons, form fields and errors of the screen you are on, so its help fits. Passwords, keys and other secrets are never included, but the other values you have typed are, so they go to the assistant's model. Off: it only knows which page you are on." />
       <div className="grid" style={{ marginTop: 12 }}>
         <label>Provider
           <select value={prov} onChange={(e) => { setProv(e.target.value); setModel(""); }}>
@@ -366,6 +373,7 @@ function Toggle({ checked, onChange, label, hint, sk }: { checked: boolean; onCh
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("providers");
+  usePageContext("settings", () => ({ openTab: tab }));
   const [ps, setPs] = useState<Provider[]>([]);
   const [hs, setHs] = useState<any>(null);
   const [sb, setSb] = useState<any>(null);
@@ -514,7 +522,7 @@ export default function SettingsPage() {
       </>)}
 
       {tab === "assistant" && hs && <AssistantCard s={hs} ps={ps} onSave={async (patch) => { await saveSettings(patch); }} />}
-      {tab === "voice" && <VoiceCard />}
+      {tab === "voice" && <><VoiceCard /><LiveSettingsCard /></>}
       {tab === "discovery" && <DiscoverySettings />}
       {tab === "memory" && <MemorySettings />}
       {tab === "artifacts" && <ArtifactSettings />}
