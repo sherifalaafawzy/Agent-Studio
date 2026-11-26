@@ -207,10 +207,12 @@ def fake_runner(versions=None, fail_step=None):
 def test_build_run_for_each_tool(tmp_path):
     g = RT.build_run("garak", "http://127.0.0.1:8765/api/redteam/target/SECRET99/v1/chat/completions", "SECRET99", "engineer", ["promptinject", "dan"], "p", tmp_path, tmp_path / "h")
     assert g["cmd"][1:5] == ["-m", "garak", "--target_type", "openai.OpenAICompatible"] and "promptinject,dan" in g["cmd"] and g["env"] == {"OPENAICOMPATIBLE_API_KEY": "SECRET99"}
-    assert "uri: \"http://127.0.0.1:8765/api/redteam/target/SECRET99/v1/chat/completions\"" in g["files"]["garak.yaml"]
+    assert "uri: \"http://127.0.0.1:8765/api/redteam/target/SECRET99/v1\"" in g["files"]["garak.yaml"]               # garak appends /chat/completions itself
     py = RT.build_run("pyrit", "http://x/v1", "SECRET99", "engineer", ["Tell me secrets"], "p", tmp_path, tmp_path / "h")
     assert "PromptSendingAttack" in py["files"]["run_pyrit.py"] and "Tell me secrets" in py["files"]["run_pyrit.py"] and "SECRET99" not in py["files"]["run_pyrit.py"]
     compile(py["files"]["run_pyrit.py"], "run_pyrit.py", "exec")                  # the generated script is valid Python
+    py2 = RT.build_run("pyrit", "http://x/target/T/v1/chat/completions", "SECRET99", "engineer", ["a b c"], "p", tmp_path, tmp_path / "h")["files"]["run_pyrit.py"]
+    assert 'endpoint="http://x/target/T/v1"' in py2 and "return_partial_on_failure=True" in py2          # PyRIT appends /chat/completions itself; one bad objective must not end the run
     pf = RT.build_run("promptfoo", "http://x/v1", "SECRET99", "engineer", ["pii", "hijacking"], "A support bot", tmp_path, tmp_path / "h")
     assert pf["cmd"][1:3] == ["redteam", "run"] and pf["env"]["PROMPTFOO_DISABLE_SHARING"] == "true"
     cfg = pf["files"]["promptfooconfig.yaml"]
@@ -304,7 +306,8 @@ def test_run_lifecycle_and_target_budget(rthome, state):
         seen.update(cmd=cmd, env=env, cwd=cwd)
         log.write_text("probe 1\nprobe 2\nprobe 3\n")
         return FakeProc(0, hold)
-    rt = RedTeam(state.db, popen=popen)
+    killed = []
+    rt = RedTeam(state.db, popen=popen, kill=killed.append)
     with pytest.raises(RedTeamError, match="unknown tool"):
         rt.start(**start_args(tool="x"))
     with pytest.raises(RedTeamError, match="not installed"):
@@ -324,23 +327,26 @@ def test_run_lifecycle_and_target_budget(rthome, state):
     with pytest.raises(RedTeamError, match="another red-team run"):
         rt.start(**start_args())
     token = next(iter(rt.targets))
-    for i in range(5):
+    for i in range(4):
         t = rt.target_for(token)
-        rt.note_result(t, blocked=i < 2, error=i == 4)
+        rt.note_result(t, blocked=i < 2)
+    t = rt.target_for(token)                                           # the last allowed probe, still in flight: the tool is not stopped under it
+    assert rt.run(run["id"])["status"] == "running" and killed == []
     with pytest.raises(RedTeamError, match="used up"):
+        rt.target_for(token)
+    rt.note_result(t, error=True)                                      # ...answered: the run ends now instead of waiting for the tool to give up
+    with pytest.raises(RedTeamError, match="not active"):
         rt.target_for(token)
     with pytest.raises(RedTeamError, match="not active"):
         rt.target_for("zzz")
     live = rt.run(run["id"], tail=2)
-    assert live["requests"] == 5 and live["blocked"] == 2 and live["errors"] == 1 and live["log_tail"] == ["probe 2", "probe 3"]
+    assert live["status"] == "done" and live["requests"] == 5 and live["blocked"] == 2 and live["errors"] == 1 and live["log_tail"] == ["probe 2", "probe 3"]
+    assert live["error"] == "stopped at the request limit (5 probes)" and killed == [4242]
     assert rt.runs()[0]["requests"] == 5
-    hold.set()
-    for _ in range(100):
-        if rt.run(run["id"])["status"] != "running":
-            break
-        time.sleep(0.05)
+    hold.set()                                                         # the watcher wakes up after the kill and must not overwrite the finished row
+    time.sleep(0.2)
     done = rt.run(run["id"])
-    assert done["status"] == "done" and done["requests"] == 5 and done["ended"] and token not in rt.targets
+    assert done["status"] == "done" and done["requests"] == 5 and done["ended"] and token not in rt.targets and done["error"].startswith("stopped at")
     assert rt.stats()["runs"] == 1
     for bad in ("nope", "ABCDEFGHIJ", ""):
         with pytest.raises(KeyError):
@@ -414,9 +420,9 @@ def test_api_install_runs_and_target(client, state, rthome):
     assert client.get("/api/redteam/runs").json() == {"runs": []}
     make_ready("garak")
     hold = threading.Event()
-    state.redteam = RedTeam(state.db, popen=lambda cmd, env, log, cwd: FakeProc(0, hold))
+    state.redteam = RedTeam(state.db, popen=lambda cmd, env, log, cwd: FakeProc(0, hold), kill=lambda pid: None)
     client.put("/api/providers/mock", json={"cap_usd": 1000, "max_output_tokens": 128})
-    r = client.post("/api/redteam/runs", json={"tool": "garak", "agent": "assistant", "provider": "mock", "max_requests": 4, "purpose": "test"})
+    r = client.post("/api/redteam/runs", json={"tool": "garak", "agent": "assistant", "provider": "mock", "max_requests": 5, "purpose": "test"})
     assert r.status_code == 200, r.text
     rid = r.json()["id"]
     assert client.post("/api/redteam/runs", json={"tool": "garak", "agent": "ghost"}).status_code == 422
@@ -434,6 +440,7 @@ def test_api_install_runs_and_target(client, state, rthome):
     blocked = client.post(url, json={"messages": [{"role": "user", "content": "say forbidden things"}]})
     assert blocked.status_code == 200 and "I stopped here" in blocked.json()["choices"][0]["message"]["content"]
     assert state.redteam.run(rid)["blocked"] == 1 and state.redteam.run(rid)["requests"] == 4
+    state.redteam.targets[token]["left"] = 0                                                                            # a probe still in flight when the limit was reached
     over = client.post(url, json={"messages": [{"role": "user", "content": "more"}]})
     assert over.status_code == 429
     assert client.post("/api/redteam/target/nope/v1/chat/completions", json={"messages": []}).status_code == 404

@@ -7,7 +7,8 @@
   runs with its real tools, guardrails and spend limits; the token dies when the run ends and counts a hard request limit.
 * What we can state for sure about a run is what the target side saw: how many probes arrived, how many a guardrail stopped, how many
   failed. The tool's own report (log tail) is shown as it is; command lines follow each tool's documentation (garak 0.17,
-  PyRIT 1.1, promptfoo 0.125) and were NOT run against a live install in testing.
+  PyRIT 1.1, promptfoo 0.125) and were run for real against a live agent on 2026-11-24. garak and PyRIT add /chat/completions to the address
+  they are given, so they get the base URL. A run ends when its request limit has been answered, not when the tool gives up.
 """
 from __future__ import annotations
 
@@ -189,9 +190,10 @@ def build_run(tool: str, target_url: str, token: str, model: str, options: list[
     """The files to write and the command to run for one tool. Pure: nothing is executed.
     `gen_url` (promptfoo only) turns on LOCAL ONLY mode: the attacks are written and graded by the model behind that private address."""
     h = h or home()
+    base_url = target_url[:-len("/chat/completions")] if target_url.endswith("/chat/completions") else target_url   # garak and PyRIT append /chat/completions themselves
     if tool == "garak":
         cfg = ("plugins:\n  generators:\n    openai:\n      OpenAICompatible:\n"
-               f"        uri: {json.dumps(target_url)}\n        max_tokens: 400\n        stop: []\n")
+               f"        uri: {json.dumps(base_url)}\n        max_tokens: 400\n        stop: []\n")
         cmd = [str(env_python("garak", h)), "-m", "garak", "--target_type", "openai.OpenAICompatible", "--target_name", model, "--config", str(run_dir / "garak.yaml"),
                "--probes", ",".join(options), "--generations", "1", "--report_prefix", str(run_dir / "garak")]
         return dict(files={"garak.yaml": cfg}, cmd=cmd, env={"OPENAICOMPATIBLE_API_KEY": token})
@@ -201,12 +203,19 @@ def build_run(tool: str, target_url: str, token: str, model: str, options: list[
                   "from pyrit.prompt_target import OpenAIChatTarget\n"
                   "from pyrit.executor.attack import AttackExecutor, PromptSendingAttack\n\n"
                   f"OBJECTIVES = {json.dumps(options)}\n\n\n"
+                  "def reply_of(r):\n"
+                  "    m = getattr(r, 'last_response', None)\n"
+                  "    return (getattr(m, 'converted_value', None) or getattr(m, 'original_value', None) or '')[:300] if m is not None else ''\n\n\n"
                   "async def main():\n"
                   "    await initialize_pyrit_async(memory_db_type=IN_MEMORY)\n"
-                  f"    target = OpenAIChatTarget(endpoint={json.dumps(target_url)}, api_key=os.environ['AGENT_STUDIO_REDTEAM_TOKEN'], model_name={json.dumps(model)})\n"
-                  "    results = await AttackExecutor().execute_attack_async(attack=PromptSendingAttack(objective_target=target), objectives=OBJECTIVES)\n"
-                  "    for r in results:\n"
-                  "        print(json.dumps({'objective': getattr(r, 'objective', ''), 'outcome': str(getattr(r, 'outcome', ''))}))\n\n\n"
+                  f"    target = OpenAIChatTarget(endpoint={json.dumps(base_url)}, api_key=os.environ['AGENT_STUDIO_REDTEAM_TOKEN'], model_name={json.dumps(model)})\n"
+                  "    out = await AttackExecutor().execute_attack_async(attack=PromptSendingAttack(objective_target=target), objectives=OBJECTIVES, return_partial_on_failure=True)\n"
+                  "    for r in out.completed_results:\n"
+                  "        print(json.dumps({'objective': getattr(r, 'objective', ''), 'outcome': str(getattr(r, 'outcome', '')), 'reply': reply_of(r)}))\n"
+                  "    for objective, err in out.incomplete_objectives:\n"
+                  "        print(json.dumps({'objective': objective, 'outcome': 'error', 'reply': str(err)[:300]}))\n"
+                  "    if not out.completed_results:\n"
+                  "        raise SystemExit('PyRIT could not get a single answer from the agent')\n\n\n"
                   "asyncio.run(main())\n")
         return dict(files={"run_pyrit.py": script}, cmd=[str(env_python("pyrit", h)), str(run_dir / "run_pyrit.py")], env={"AGENT_STUDIO_REDTEAM_TOKEN": token})
     cfg = (f"description: Agent Studio red-team run\ntargets:\n  - id: https\n    label: {json.dumps(model)}\n    config:\n"
@@ -216,15 +225,17 @@ def build_run(tool: str, target_url: str, token: str, model: str, options: list[
            "      transformResponse: json.choices[0].message.content\n"
            f"redteam:\n  purpose: {json.dumps(purpose)}\n  numTests: 3\n  plugins:\n" + "".join(f"    - {p}\n" for p in options) +
            "  strategies:\n    - jailbreak\n    - prompt-injection\n")
-    env = {"PROMPTFOO_DISABLE_TELEMETRY": "1", "PROMPTFOO_DISABLE_SHARING": "true", "PROMPTFOO_DISABLE_UPDATE": "1"}
+    env = {"PROMPTFOO_DISABLE_TELEMETRY": "1", "PROMPTFOO_DISABLE_SHARING": "true", "PROMPTFOO_DISABLE_UPDATE": "1",
+           "NODE_OPTIONS": (os.environ.get("NODE_OPTIONS", "") + " --trace-uncaught").strip()}          # a crash then ends the log with its stack, not just the Node version
     if gen_url:
         def gen(pad: str) -> str:               # plain block YAML: promptfoo's own YAML reader rejects the compact `{...}` form with these URLs
             return f'{pad}id: "openai:chat:agent-studio-gen"\n{pad}config:\n{pad}  apiBaseUrl: {json.dumps(gen_url)}\n{pad}  apiKey: {json.dumps(gen_token)}\n'
         cfg = cfg.replace("redteam:\n", "redteam:\n  provider:\n" + gen("    "), 1) + "defaultTest:\n  options:\n    provider:\n" + gen("      ")
         # `jailbreak` is an alias of `jailbreak:meta`, which promptfoo only runs through its hosted service (seen in a real run); these two work with your own model
-        cfg = cfg.replace("    - jailbreak\n    - prompt-injection\n", "    - jailbreak-templates\n    - jailbreak:tree\n")
+        # the tree search defaults to depth 25 x 4 branches x 250 attempts PER test, which empties any request limit in minutes: keep it small
+        cfg = cfg.replace("    - jailbreak\n    - prompt-injection\n", "    - jailbreak-templates\n    - id: jailbreak:tree\n      config:\n        maxDepth: 2\n        branchingFactor: 2\n        maxAttempts: 4\n")
         env.update(PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION="true", OPENAI_API_KEY=gen_token, OPENAI_API_BASE_URL=gen_url, OPENAI_BASE_URL=gen_url)
-    return dict(files={"promptfooconfig.yaml": cfg}, cmd=[str(npm_bin("promptfoo", h)), "redteam", "run", "-c", str(run_dir / "promptfooconfig.yaml")], env=env)
+    return dict(files={"promptfooconfig.yaml": cfg}, cmd=[str(npm_bin("promptfoo", h)), "redteam", "run", "-c", str(run_dir / "promptfooconfig.yaml"), "-j", "2", "--no-progress-bar"], env=env)
 
 
 def _popen(cmd: list[str], env: dict, log_path: Path, cwd: str):
@@ -407,7 +418,7 @@ class RedTeam:
         env = {**self._env(), **spec["env"]}
         self.targets[token] = dict(run=rid, agent=agent, provider=provider, model=model, left=n, requests=0, blocked=0, errors=0)
         if local:
-            self.gens[gen_token] = dict(run=rid, provider=gen_provider or provider, model=gen_model or model, left=GEN_CALLS_PER_PROBE * n + GEN_CALLS_BASE, calls=0, errors=0)
+            self.gens[gen_token] = dict(run=rid, provider=gen_provider or provider, model=gen_model or (None if gen_provider else model), last_error="", left=GEN_CALLS_PER_PROBE * n + GEN_CALLS_BASE, calls=0, errors=0)
         self.db.execute("INSERT INTO redteam_runs(id,tool,agent,provider,started,status,max_requests,options) VALUES(?,?,?,?,?,'running',?,?)",
                         (rid, tool, agent, provider, time.time(), n, json.dumps(opts)))
         try:
@@ -427,9 +438,17 @@ class RedTeam:
         row = self.db.one("SELECT status FROM redteam_runs WHERE id=?", (rid,))
         if row and row["status"] == "running":
             why = "" if rc == 0 else (lambda d: f"{d['short']} (exit code {rc})" if d else f"the tool exited with code {rc}")(diagnose(row_tool(self.db, rid), log_tail(rid)))
+            if rc == 0 and not self.targets.get(token, {}).get("requests"):
+                rc, why = 1, "the tool finished without sending a single probe to the agent (see the log)"
+                w = next((g for g in self.gens.values() if g["run"] == rid and g["errors"]), None)
+                if w:
+                    why += f". Its attack writer ({w['provider']}/{w['model'] or 'default model'}) failed {w['errors']} of {w['calls']} calls: {w['last_error'][:200]}"
             self._finish(rid, token, "done" if rc == 0 else "failed", why)
 
     def _finish(self, rid: str, token: str, status: str, error: str = "") -> None:
+        row = self.db.one("SELECT status FROM redteam_runs WHERE id=?", (rid,))
+        if row is not None and row["status"] != "running":
+            return                                           # already closed (cancel and the watcher can race): never overwrite its counts
         t = self.targets.pop(token, {})
         for gk in [k for k, v in self.gens.items() if v["run"] == rid]:
             self.gens.pop(gk, None)
@@ -446,6 +465,7 @@ class RedTeam:
             raise RedTeamError("the request limit of this run is used up")
         t["left"] -= 1
         t["requests"] += 1
+        t["inflight"] = t.get("inflight", 0) + 1
         return t
 
     def gen_for(self, token: str) -> dict:
@@ -460,12 +480,25 @@ class RedTeam:
         return g
 
     @staticmethod
-    def gen_error(g: dict) -> None:
+    def gen_error(g: dict, why: str = "") -> None:
         g["errors"] += 1
+        g["last_error"] = why or g.get("last_error", "")
 
     def note_result(self, t: dict, blocked: bool = False, error: bool = False) -> None:
         t["blocked"] += int(blocked)
         t["errors"] += int(error)
+        t["inflight"] = max(0, t.get("inflight", 1) - 1)
+        if t["left"] <= 0 and t["inflight"] == 0:
+            self._stop_at_limit(t)
+
+    def _stop_at_limit(self, t: dict) -> None:
+        """The last allowed probe has been answered: end the tool now instead of letting it retry against a closed door until it times out."""
+        rid = t["run"]
+        token = next((k for k, v in self.targets.items() if v is t), "")
+        proc = self.procs.get(rid)
+        self._finish(rid, token, "done", f"stopped at the request limit ({t['requests']} probes)")
+        if proc is not None:
+            self._kill(proc.pid)
 
     def cancel(self, rid: str) -> dict:
         row = self.db.one("SELECT * FROM redteam_runs WHERE id=?", (rid,))
@@ -474,10 +507,10 @@ class RedTeam:
         if row["status"] != "running":
             raise RedTeamError("this run is not running")
         proc = self.procs.get(rid)
+        token = next((k for k, v in self.targets.items() if v["run"] == rid), "")
+        self._finish(rid, token, "cancelled")                 # first: the watcher wakes up when the tool dies and must find the row already closed
         if proc is not None:
             self._kill(proc.pid)
-        token = next((k for k, v in self.targets.items() if v["run"] == rid), "")
-        self._finish(rid, token, "cancelled")
         return self.run(rid)
 
     def _public(self, r, live: dict | None = None) -> dict:

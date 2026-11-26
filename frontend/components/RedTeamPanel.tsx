@@ -24,6 +24,7 @@ export default function RedTeamPanel() {
   const [f, setF] = useState({ tool: "", agent: "", provider: "", max: "50", options: "", purpose: "" });
   const [tails, setTails] = useState<Record<string, string[]>>({});
   const [local, setLocal] = useState(true);
+  const [writer, setWriter] = useState("");
   const [pre, setPre] = useState<Pre | null>(null);
 
   const load = useCallback(() => Promise.all([api<Status>("/api/redteam/status"), api<{ runs: Run[] }>("/api/redteam/runs")])
@@ -97,6 +98,8 @@ export default function RedTeamPanel() {
               <span><b>Your own model (Local only, recommended)</b><br /><span className="mut">The provider you chose above writes and grades the attacks, through a private address on this PC. Nothing goes to promptfoo and no e-mail is needed. Fewer kinds of risk (64 of 155) and simpler attack styles. Each probe makes several model calls, so it costs more credits.</span></span></label>
             <label style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 6 }}><input type="radio" name="pfmode" checked={!local} onChange={() => setLocal(false)} />
               <span><b>promptfoo&apos;s hosted service</b><br /><span className="mut">Wider choice of risks, but promptfoo asks for a verified work e-mail that you must give it yourself (Agent Studio never types it for you), and your agent&apos;s purpose text is sent to promptfoo.</span></span></label>
+            {local && <label style={{ marginTop: 6 }}>Attack writer (optional)<select value={writer} onChange={(e) => setWriter(e.target.value)}><option value="">Same provider as the agent</option>{provs.filter((p) => p.enabled).map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select>
+              <span className="mut small">Pick a different provider than the one running the agent: one local model doing both jobs makes the probes queue behind each other.</span></label>}
             {!local && <div data-testid="pf-verify" style={{ marginTop: 6 }}>
               {pre?.hosted_ready ? <span className="pill ok">e-mail verified in promptfoo</span> : <>
                 <p className="small err" role="alert">{pre?.account === "needs_verification" ? "promptfoo has an e-mail on file but it is not verified yet." : "promptfoo has no verified e-mail on this PC yet."} Do this once in your own terminal, answer its questions yourself, then press &quot;Check again&quot;:</p>
@@ -106,7 +109,7 @@ export default function RedTeamPanel() {
           </fieldset>}
           {isPf && <label style={{ marginTop: 8 }}>{local ? "What the agent is for (given to your own model to write attacks)" : "What the agent is for (sent to promptfoo to write attacks)"}<input value={f.purpose} onChange={(e) => setF({ ...f, purpose: e.target.value })} placeholder="A support assistant for…" /></label>}
           <div className="row" style={{ marginTop: 8 }}>
-            <button className="pri" disabled={!f.agent || !f.provider || busy || hostedBlocked} onClick={() => call("/api/redteam/runs", { method: "POST", body: JSON.stringify({ tool: pick.id, agent: f.agent, provider: f.provider, max_requests: Number(f.max), options, purpose: f.purpose, ...(isPf ? { local_only: local } : {}) }) }, "Run started")}>Start</button>
+            <button className="pri" disabled={!f.agent || !f.provider || busy || hostedBlocked} onClick={() => call("/api/redteam/runs", { method: "POST", body: JSON.stringify({ tool: pick.id, agent: f.agent, provider: f.provider, max_requests: Number(f.max), options, purpose: f.purpose, ...(isPf ? { local_only: local, ...(local && writer ? { gen_provider: writer } : {}) } : {}) }) }, "Run started")}>Start</button>
             <span className="small mut">{isPf ? "promptfoo's update check, telemetry and result sharing are switched off for every run." : ""}</span></div></>)}
       </div>
 

@@ -87,7 +87,9 @@ def test_local_only_config_points_the_attack_writer_at_our_private_address(tmp_p
     cfg = yaml.safe_load(spec["files"]["promptfooconfig.yaml"])
     assert cfg["redteam"]["provider"]["id"].startswith("openai:chat:") and cfg["redteam"]["provider"]["config"] == {"apiBaseUrl": "http://127.0.0.1:8765/api/redteam/gen/G/v1", "apiKey": "G"}
     assert cfg["defaultTest"]["options"]["provider"] == cfg["redteam"]["provider"] and cfg["redteam"]["plugins"] == ["pii", "prompt-extraction"]
-    assert cfg["redteam"]["strategies"] == ["jailbreak-templates", "jailbreak:tree"]               # `jailbreak` (= jailbreak:meta) only runs on promptfoo's hosted service
+    # `jailbreak` (= jailbreak:meta) only runs on promptfoo's hosted service; the tree search is kept small (its default is 25 x 4 x 250 per test)
+    assert cfg["redteam"]["strategies"] == ["jailbreak-templates", {"id": "jailbreak:tree", "config": {"maxDepth": 2, "branchingFactor": 2, "maxAttempts": 4}}]
+    assert spec["cmd"][-3:] == ["-j", "2", "--no-progress-bar"] and "--trace-uncaught" in spec["env"]["NODE_OPTIONS"]
     env = spec["env"]
     assert env["PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION"] == "true" and env["OPENAI_API_KEY"] == "G" and env["PROMPTFOO_DISABLE_TELEMETRY"] == "1"
     assert env["PROMPTFOO_DISABLE_UPDATE"] == "1" and env["PROMPTFOO_DISABLE_SHARING"] == "true" and "CI" not in env      # we never pretend to be a CI server to skip the e-mail check
@@ -165,8 +167,9 @@ def test_gen_calls_are_counted_and_limited(rthome, state):
     token = next(iter(rt.gens))
     g = rt.gen_for(token)
     assert g["calls"] == 1 and g["provider"] == "mock" and g["model"] == "m1"
+    rt.gen_error(g, "model said no")
     rt.gen_error(g)
-    assert g["errors"] == 1
+    assert g["errors"] == 2 and g["last_error"] == "model said no"
     rt.gens[token]["left"] = 0
     with pytest.raises(RedTeamError, match="limit of this run is used up"):
         rt.gen_for(token)
@@ -246,3 +249,56 @@ def test_the_attack_writer_reports_a_failing_model(client, state, rthome, monkey
     monkeypatch.setattr(litellm, "acompletion", boom)
     r = client.post(f"/api/redteam/gen/{token}/v1/chat/completions", json={"messages": [{"role": "user", "content": "hi"}]})
     assert r.status_code == 502 and "model down" in r.json()["error"]["message"] and state.redteam.gens[token]["errors"] == 1
+
+
+# ------------------------------------------------------------------------------------------------ real-run lessons (garak / PyRIT / promptfoo, 2026-11)
+def test_a_tool_that_exits_cleanly_without_a_single_probe_is_a_failure(rthome, state):
+    make_ready("garak")
+    rt = RedTeam(state.db, popen=lambda cmd, env, log, cwd: FakeProc(0))                  # garak used to "finish" after a 404 on every probe
+    done = run_to_end(rt, rt.start(**start_args())["id"])
+    assert done["status"] == "failed" and "without sending a single probe" in done["error"] and "attack writer" not in done["error"]
+
+
+def test_a_failed_attack_writer_is_named_in_the_failure(rthome, state):
+    make_ready("promptfoo")
+    hold = threading.Event()
+    rt = RedTeam(state.db, popen=lambda cmd, env, log, cwd: FakeProc(0, hold))
+    run = rt.start(**start_args(tool="promptfoo", options=["pii"], gen_provider="vertex_ai"))
+    g = rt.gen_for(next(iter(rt.gens)))
+    assert g["provider"] == "vertex_ai" and g["model"] is None                          # the target's model name is never sent to another provider
+    rt.gen_error(g, "BadRequestError: no such model")
+    hold.set()
+    done = run_to_end(rt, run["id"])
+    assert done["status"] == "failed" and "attack writer (vertex_ai/default model) failed 1 of 1 calls: BadRequestError: no such model" in done["error"]
+
+
+def test_the_attack_writer_keeps_the_target_model_when_it_is_the_same_provider(rthome, state):
+    make_ready("promptfoo")
+    rt = RedTeam(state.db, popen=lambda cmd, env, log, cwd: FakeProc(0, threading.Event()))
+    rt.start(**start_args(tool="promptfoo", options=["pii"], provider="ollama", model="qwen3:8b"))
+    g = next(iter(rt.gens.values()))
+    assert g["provider"] == "ollama" and g["model"] == "qwen3:8b"
+
+
+def test_cancel_keeps_the_counts_even_when_the_watcher_wakes_first(rthome, state):
+    make_ready("garak")
+    hold = threading.Event()
+    rt = RedTeam(state.db, popen=lambda cmd, env, log, cwd: FakeProc(1, hold), kill=lambda pid: hold.set())   # killing the tool wakes the watcher at once
+    run = rt.start(**start_args(max_requests=9))
+    t = rt.target_for(next(iter(rt.targets)))
+    rt.note_result(t, blocked=True)
+    done = rt.cancel(run["id"])
+    time.sleep(0.2)
+    final = rt.run(run["id"])
+    assert done["status"] == final["status"] == "cancelled" and final["requests"] == 1 and final["blocked"] == 1
+    rt._finish(run["id"], "", "failed", "late")                                         # a second closer (limit stop racing a cancel) changes nothing
+    assert rt.run(run["id"])["status"] == "cancelled" and rt.run(run["id"])["requests"] == 1 and rt.run(run["id"])["error"] == ""
+
+
+def test_stopping_at_the_limit_without_a_process_is_safe(rthome, state):
+    make_ready("garak")
+    rt = RedTeam(state.db, popen=lambda cmd, env, log, cwd: FakeProc(0, threading.Event()), kill=lambda pid: (_ for _ in ()).throw(AssertionError("no kill expected")))
+    run = rt.start(**start_args(max_requests=1))
+    rt.procs.clear()
+    rt.note_result(rt.target_for(next(iter(rt.targets))))
+    assert rt.run(run["id"])["status"] == "done"

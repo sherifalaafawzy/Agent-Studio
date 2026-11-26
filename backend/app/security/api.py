@@ -186,7 +186,7 @@ def register(app: FastAPI) -> None:
         try:
             text, usage = await complete_with_guard(s, g["provider"], g["model"], msgs, body.get("max_tokens"))
         except Exception as e:  # noqa: BLE001 - one failed call must not end the run
-            s.redteam.gen_error(g)
+            s.redteam.gen_error(g, f"{type(e).__name__}: {str(e)[:200]}")
             return JSONResponse({"error": {"message": f"{type(e).__name__}: {str(e)[:200]}", "type": "server_error"}}, status_code=502)
         return {"id": f"chatcmpl-{uuid.uuid4().hex[:12]}", "object": "chat.completion", "created": int(time.time()), "model": g["model"] or "agent-studio-gen",
                 "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],

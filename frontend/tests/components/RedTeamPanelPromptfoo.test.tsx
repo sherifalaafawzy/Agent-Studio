@@ -45,6 +45,13 @@ describe("RedTeamPanel promptfoo: who writes the attacks", () => {
     await waitFor(() => expect(posts(net.calls, "/api/redteam/runs")[0]).toMatchObject({ tool: "promptfoo", local_only: true }));
   });
 
+  it("lets you pick a different provider to write the attacks and sends it as gen_provider", async () => {
+    const net = await openPromptfoo({ "GET /api/providers": () => jsonResponse([{ id: "mock", label: "Mock", enabled: true }, { id: "vertex_ai", label: "Vertex", enabled: true }]) });
+    await userEvent.selectOptions(screen.getByLabelText(/^Attack writer/), "vertex_ai");
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    await waitFor(() => expect(posts(net.calls, "/api/redteam/runs")[0]).toMatchObject({ tool: "promptfoo", local_only: true, gen_provider: "vertex_ai" }));
+  });
+
   it("hosted mode needs an e-mail you verify yourself: it shows the command, never asks for the address, and unlocks after Check again", async () => {
     let pre: any = PRE;
     const net = await openPromptfoo({ "GET /api/redteam/preflight": () => jsonResponse(pre) });
