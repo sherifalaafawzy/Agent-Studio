@@ -11,8 +11,8 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   }, [onClose]);
   return (
     <div className="backdrop" onClick={onClose}>
-      <div className="modal" style={wide ? { width: "min(960px,100%)" } : undefined} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
-        <div className="row"><h3 style={{ margin: 0 }}>{title}</h3><span className="grow" /><button className="icon-btn" aria-label="Close" onClick={onClose}><IX size={16} /></button></div>
+      <div className="modal" style={wide ? { width: "min(960px,100%)" } : undefined} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+        <div className="modal-head"><h3 style={{ margin: 0 }}>{title}</h3><button className="icon-btn" aria-label="Close" onClick={onClose}><IX size={16} /></button></div>
         {children}
       </div>
     </div>

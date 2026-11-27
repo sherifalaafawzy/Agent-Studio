@@ -110,11 +110,11 @@ describe("Runs: inspector", () => {
     await screen.findByRole("heading", { name: "Refactor auth" });
     await userEvent.click(screen.getByRole("button", { name: "4×" }));
     expect(screen.getByRole("button", { name: "4×" })).toHaveClass("on");
-    await userEvent.click(screen.getByRole("button", { name: "Events" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Events" }));
     expect(await screen.findByText(/read_file · 120ms/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Tools" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
     expect(container.querySelector(".insp-side table")).toHaveTextContent("read_file");
-    await userEvent.click(screen.getByRole("button", { name: "Session" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Session" }));
     expect(screen.getByText("Workspace").nextSibling).toHaveTextContent("C:/app");
     expect(screen.getByText("Built by agents").nextSibling).toHaveTextContent("1");
   });

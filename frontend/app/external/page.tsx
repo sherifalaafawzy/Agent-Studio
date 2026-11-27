@@ -158,7 +158,7 @@ export default function ExternalPage() {
     <div className="chat">
       <div className="page-head"><h2>External agents</h2><InfoTip id="acp" /><span className="pill ok" title="They bill their own accounts">own accounts · not capped</span></div>
       <p className="page-sub" style={{ marginBottom: 12 }}>Talk directly to Claude Code, Cursor, Kiro, Antigravity or Grok over ACP. To let your own agents call them, tick them on the agent in Agent Studio. Monthly limits: Settings → External agents.</p>
-      <div className="row" style={{ marginBottom: 8 }}>
+      <div className="row ext-bar" style={{ marginBottom: 8 }}>
         <label>Agent
           <select value={agent} disabled={!!session} onChange={(e) => setAgent(e.target.value)}>
             {agents.map((a) => <option key={a.id} value={a.id} disabled={!a.installed || !a.enabled}>{a.label}{!a.installed ? " (not installed)" : !a.enabled ? " (disabled)" : ""}</option>)}

@@ -92,8 +92,8 @@ export default function SciencePage() {
       <div className="sci-main">
         {err && <div className="err small" role="alert">{err}</div>}
         {cfg && !cfg.enabled && <div className="card" role="note">The Science Lab is switched off. Switch it on in the Settings tab.</div>}
-        <div className="row sci-tabs" role="tablist" aria-label="Science Lab sections">
-          {TABS.map(([t, label]) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "acc small" : "ghost small"} onClick={() => setTab(t)}>{label}</button>)}
+        <div className="tabs sci-tabs" role="tablist" aria-label="Science Lab sections">
+          {TABS.map(([t, label]) => <button key={t} role="tab" aria-selected={tab === t} className={`tab ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{label}</button>)}
         </div>
         {tab === "investigation" && (inv ? <>
           <div className="row" style={{ gap: 6 }}>

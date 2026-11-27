@@ -42,7 +42,7 @@ describe("Settings page: audit features", () => {
   it("offers a reset link for a changed setting, and resets it through the API", async () => {
     const net = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(await screen.findByRole("button", { name: /Reset to default \(4\)/ }));
     await waitFor(() => expect(net.calls.some((c) => c.method === "POST" && c.url.pathname === "/api/settings/reset")).toBe(true));
   });
@@ -51,12 +51,12 @@ describe("Settings page: audit features", () => {
     setup();
     const ask = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     setDirty("some-form", true);
-    await userEvent.click(screen.getByRole("button", { name: /Voice/ }));
+    await userEvent.click(screen.getByRole("tab", { name: /Voice/ }));
     expect(ask).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe("#harness");
-    await userEvent.click(screen.getByRole("button", { name: /Backup & history/ }));        // second time the answer is yes
+    await userEvent.click(screen.getByRole("tab", { name: /Backup & history/ }));        // second time the answer is yes
     expect(window.location.hash).toBe("#backup");
     expect(await screen.findByRole("button", { name: "Download settings file" })).toBeInTheDocument();
   });
@@ -65,7 +65,7 @@ describe("Settings page: audit features", () => {
     setup();
     vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<SettingsPage />);
-    await screen.findByRole("button", { name: /Agents & sandbox/ });
+    await screen.findByRole("tab", { name: /Agents & sandbox/ });
     setDirty("some-form", true);
     await userEvent.type(screen.getByLabelText("Search settings"), "runaway");
     await userEvent.click(await screen.findByRole("option"));
@@ -75,7 +75,7 @@ describe("Settings page: audit features", () => {
   it("has a Memory tab", async () => {
     setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Memory/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Memory/ }));
     expect(window.location.hash).toBe("#memory");
   });
 
@@ -83,7 +83,7 @@ describe("Settings page: audit features", () => {
     setup({ "GET /api/artifacts/config": () => jsonResponse({ enabled: true, capture: "new", max_file_mb: 25, max_per_turn: 50, secret_scan: "redact", retention_days: 0, ignore: [], storages: [], policy: [],
       default_storages: ["local"], capture_modes: { new: "New files only" }, scan_modes: { redact: "Remove" }, types: [], default_ignore: [], kinds: [] }) });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Artifacts/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Artifacts/ }));
     expect(window.location.hash).toBe("#artifacts");
     expect(await screen.findByText(/A copy always stays on this PC/)).toBeInTheDocument();
   });
@@ -94,10 +94,10 @@ describe("Settings page: audit features", () => {
       "GET /api/data/sources": () => jsonResponse({ sources: [], kinds: [{ kind: "sqlite", label: "SQLite file", description: "d", docs: "", fields: [], note: "", managed_mcp: null }] }),
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Runtimes/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Runtimes/ }));
     expect(window.location.hash).toBe("#runtimes");
     expect(await screen.findByText(/Where an agent runs/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^Data sources/ }));
+    await userEvent.click(screen.getByRole("tab", { name: /^Data sources/ }));
     expect(window.location.hash).toBe("#data");
     expect(await screen.findByTestId("data-sources")).toBeInTheDocument();
   });
@@ -106,7 +106,7 @@ describe("Settings page: audit features", () => {
     const net = setup();
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Backup & history/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Backup & history/ }));
     const before = net.calls.filter((c) => c.url.pathname === "/api/settings" && c.method === "GET").length;
     await userEvent.click(await screen.findByRole("button", { name: "Reset all settings to defaults" }));
     await waitFor(() => expect(net.calls.filter((c) => c.url.pathname === "/api/settings" && c.method === "GET").length).toBeGreaterThan(before));

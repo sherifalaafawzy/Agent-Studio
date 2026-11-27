@@ -93,7 +93,8 @@ export default function LivePanel() {
   const agentName = agents.find((a) => a.id === s.live_agent)?.name ?? "";
   return (
     <div data-testid="live-panel">
-      <div className="page-head"><h1>Live</h1><span className="mut small">Talk to a model by voice, on this PC.</span></div>
+      <div className="page-head"><h2>Live</h2></div>
+      <p className="page-sub">Talk to a model by voice, on this PC.</p>
       {!gemini && !status.local.ready && <LiveInstall local={status.local} onChange={load} />}
       {profOn && <p className="small mut" data-testid="live-profile-note">Using {agentName}&apos;s Live profile: {gemini ? "Google Gemini Live" : "this PC"}, {avatarMode ? "with avatar" : "voice only"}{profile!.budget_usd ? `, budget $${profile!.budget_usd.toFixed(2)}` : ""}.</p>}
       {profOff && <p className="err small" role="alert" data-testid="live-profile-off">Live mode is switched off for {agentName}. Switch it on in the agent&apos;s Live section, or choose another agent.</p>}

@@ -8,6 +8,15 @@ import { usd } from "@/lib/api";
 import Markdown from "./Markdown";
 import { IChevron, ITool } from "./Icons";
 
+/** Black or white, whichever reads better on a lane colour (white on the lighter lanes was 3.5:1). */
+export function inkOn(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return "#fff";
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return 1.05 / (lum + 0.05) >= (lum + 0.05) / 0.05 ? "#fff" : "#000";      // pure black and white: the better of the two is never below 4.58:1
+}
+
 export type Step = { agent: string; run_id?: string; type: "call" | "result"; tool: string; args?: string; result?: string; ts?: number; ms?: number; ok?: boolean };
 export type Call = { agent: string; run_id?: string; provider: string; model: string; cost_usd: number; input_tokens: number; output_tokens: number; t0?: number; t1?: number };
 export type Run = {
@@ -176,7 +185,7 @@ export function RunThread({ lane, query = "", onSave }: { lane: Lane; query?: st
             {(r.thoughts ?? []).filter(Boolean).length > 0 && (
               <details className="think-box" style={{ marginTop: 8 }}><summary>Thinking ({r.thoughts!.filter(Boolean).length})<IChevron size={13} /></summary>
                 <div className="think-body">{r.thoughts!.filter(Boolean).map((t, i) => <Markdown key={i} text={t} />)}</div></details>)}
-            <div className="msg-chip"><span style={{ background: lane.color, color: "#fff" }}>{lane.label}</span>{r.started && <span className="mut small">{r.ended ? fmtDur(r.ended - r.started) : "running…"} · {usd(r.cost_usd || r.calls.reduce((a, c) => a + c.cost_usd, 0))}</span>}</div>
+            <div className="msg-chip"><span style={{ background: lane.color, color: inkOn(lane.color) }}>{lane.label}</span>{r.started && <span className="mut small">{r.ended ? fmtDur(r.ended - r.started) : "running…"} · {usd(r.cost_usd || r.calls.reduce((a, c) => a + c.cost_usd, 0))}</span>}</div>
             {groups.map((g, gi) => (
               <div key={gi} className="think">
                 {g.call && <div className="think-h">Thought for {g.call.t0 && g.call.t1 ? fmtDur(g.call.t1 - g.call.t0) : "a moment"}

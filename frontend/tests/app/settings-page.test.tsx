@@ -169,7 +169,7 @@ afterEach(() => {
 });
 
 const providerCard = () => document.querySelector(".card") as HTMLElement;
-const tab = (name: RegExp) => screen.getByRole("button", { name });
+const tab = (name: RegExp) => screen.getByRole("tab", { name });
 
 /* ---------- loading, tabs, and errors ---------- */
 
@@ -540,14 +540,14 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("shows a sandbox that is not running as a failure", async () => {
     setup({ sandbox: { docker: false, image: false, detail: "Docker is not running" } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     expect(await screen.findByText("Docker is not running")).toHaveClass("pill", "bad");
   });
 
   it("turns network access in the sandbox on and reflects the saved state", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const box = toggle(/Allow network inside the sandbox/);
     expect(box).not.toBeChecked();
     await userEvent.click(box);
@@ -558,7 +558,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("sends the workspace folder typed into the field", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const save = screen.getByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
     const field = screen.getByPlaceholderText("e.g. H:/htdocs/my-project");
@@ -574,7 +574,7 @@ describe("Settings page: Agents & sandbox tab", () => {
       routes: { "POST /api/fs/pick-folder": () => jsonResponse({ path: "D:/work/app", cancelled: false }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(screen.getByRole("button", { name: "Browse…" }));
     await waitFor(() => expect(screen.getByPlaceholderText("e.g. H:/htdocs/my-project")).toHaveValue("D:/work/app"));
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -586,7 +586,7 @@ describe("Settings page: Agents & sandbox tab", () => {
       routes: { "POST /api/fs/pick-folder": () => jsonResponse({ detail: "no dialog" }, { status: 501 }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(screen.getByRole("button", { name: "Browse…" }));
     await userEvent.click(await screen.findByText("agent-studio"));
     expect(await screen.findByText("H:/htdocs/agent-studio")).toBeInTheDocument();
@@ -598,7 +598,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("shows the reason when the folder dialog fails", async () => {
     setup({ routes: { "POST /api/fs/pick-folder": () => jsonResponse({ detail: "dialog crashed" }, { status: 500 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(screen.getByRole("button", { name: "Browse…" }));
     expect(await screen.findByText("dialog crashed")).toBeInTheDocument();
   });
@@ -606,7 +606,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("sends the thinking level picked from the list", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const select = within(screen.getByText("Model thinking").closest(".row") as HTMLElement).getByRole("combobox");
     expect(select).toHaveValue("medium");
     await userEvent.selectOptions(select, "high");
@@ -616,7 +616,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("turns on automatic debugging of failing tools", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(toggle(/Debug failing tools automatically/));
     await waitFor(() => expect(lastSent(calls, "PUT", "/api/settings")).toEqual({ auto_debug_mcp: true }));
   });
@@ -624,7 +624,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("turns on agent-built sub-agents and saves the per-turn cap", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(toggle(/Let agents create their own sub-agents/));
     await waitFor(() => expect(lastSent(calls, "PUT", "/api/settings")).toEqual({ agent_spawning_enabled: true }));
     const cap = screen.getByLabelText(/Max agent-created sub-agents per turn/);
@@ -636,7 +636,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("saves the long-run limits when their fields lose focus", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const minutes = screen.getByLabelText(/^Max minutes per turn/);
     fireEvent.change(minutes, { target: { value: "45" } });
     fireEvent.blur(minutes);
@@ -653,7 +653,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("does not silently remove the time limit when the field is cleared: nothing is sent and the problem is shown", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const minutes = screen.getByLabelText(/^Max minutes per turn/) as HTMLInputElement;
     fireEvent.change(minutes, { target: { value: "" } });
     fireEvent.blur(minutes);
@@ -664,7 +664,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("still sends an explicit 0 (no limit) for the time limit", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const minutes = screen.getByLabelText(/^Max minutes per turn/);
     fireEvent.change(minutes, { target: { value: "0" } });
     fireEvent.blur(minutes);
@@ -674,7 +674,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("turns external-agent calls on and saves their limits", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(toggle(/Let agents call external agents/));
     await waitFor(() => expect(lastSent(calls, "PUT", "/api/settings")).toEqual({ agents_can_call_external: true }));
     const perTurn = screen.getByLabelText(/^Max external-agent calls per turn/);
@@ -690,7 +690,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("adds a fallback model, changes it, and removes it", async () => {
     const { calls, settings } = setup({ providers: [prov(), prov({ id: "anthropic", label: "Anthropic", kind: "anthropic", enabled: false })] });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(screen.getByRole("button", { name: "+ Add a fallback model" }));
     await waitFor(() => expect(lastSent(calls, "PUT", "/api/settings")).toEqual({ model_fallbacks: [{ provider: "openai", model: null }] }));
     expect(settings.model_fallbacks).toHaveLength(1);
@@ -711,7 +711,7 @@ describe("Settings page: Agents & sandbox tab", () => {
       settings: { model_fallbacks: [{ provider: "openai", model: "gpt-x" }] },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const rowEl = (await screen.findByRole("button", { name: "Remove" })).closest(".row") as HTMLElement;
     await userEvent.selectOptions(within(rowEl).getAllByRole("combobox")[0], "anthropic");
     await waitFor(() => expect(lastSent(calls, "PUT", "/api/settings")).toEqual({ model_fallbacks: [{ provider: "anthropic", model: null }] }));
@@ -721,7 +721,7 @@ describe("Settings page: Agents & sandbox tab", () => {
     const five = Array.from({ length: 5 }, () => ({ provider: "openai", model: null }));
     setup({ settings: { model_fallbacks: five } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     expect(await screen.findAllByRole("button", { name: "Remove" })).toHaveLength(5);
     expect(screen.queryByRole("button", { name: "+ Add a fallback model" })).toBeNull();
   });
@@ -731,7 +731,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("reports a failed harness save to the user with an error toast", async () => {
     setup({ routes: { "PUT /api/settings": () => jsonResponse({ detail: "disk locked" }, { status: 500 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await userEvent.click(toggle(/Allow network inside the sandbox/));
     await waitFor(() => expect(toasts).toContainEqual({ text: "disk locked", tone: "err" }));
   });
@@ -739,7 +739,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("keeps the harness toggle in its saved state when the save fails", async () => {
     setup({ routes: { "PUT /api/settings": () => jsonResponse({ detail: "disk locked" }, { status: 500 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     const box = toggle(/Allow network inside the sandbox/);
     await userEvent.click(box);
     await waitFor(() => expect(toasts.some((t) => t.text === "disk locked")).toBe(true));
@@ -749,7 +749,7 @@ describe("Settings page: Agents & sandbox tab", () => {
   it("links to MCP servers and Skills from the footer", async () => {
     setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     expect(screen.getByRole("link", { name: "MCP servers" })).toHaveAttribute("href", expect.stringMatching(/^\/mcp\/?$/));
     expect(screen.getByRole("link", { name: "Skills" })).toHaveAttribute("href", expect.stringMatching(/^\/skills\/?$/));
   });
@@ -761,7 +761,7 @@ describe("Settings page: external agents tab", () => {
   const open = async () => {
     const env = setup({ acp: [CLAUDE, KIRO] });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await screen.findByText("Claude Code", { selector: ".li .t" });
     return env;
   };
@@ -798,7 +798,7 @@ describe("Settings page: external agents tab", () => {
       routes: { "POST /api/acp/agents/claude_code/probe": () => jsonResponse({ detail: "spawn ENOENT" }, { status: 500 }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
     expect(await screen.findByText("failed")).toHaveClass("pill", "bad");
     expect(screen.getByText("spawn ENOENT")).toBeInTheDocument();
@@ -807,7 +807,7 @@ describe("Settings page: external agents tab", () => {
   it("saves the command, arguments and turn limit that were edited", async () => {
     const { calls } = setup({ acp: [CLAUDE] });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     const command = await screen.findByLabelText(/^Command/);
     await userEvent.clear(command);
     await userEvent.type(command, "claude-dev");
@@ -824,7 +824,7 @@ describe("Settings page: external agents tab", () => {
   it("saves monthly caps and sends only the environment values that were typed", async () => {
     const { calls } = setup({ acp: [CLAUDE] });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     setValue(await screen.findByLabelText(/^Monthly turn limit/), "50");
     setValue(screen.getByLabelText(/^Monthly time limit/), "120");
     setValue(screen.getByLabelText(/^Monthly cost limit/), "2.5");
@@ -838,7 +838,7 @@ describe("Settings page: external agents tab", () => {
   it("enables or disables an agent straight away", async () => {
     const { calls } = setup({ acp: [CLAUDE] });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /enabled/ }));
     await waitFor(() => expect(lastSent(calls, "PUT", "/api/acp/agents/claude_code")).toEqual({ enabled: false }));
   });
@@ -849,7 +849,7 @@ describe("Settings page: external agents tab", () => {
       routes: { "PUT /api/acp/agents/claude_code": () => jsonResponse({ detail: "max_turns must be at least 1" }, { status: 422 }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     setValue(await screen.findByLabelText(/^Max turns per session/), "0");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("⚠ max_turns must be at least 1")).toBeInTheDocument();
@@ -858,7 +858,7 @@ describe("Settings page: external agents tab", () => {
   it("deletes a custom agent", async () => {
     const { calls } = setup({ acp: [KIRO] });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
     await waitFor(() => expect(sent(calls, "DELETE", "/api/acp/agents/kiro")).toHaveLength(1));
   });
@@ -866,7 +866,7 @@ describe("Settings page: external agents tab", () => {
   it("adds a custom agent once its id and command are filled in", async () => {
     const { calls } = setup({ acp: [CLAUDE] });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByText("+ Add custom agent"));
     const add = screen.getByRole("button", { name: "Add" });
     expect(add).toBeDisabled();
@@ -888,7 +888,7 @@ describe("Settings page: external agents tab", () => {
       routes: { "POST /api/acp/agents": () => jsonResponse({ detail: "id already exists" }, { status: 409 }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByText("+ Add custom agent"));
     await userEvent.type(screen.getByLabelText(/^Id$/), "claude_code");
     await userEvent.type(screen.getByLabelText(/^Command/), "claude");
@@ -906,7 +906,7 @@ describe("Settings page: Assistant tab", () => {
       providers: providers ?? [prov(), prov({ id: "anthropic", label: "Anthropic", kind: "anthropic", catalog: { label: "A", needs_key: true, note: "Claude API", default_model: "x", auth_modes: ["api_key"] } }), MOCK],
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Assistant/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Assistant/ }));
     await screen.findByText("The side agent.", { exact: false });
     return env;
   };
@@ -950,7 +950,7 @@ describe("Settings page: Assistant tab", () => {
   it("reports a failed screen-reading switch", async () => {
     setup({ routes: { "PUT /api/settings": () => jsonResponse({ detail: "nope" }, { status: 500 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Assistant/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Assistant/ }));
     await userEvent.click(toggle(/^Assistant can see what is on screen$/));
     expect(await screen.findByText("⚠ nope")).toBeInTheDocument();
   });
@@ -958,7 +958,7 @@ describe("Settings page: Assistant tab", () => {
   it("reports a failed on/off switch for the assistant", async () => {
     setup({ routes: { "PUT /api/settings": () => jsonResponse({ detail: "locked" }, { status: 500 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Assistant/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Assistant/ }));
     await userEvent.click(toggle(/^Assistant on$/));
     expect(await screen.findByText("⚠ locked")).toBeInTheDocument();
     expect(screen.getByText("off", { selector: ".pill" })).toBeInTheDocument();
@@ -983,7 +983,7 @@ describe("Settings page: Assistant tab", () => {
   it("shows the reason when saving the assistant's provider fails", async () => {
     setup({ routes: { "PUT /api/settings": () => jsonResponse({ detail: "unknown provider" }, { status: 422 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Assistant/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Assistant/ }));
     await userEvent.selectOptions(await screen.findByLabelText(/^Provider/), "openai");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("⚠ unknown provider")).toBeInTheDocument();
@@ -1002,7 +1002,7 @@ describe("Settings page: Voice tab", () => {
       },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Voice/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Voice/ }));
     await userEvent.type(await screen.findByPlaceholderText("paste your xi-api-key"), "xi-test-key");
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -1015,7 +1015,7 @@ describe("Settings page: Voice tab", () => {
   it("saves auto-read and dictation as soon as they are switched", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Voice/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Voice/ }));
     const autoRead = await screen.findByText("Read new answers aloud automatically");
     await userEvent.click(within(autoRead.closest(".row") as HTMLElement).getByRole("checkbox"));
     await waitFor(() => expect(lastSent(calls, "PUT", "/api/voice/settings")).toEqual({ auto_read: true }));
@@ -1027,7 +1027,7 @@ describe("Settings page: Voice tab", () => {
   it("saves the monthly character cap on blur", async () => {
     const { calls } = setup();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Voice/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Voice/ }));
     const cap = await screen.findByLabelText(/^Monthly character cap/);
     fireEvent.change(cap, { target: { value: "5000" } });
     fireEvent.blur(cap);
@@ -1038,7 +1038,7 @@ describe("Settings page: Voice tab", () => {
   it("shows the voice service's error when the settings cannot be loaded", async () => {
     setup({ routes: { "GET /api/voice/settings": () => jsonResponse({ detail: "voice offline" }, { status: 500 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Voice/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Voice/ }));
     expect(await screen.findByText("voice offline")).toBeInTheDocument();
   });
 });
@@ -1049,7 +1049,7 @@ describe("Settings page: Telemetry tab", () => {
   const open = async (over: Parameters<typeof setup>[0] = {}) => {
     const env = setup(over);
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Telemetry/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Telemetry/ }));
     await screen.findByText("Clear all");
     return env;
   };
@@ -1137,7 +1137,7 @@ describe("Settings page: Telemetry tab", () => {
   it("shows why the telemetry settings could not load", async () => {
     setup({ routes: { "GET /api/otel/settings": () => jsonResponse({ detail: "telemetry db locked" }, { status: 500 }) } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Telemetry/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Telemetry/ }));
     expect(await screen.findByText(/telemetry db locked/)).toBeInTheDocument();
   });
 });

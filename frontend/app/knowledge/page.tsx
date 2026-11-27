@@ -263,7 +263,7 @@ function StoreForm({ kinds, store, onClose, onSaved }: { kinds: Kind[]; store: S
       {err && <div className="small err" style={{ marginTop: 8 }}>{err}</div>}
       <div className="row" style={{ marginTop: 16, justifyContent: "flex-end" }}>
         <button className="ghost" onClick={onClose}>Cancel</button>
-        <button className="acc" disabled={busy || (!store && !id) || !kind} onClick={save}>{busy ? "Saving…" : "Save"}</button>
+        <button className="pri" disabled={busy || (!store && !id) || !kind} onClick={save}>{busy ? "Saving…" : "Save"}</button>
       </div>
     </Modal>
   );

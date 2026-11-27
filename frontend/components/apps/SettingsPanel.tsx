@@ -100,7 +100,7 @@ export default function SettingsPanel({ app, onChanged }: { app: AppRow; onChang
       <button className="chip small" onClick={() => setM({ ...m, env: [...m.env, { name: "", description: "", required: false }] })}>Add a variable</button>
       <div className="small mut">New variables get a value box after you save the settings.</div>
 
-      <div className="row" style={{ marginTop: 12 }}><button className="acc" onClick={save}>Save app settings</button></div>
+      <div className="row" style={{ marginTop: 12 }}><button className="pri" onClick={save}>Save app settings</button></div>
 
       <h4 style={{ margin: "18px 0 4px" }}>The app&apos;s own key</h4>
       {key && (key.exists

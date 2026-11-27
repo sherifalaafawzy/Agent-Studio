@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Ticks } from "@/components/Ticks";
 import { usePageContext } from "@/lib/pagectx";
 import { api, Provider } from "@/lib/api";
 import ModelSelect, { forgetModels } from "@/components/ModelSelect";
@@ -163,10 +164,11 @@ function AcpRow({ a, onSaved }: { a: AcpCfg; onSaved: () => void }) {
         <b>{a.label}</b>
         <span className={`pill ${a.installed ? "ok" : "bad"}`}>{a.installed ? "installed" : "not found on PATH"}</span>
         <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><input type="checkbox" checked={a.enabled} onChange={(e) => save({ enabled: e.target.checked })} /> enabled</label>
-        <span className="mut small grow">{a.notes}</span>
+        <span className="grow" />
         <button onClick={doProbe} disabled={busy || !a.installed}>{busy ? "Starting…" : "Test connection"}</button>
         {!a.builtin && <button onClick={async () => { try { await api(`/api/acp/agents/${a.id}`, { method: "DELETE" }); onSaved(); } catch (e) { setMsg("⚠ " + (e as Error).message); } }}>Delete</button>}
       </div>
+      {a.notes && <p className="card-desc" style={{ margin: "8px 0 4px" }}><Ticks text={a.notes} /></p>}
       <div className="grid" style={{ marginTop: 10 }}>
         <label>Command<input value={cmd} onChange={(e) => setCmd(e.target.value)} /></label>
         <label>Arguments (one per line)<textarea rows={2} value={args} onChange={(e) => setArgs(e.target.value)} /></label>
@@ -320,7 +322,7 @@ function AssistantCard({ s, ps, onSave }: { s: any; ps: Provider[]; onSave: (pat
           <ModelSelect provider={effective} value={model} onChange={setModel} emptyLabel="The provider's default model" /></label>
       </div>
       <div className="row" style={{ marginTop: 12 }}>
-        <button className="acc" disabled={!dirty} onClick={save}>Save</button>
+        <button className="pri" disabled={!dirty} onClick={save}>Save</button>
         <span className="small mut">{msg}</span>
       </div>
       <div className="small mut" style={{ marginTop: 8 }}>
@@ -354,7 +356,7 @@ function WorkspaceField({ current, onSave }: { current: string; onSave: (p: stri
     <div style={{ gridColumn: "1 / -1" }}>
       <label>Default workspace folder <InfoTip id="workspace" /></label>
       <div className="row" style={{ marginTop: 5, alignItems: "flex-start" }}>
-        <div className="grow"><FolderPicker value={v} onChange={(p) => { setV(p); setMsg(""); }} placeholder="e.g. H:/htdocs/my-project" /></div>
+        <div style={{ flex: "1 1 260px", minWidth: 0 }}><FolderPicker value={v} onChange={(p) => { setV(p); setMsg(""); }} placeholder="e.g. H:/htdocs/my-project" /></div>
         <button className="acc" disabled={!v || v === current} onClick={() => save(v)}>Save</button>
       </div>
       <div className="small mut" style={{ marginTop: 6 }}>The folder your agents work in: file tools can only read/edit inside it, sandboxed shell commands see only it, the Filesystem/Git MCP servers and external agents start in it. Point it at the project you want them to work on (you can also pick a different folder per chat under <b>Options</b>). {msg}</div>
@@ -409,8 +411,8 @@ export default function SettingsPage() {
     <div>
       <div className="page-head"><h2>Settings</h2><span className="grow" /><SettingsSearch reg={reg} tabs={TABS} go={jump} /></div>
       {err && <p className="err">{err}</p>}
-      <div className="tabs" data-tour="settings-tabs">{TABS.map(([k, label]) => (
-        <button key={k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => go(k)}>{label}
+      <div className="tabs" role="tablist" data-tour="settings-tabs">{TABS.map(([k, label]) => (
+        <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => go(k)}>{label}
           {k === "providers" && <span className="count">{ps.filter((p) => p.enabled).length}/{ps.length}</span>}
           {k === "external" && <span className="count">{acp.filter((a) => a.installed).length}/{acp.length}</span>}</button>))}</div>
 

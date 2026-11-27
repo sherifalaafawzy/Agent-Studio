@@ -113,7 +113,7 @@ const sent = (calls: Call[], method: string, path: string) =>
 const lastSent = (calls: Call[], method: string, path: string) => sent(calls, method, path).at(-1);
 const toggle = (label: RegExp) => within(screen.getByText(label).closest(".row") as HTMLElement).getByRole("checkbox");
 const setValue = (el: HTMLElement, value: string) => fireEvent.change(el, { target: { value } });
-const tab = (name: RegExp) => screen.getByRole("button", { name });
+const tab = (name: RegExp) => screen.getByRole("tab", { name });
 const fail = (detail: string) => () => jsonResponse({ detail }, { status: 500 });
 
 let toasts: { text: string; tone: string }[] = [];
@@ -275,7 +275,7 @@ describe("Settings branches: external agent rows", () => {
   const open = async (acp: any[]) => {
     const env = setup({ acp });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await screen.findAllByText("Command");
     return env;
   };
@@ -340,7 +340,7 @@ describe("Settings branches: external agent rows", () => {
       routes: { "POST /api/acp/agents/claude_code/probe": () => jsonResponse({ ok: true, name: "claude-agent", version: "9", protocol: 2, modes: { available: [{ id: "plan" }] }, auth_methods: [{ id: "oauth" }, { id: "key" }] }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
     expect(await screen.findByText("connected")).toBeInTheDocument();
     expect(document.body).toHaveTextContent("claude-agent 9 · ACP v2 · modes: plan · auth: oauth, key");
@@ -352,7 +352,7 @@ describe("Settings branches: external agent rows", () => {
       routes: { "POST /api/acp/agents/claude_code/probe": () => jsonResponse({ ok: true, title: "T", version: "1", protocol: 1, modes: {}, auth_methods: [] }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
     expect(await screen.findByText("connected")).toBeInTheDocument();
     expect(document.body).toHaveTextContent("T 1 · ACP v1 · modes: none");
@@ -365,7 +365,7 @@ describe("Settings branches: external agent rows", () => {
       routes: { "POST /api/acp/agents/claude_code/probe": () => jsonResponse({ ok: false, error: "spawn ENOENT" }) },
     });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
     expect(await screen.findByText("failed")).toBeInTheDocument();
     expect(screen.getByText("spawn ENOENT")).toBeInTheDocument();
@@ -374,7 +374,7 @@ describe("Settings branches: external agent rows", () => {
   it("reports a failed delete of a custom agent inline and keeps the agent", async () => {
     setup({ acp: [{ ...KIRO }], routes: { "DELETE /api/acp/agents/kiro": fail("in use") } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
     expect(await screen.findByText("⚠ in use")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
@@ -383,7 +383,7 @@ describe("Settings branches: external agent rows", () => {
   it("reports a failed save of an agent's enabled switch", async () => {
     setup({ acp: [{ ...CLAUDE }], routes: { "PUT /api/acp/agents/claude_code": fail("read-only config") } });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /External agents/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /External agents/ }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /enabled/ }));
     expect(await screen.findByText("⚠ read-only config")).toBeInTheDocument();
   });
@@ -394,7 +394,7 @@ describe("Settings branches: external agent rows", () => {
 describe("Settings branches: telemetry", () => {
   const openTelemetry = async () => {
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Telemetry/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Telemetry/ }));
   };
 
   it("shows the load error instead of the card when the connector cannot be read", async () => {
@@ -444,7 +444,7 @@ describe("Settings branches: assistant tab", () => {
   const openAssistant = async (settings: Record<string, any>, providers?: any[]) => {
     const env = setup({ settings, providers });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Assistant/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Assistant/ }));
     await screen.findByText("The side agent.", { exact: false });
     return env;
   };
@@ -516,7 +516,7 @@ describe("Settings branches: assistant tab", () => {
 describe("Settings branches: harness tab", () => {
   const openHarness = async () => {
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Agents & sandbox/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Agents & sandbox/ }));
     await screen.findByText("Sandbox");
   };
 

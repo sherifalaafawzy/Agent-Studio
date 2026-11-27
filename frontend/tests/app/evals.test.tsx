@@ -38,6 +38,20 @@ describe("Evaluations page", () => {
     expect(screen.getByText(/Every prompt uses model credits/)).toBeInTheDocument();
   });
 
+  it("says what to do while no set is open, and lets the keyboard open one", async () => {
+    setup();
+    render(<EvalsPage />);
+    const row = (await screen.findByText("Smoke")).closest(".ag-item") as HTMLElement;
+    expect(screen.getByTestId("evals-empty")).toHaveTextContent("Pick a test set on the left");
+    expect(row).toHaveAttribute("role", "button");
+    expect(row).toHaveAttribute("aria-pressed", "false");
+    fireEvent.keyDown(row, { key: "Tab" });                                                         // not a choosing key
+    expect(screen.getByTestId("evals-empty")).toBeInTheDocument();
+    fireEvent.keyDown(row, { key: "Enter" });
+    await waitFor(() => expect(screen.queryByTestId("evals-empty")).toBeNull());
+    expect(row).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("opens a set with its cases and checks, and edits them", async () => {
     const net = setup();
     render(<EvalsPage />);

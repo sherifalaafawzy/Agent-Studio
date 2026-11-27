@@ -46,9 +46,9 @@ describe("Runs: inspector with sparse data", () => {
     detail([{ role: "bot", text: "plain" }, { role: "bot", text: "no runs", meta: {} }]);
     render(<RunsPage />);
     expect(await screen.findByText("No agent runs in this chat yet.")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Events" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Events" }));
     expect(screen.getByText("No timed events.")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Tools" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
     expect(screen.getByText("No tool calls.")).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe("Runs: inspector with sparse data", () => {
     expect(container.querySelector(".insp-title")).toHaveTextContent("1 sub-agent");
     expect(container.querySelector(".insp-title")).not.toHaveTextContent("built");
 
-    await userEvent.click(screen.getByRole("button", { name: "Events" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Events" }));
     const side = container.querySelector(".insp-side")!;
     expect(side).toHaveTextContent("engineer turn started");
     expect(side).toHaveTextContent("helper started");
@@ -86,7 +86,7 @@ describe("Runs: inspector with sparse data", () => {
     expect(side).toHaveTextContent("grep · 0ms · failed");
     expect(side.querySelectorAll(".ev")).toHaveLength(4);
 
-    await userEvent.click(screen.getByRole("button", { name: "Tools" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
     const row = screen.getByText("grep", { selector: "code" }).closest("tr")!;
     expect(row).toHaveTextContent("grep25ms1");
   });

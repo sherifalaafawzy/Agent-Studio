@@ -84,14 +84,14 @@ export default function DeployClaude({ agent, onClose }: { agent: { id: string; 
             <div className="small mut">Claude Code is Anthropic&apos;s coding assistant for the terminal. You see every file first and nothing is written until you confirm.</div>
             <fieldset style={{ border: 0, padding: 0, margin: "12px 0 0" }}>
               <legend><b>What should happen?</b></legend>
-              <label className="check"><input type="radio" name="dc-mode" checked={mode === "export"} onChange={() => setMode("export")} /> Copy this agent into Claude Code <span className="mut small">(a subagent file, its skills and MCP servers; it then runs on Claude)</span></label>
-              <label className="check"><input type="radio" name="dc-mode" checked={mode === "live"} onChange={() => setMode("live")} /> Let Claude Code call the live agent <span className="mut small">(it keeps running here, with its guardrails, memory and spend caps)</span></label>
+              <label className="check"><input type="radio" name="dc-mode" checked={mode === "export"} onChange={() => setMode("export")} /> <span>Copy this agent into Claude Code <span className="mut small">(a subagent file, its skills and MCP servers; it then runs on Claude)</span></span></label>
+              <label className="check"><input type="radio" name="dc-mode" checked={mode === "live"} onChange={() => setMode("live")} /> <span>Let Claude Code call the live agent <span className="mut small">(it keeps running here, with its guardrails, memory and spend caps)</span></span></label>
             </fieldset>
             <fieldset style={{ border: 0, padding: 0, margin: "12px 0 0" }}>
               <legend><b>Where?</b></legend>
-              <label className="check"><input type="radio" name="dc-scope" checked={scope === "project"} onChange={() => setScope("project")} /> One project folder <span className="mut small">(<code>.claude/</code> in that folder; share it with your team)</span></label>
+              <label className="check"><input type="radio" name="dc-scope" checked={scope === "project"} onChange={() => setScope("project")} /> <span>One project folder <span className="mut small">(<code>.claude/</code> in that folder; share it with your team)</span></span></label>
               {scope === "project" && <div style={{ margin: "6px 0 6px 24px" }}><FolderPicker value={path} onChange={setPath} placeholder="e.g. H:/my-project" /></div>}
-              <label className="check"><input type="radio" name="dc-scope" checked={scope === "user"} onChange={() => setScope("user")} /> All my projects <span className="mut small">(your user folder, <code>~/.claude/</code>)</span></label>
+              <label className="check"><input type="radio" name="dc-scope" checked={scope === "user"} onChange={() => setScope("user")} /> <span>All my projects <span className="mut small">(your user folder, <code>~/.claude/</code>)</span></span></label>
             </fieldset>
             {mode === "export" && (
               <div style={{ margin: "12px 0 0" }}>

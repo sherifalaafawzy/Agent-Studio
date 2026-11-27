@@ -1,4 +1,5 @@
 "use client";
+import { IEdit } from "@/components/Icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "@/components/Nav";
@@ -189,8 +190,9 @@ export default function AgentsPage() {
           <h3 id="ag-tools">Tools <InfoTip id="tools" /></h3>
           <div className="row">{tools.map((t) => (
             <label key={t.name} title={t.description} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <input type="checkbox" checked={f.tools.includes(t.name)} onChange={() => set("tools", toggle(f.tools, t.name))} />{t.name}{t.read_only ? "" : " ✎"}
+              <input type="checkbox" checked={f.tools.includes(t.name)} onChange={() => set("tools", toggle(f.tools, t.name))} />{t.name}{!t.read_only && <span className="tool-writes" title="Can change files, run commands or send something" aria-label="can make changes"><IEdit size={12} /></span>}
             </label>))}</div>
+          <p className="small mut tool-legend"><IEdit size={12} /> marks a tool that can change files, run commands or send something. The others only read.</p>
           <h3 id="ag-mcp">MCP servers <InfoTip id="mcp" /></h3>
           <div className="row">{mcp.map((m) => (
             <label key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>

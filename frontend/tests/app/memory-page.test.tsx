@@ -193,7 +193,7 @@ describe("Memory page: review, notes, settings, graph", () => {
   it("approves, edits-and-approves and rejects waiting memories", async () => {
     const { net } = setup();
     render(<MemoryPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /Review/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /Review/ }));
     expect(window.location.hash).toBe("#review");
     const card = await screen.findByText("The user's timezone is Paris");
     expect(card).toBeInTheDocument();
@@ -212,7 +212,7 @@ describe("Memory page: review, notes, settings, graph", () => {
     const { state } = setup({ stats: { total: 0, pending: 0, by_type: {} } });
     state.pending = [];
     render(<MemoryPage />);
-    await userEvent.click(await screen.findByRole("button", { name: "Review" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Review" }));
     expect(await screen.findByText("Nothing is waiting for your review.")).toBeInTheDocument();
   });
 
@@ -246,9 +246,9 @@ describe("Memory page: review, notes, settings, graph", () => {
   it("opens the settings and the older graph, remembering the tab in the address", async () => {
     setup();
     render(<MemoryPage />);
-    await userEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Settings" }));
     expect(await screen.findByText("Memory is on")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Older graph" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Older graph" }));
     expect(await screen.findByText(/older knowledge graph/)).toBeInTheDocument();
     expect(window.location.hash).toBe("#graph");
   });

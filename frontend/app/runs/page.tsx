@@ -128,10 +128,10 @@ function Inspector({ sid }: { sid: string }) {
       </div>
 
       <aside className="insp-side">
-        <div className="tabs">{(["session", "events", "tools"] as SideTab[]).map((t) => <button key={t} className={`tab ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div>
+        <div className="tabs" role="tablist">{(["session", "events", "tools"] as SideTab[]).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={`tab ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div>
         {tab === "session" && sess && (<>
           <div className="kv">
-            <span>ID</span><code style={{ wordBreak: "break-all", fontSize: 11.5 }}>{sid}</code>
+            <span>ID</span><code style={{ wordBreak: "break-all", fontSize: 12 }}>{sid}</code>
             <span>Agent</span><span>{sess.agent ?? "plain chat"}</span>
             <span>Provider</span><span>{sess.provider}{sess.model ? ` · ${sess.model}` : ""}</span>
             <span>Workspace</span><span style={{ wordBreak: "break-all" }}>{sess.workspace || "default"}</span>

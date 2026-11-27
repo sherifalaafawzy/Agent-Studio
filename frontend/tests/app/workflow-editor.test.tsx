@@ -267,6 +267,13 @@ describe("Workflow editor", () => {
     expect(r.calls.some((c) => c.method === "DELETE")).toBe(true);
   });
 
+  it("opens the saved workflow when the server answers that there is no draft", async () => {
+    setup({ "GET /api/workflows/wf_one/draft": () => jsonResponse({ doc: null }) });               // the server's plain "no draft" answer (it used to be a 404)
+    render(<EditPage />);
+    await waitFor(() => expect(screen.getByLabelText("Workflow name")).toHaveValue("Flow one"));
+    expect(screen.queryByText(/your unsaved draft was restored/)).toBeNull();
+  });
+
   it("checks for problems and lists them in the drawer", async () => {
     setup({ "POST /api/workflows/validate": () => jsonResponse({ ok: false, problems: [{ node: "agent1", severity: "error", message: "agent 'helper' does not exist" }, { node: "", severity: "warning", message: "no Output node" }] }) });
     const user = userEvent.setup();

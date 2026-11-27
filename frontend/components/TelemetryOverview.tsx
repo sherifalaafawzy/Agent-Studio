@@ -33,11 +33,13 @@ function Trend({ data }: { data: Insights["trend"] }) {
   const max = Math.max(...data.map((d) => d.cost_usd), 0.000001);
   const best = data.reduce((a, d) => (d.cost_usd > a.cost_usd ? d : a), data[0]);
   const w = 100 / data.length;
+  const bar = Math.min(w * 0.7, 4);                                // thin marks: seven days must not turn into seven slabs
   return (
     <div>
       <svg viewBox="0 0 100 32" role="img" aria-label={`Cost per day. Highest: ${usd(best.cost_usd)} on ${best.day}`} style={{ width: "100%", height: 120 }} preserveAspectRatio="none">
-        {data.map((d, i) => <rect key={d.day} x={i * w + w * 0.15} width={w * 0.7} y={30 - (d.cost_usd / max) * 26} height={Math.max(0.4, (d.cost_usd / max) * 26)} rx={1}
-          fill={d.errors ? "var(--bad)" : "var(--accent, #5b8def)"}><title>{`${d.day}: ${usd(d.cost_usd)}, ${d.runs} runs, ${d.errors} failed`}</title></rect>)}
+        <line x1={0} x2={100} y1={30.2} y2={30.2} className="viz-axis" vectorEffect="non-scaling-stroke" />
+        {data.map((d, i) => <rect key={d.day} x={i * w + (w - bar) / 2} width={bar} y={30 - (d.cost_usd / max) * 26} height={Math.max(0.4, (d.cost_usd / max) * 26)}
+          fill={d.errors ? "var(--bad)" : "var(--viz-1)"}><title>{`${d.day}: ${usd(d.cost_usd)}, ${d.runs} runs, ${d.errors} failed`}</title></rect>)}
       </svg>
       <div className="small mut">Highest day: <b>{usd(best.cost_usd)}</b> on {best.day}. Red bars are days with failed runs.</div>
       <details><summary className="small">Show as a table</summary>
@@ -107,7 +109,7 @@ export default function TelemetryOverview() {
           {data.anomalies.length === 0 && <div className="small mut">Nothing unusual.</div>}
           {data.anomalies.map((a, i) => <div key={i} className="small" style={{ padding: "4px 0" }}><span className={`pill ${a.severity === "bad" ? "bad" : ""}`}>{a.title}</span> {a.detail}
             {a.trace_id && <> <button className="ghost small" onClick={() => why(a.trace_id as string)}>Explain</button></>}</div>)}
-          <div className="grid" style={{ marginTop: 14 }}>
+          <div className="grid tel-top" style={{ marginTop: 14 }}>
             <div><div className="lbl">Top agents</div><table><tbody>{data.top.agents.map((a) => <tr key={a.name}><td>{a.name}</td><td>{a.runs} runs</td><td>{a.errors ? `${a.errors} failed` : ""}</td><td>{usd(a.cost_usd)}</td></tr>)}</tbody></table></div>
             <div><div className="lbl">Top models</div><table><tbody>{data.top.models.map((m) => <tr key={m.name}><td>{m.name}</td><td>{m.calls} calls</td><td>{usd(m.cost_usd)}</td></tr>)}</tbody></table></div>
             <div><div className="lbl">Top tools</div><table><tbody>{data.top.tools.map((t) => <tr key={t.name}><td>{t.name}</td><td>{t.calls} calls</td><td>{t.errors ? `${t.errors} failed` : ""}</td><td>{fmtMs(t.avg_ms)} avg</td></tr>)}</tbody></table></div>

@@ -133,7 +133,7 @@ CHAT_JS = """"use strict";
 // A chat with one of your agents. The agent id comes from <body data-agent="...">.
 var agent = document.body.dataset.agent;
 var log = document.getElementById("log"), form = document.getElementById("form"), text = document.getElementById("text"), send = document.getElementById("send");
-var history = [];
+var turns = [];                                            // not "history": that name is the browser's own window.history and cannot be replaced
 function add(cls, content) { var d = document.createElement("div"); d.className = "msg " + cls; d.textContent = content; log.appendChild(d); d.scrollIntoView({ block: "end" }); return d; }
 if (!agent) add("bot err", "No agent is set for this app yet. Ask the builder to add one, or set data-agent on <body>.");
 form.addEventListener("submit", async function (ev) {
@@ -142,13 +142,13 @@ form.addEventListener("submit", async function (ev) {
   if (!q || !agent) return;
   text.value = ""; send.disabled = true;
   add("me", q);
-  history.push({ role: "user", content: q });
+  turns.push({ role: "user", content: q });
   var bubble = add("bot", "…");
   try {
-    var answer = await AgentClient.ask(agent, history, { onDelta: function (piece, all) { bubble.textContent = all; } });
+    var answer = await AgentClient.ask(agent, turns, { onDelta: function (piece, all) { bubble.textContent = all; } });
     bubble.textContent = answer || "(no answer)";
-    history.push({ role: "assistant", content: answer });
-  } catch (e) { bubble.textContent = e.message; bubble.classList.add("err"); history.pop(); }
+    turns.push({ role: "assistant", content: answer });
+  } catch (e) { bubble.textContent = e.message; bubble.classList.add("err"); turns.pop(); }
   send.disabled = false; text.focus();
 });
 """

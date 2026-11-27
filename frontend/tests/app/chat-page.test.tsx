@@ -125,7 +125,7 @@ describe("chat page: first load", () => {
   it("shows the backend-offline pill when the providers request fails", async () => {
     base({ "GET /api/providers": () => textResponse("down", 500) });
     render(<Page />);
-    expect(await screen.findByText("backend offline — run npm run dev")).toBeInTheDocument();
+    expect(await screen.findByText("the server is not answering")).toBeInTheDocument();
   });
 
   it("a suggestion fills the composer and focuses it", async () => {

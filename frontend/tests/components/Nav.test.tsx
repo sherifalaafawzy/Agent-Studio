@@ -134,10 +134,36 @@ describe("Sidebar: recent chats", () => {
     expect(screen.getByText("Connected")).toBeInTheDocument();
   });
 
+  it("scrolls the current page's link into view, because the page list scrolls on its own", async () => {
+    const into = vi.fn();
+    const proto = HTMLElement.prototype as unknown as { scrollIntoView?: unknown };
+    const had = proto.scrollIntoView;
+    proto.scrollIntoView = into;
+    try {
+      nav.path = "/runs/";
+      withSessions([]);
+      render(<Nav />);
+      await screen.findByText("Connected");
+      expect(into).toHaveBeenCalledWith({ block: "nearest" });
+      expect((into.mock.instances[0] as HTMLElement).classList.contains("on")).toBe(true);
+    } finally { proto.scrollIntoView = had; }
+  });
+
+  it("keeps the status and the shortcut on one line and the tools on the next, and names the theme button", async () => {
+    withSessions([]);
+    render(<Nav />);
+    await screen.findByText("Connected");
+    const status = document.querySelector(".sb-foot .sb-status")!, tools = document.querySelector(".sb-foot .sb-tools")!;
+    expect(status).toHaveTextContent("Connected");
+    expect(status.querySelector("kbd")).toHaveTextContent("Ctrl K");
+    expect(tools.querySelectorAll("a, button").length).toBe(5);                                     // bell, set-up guide, docs, tour, theme
+    expect(tools).toContainElement(screen.getByRole("button", { name: /^Theme: / }));
+  });
+
   it("reports the backend as offline when the list cannot be loaded", async () => {
     routeFetch({ "GET /api/chat/sessions": () => { throw new TypeError("Failed to fetch"); } });
     render(<Nav />);
-    expect(await screen.findByText("Backend offline — run npm run dev")).toBeInTheDocument();
+    expect(await screen.findByText("The server is not answering. It is tried again every 20 seconds.")).toBeInTheDocument();
     expect(screen.getByText("Offline")).toBeInTheDocument();
     expect(document.querySelector(".sb-foot .dot.bad")).not.toBeNull();
   });

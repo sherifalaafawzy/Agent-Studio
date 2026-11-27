@@ -203,7 +203,7 @@ export default function DiscoveryPage() {
     <div>
       <div className="page-head"><h2>Discovery &amp; AI-BOM</h2><span className="grow" /><Link href="/settings/#discovery" className="chip">Settings</Link></div>
       <p className="page-sub">What this system is made of, in standard formats (CycloneDX 1.7), and, only if you choose, how other tools can find it (Agentic Resource Discovery). Previewing never publishes anything.</p>
-      <div className="tabs">{TABS.map(([k, label]) => <button key={k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{label}</button>)}</div>
+      <div className="tabs" role="tablist">{TABS.map(([k, label]) => <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{label}</button>)}</div>
       {tab === "bom" && <BomPanel levels={levels} />}
       {tab === "catalog" && <CatalogPanel />}
       {tab === "data" && <DataProducts />}

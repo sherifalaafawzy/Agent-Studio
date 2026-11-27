@@ -197,7 +197,7 @@ export default function AutoSettings({ providers }: { providers: Provider[] }) {
         </div>
         <div className="small mut" style={{ marginTop: 6 }}>Leave the two tier pickers on Automatic to use each provider&apos;s own Pro / Flash models from Model providers. Setting one pins that tier to a single model.</div>
         <div className="row" style={{ marginTop: 12 }}>
-          <button className="acc" disabled={!dirty} onClick={save}>Save</button>
+          <button className="pri" disabled={!dirty} onClick={save}>Save</button>
           <span className="small mut">{msg}</span>
         </div>
       </div>

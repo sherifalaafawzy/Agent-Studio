@@ -17,9 +17,9 @@ export default function ComponentsPage() {
   const shown = useMemo(() => KIND_LIST.filter((k) => (group === "all" || k.group === group) && (!q.trim() || `${k.type} ${k.about}`.toLowerCase().includes(q.trim().toLowerCase()))), [q, group]);
   const draw = () => { try { setDrawn(JSON.parse(mine)); } catch { setDrawn(mine); } };
   return (
-    <div className="page" data-testid="components-page">
-      <div className="card-head"><h1 style={{ margin: 0 }}>Components</h1><InfoTip id="ui-components" /></div>
-      <p className="mut">Everything an agent can show in an answer: {KIND_LIST.length} kinds. Each is drawn from a typed spec; none loads anything from the internet. Ask an agent for one by name, or call <code>ui_catalog</code>.</p>
+    <div data-testid="components-page">
+      <div className="page-head"><h2>Components</h2><InfoTip id="ui-components" /></div>
+      <p className="page-sub">Everything an agent can show in an answer: {KIND_LIST.length} kinds. Each is drawn from a typed spec; none loads anything from the internet. Ask an agent for one by name, or call <code>ui_catalog</code>.</p>
       <details className="card" style={{ marginBottom: 14 }}><summary><b>Try your own spec</b></summary>
         <textarea aria-label="Component spec (JSON)" rows={7} style={{ width: "100%", fontFamily: "var(--mono)", fontSize: 12 }} value={mine} onChange={(e) => setMine(e.target.value)} placeholder={'{"type": "chart.bar", "x": ["A", "B"], "series": [{"name": "S", "values": [3, 5]}]}'} />
         <div className="row"><button className="acc" onClick={draw} disabled={!mine.trim()}>Draw it</button></div>

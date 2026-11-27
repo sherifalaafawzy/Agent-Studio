@@ -42,7 +42,7 @@ function setup(settings: Record<string, unknown> = {}, routes: Record<string, an
   });
   return { ...r, s };
 }
-const openTab = async (name: RegExp) => { render(<SettingsPage />); await userEvent.click(await screen.findByRole("button", { name })); };
+const openTab = async (name: RegExp) => { render(<SettingsPage />); await userEvent.click(await screen.findByRole("tab", { name })); };
 const sent = (calls: any[]) => calls.filter((c) => c.method === "PUT" && c.url.pathname === "/api/settings").map((c) => c.body);
 beforeEach(() => { window.location.hash = ""; });
 

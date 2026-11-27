@@ -41,8 +41,8 @@ export default function AccessSettings() {
       {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", margin: "6px 0" }}>{err}</div>}
       <div className="card">
         <div className="card-head"><b>Switches</b><InfoTip id="api-access" /></div>
-        <label className="check"><input type="checkbox" checked={c.api_enabled} onChange={(e) => put({ api_enabled: e.target.checked })} /> OpenAI-compatible API (<code>{c.base_url}</code>)</label>
-        <label className="check" style={{ display: "block", marginTop: 6 }}><input type="checkbox" checked={c.a2a_enabled} onChange={(e) => put({ a2a_enabled: e.target.checked })} /> A2A (<code>{c.a2a_base}/&lt;agent&gt;/</code>)</label>
+        <label className="check"><input type="checkbox" checked={c.api_enabled} onChange={(e) => put({ api_enabled: e.target.checked })} /> <span>OpenAI-compatible API (<code>{c.base_url}</code>)</span></label>
+        <label className="check" style={{ marginTop: 6 }}><input type="checkbox" checked={c.a2a_enabled} onChange={(e) => put({ a2a_enabled: e.target.checked })} /> <span>A2A (<code>{c.a2a_base}/&lt;agent&gt;/</code>)</span></label>
         <label style={{ marginTop: 8 }}>Provider for API calls to agents that have none of their own
           <select value={c.api_default_provider} aria-label="Default provider" onChange={(e) => put({ api_default_provider: e.target.value })}><option value="">first enabled provider</option>{ps.filter((p) => p.enabled).map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
         <div className="small mut" style={{ marginTop: 6 }}>The server listens on this PC only. To reach it from elsewhere, put your own secure proxy in front of it.</div>

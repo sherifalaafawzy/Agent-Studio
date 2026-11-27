@@ -33,7 +33,7 @@ describe("settings page: the Auto tab", () => {
   it("opens from the tab bar", async () => {
     routes();
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Auto$/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Auto$/ }));
     expect(await screen.findByText("Auto mode")).toBeInTheDocument();
     expect(window.location.hash).toBe("#auto");
     expect(document.querySelector(".page-sub")).toHaveTextContent(/Pick Auto in the chat/);

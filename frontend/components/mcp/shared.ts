@@ -20,7 +20,7 @@ export const GROUPS: { id: GroupId; title: string; hint: string }[] = [
 /** One line in the list: an installed server (m), a catalog server that is not installed yet (c only), or both. */
 export type Row = { id: string; label: string; description: string; group: GroupId; tone: string; statusText: string; m?: Mcp; c?: CatalogServer };
 
-const TINT = ["#4f7fd9", "#e0794f", "#2aa58f", "#d9a43a", "#8a66d2", "#d0574f", "#3d9fcc", "#5aa452"];
+const TINT = ["#3f6fcf", "#b5522d", "#1c7f6b", "#946a0c", "#7a55c7", "#b8433b", "#22789f", "#3d8436"];   // each carries white initials at 4.5:1 or better
 export const tint = (s: string) => TINT[[...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0 & 7];
 export const initials = (label: string) => label.replace(/[^A-Za-z0-9]/g, "").slice(0, 2);
 export const ago = (t: number) => { const s = Date.now() / 1000 - t; return s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`; };

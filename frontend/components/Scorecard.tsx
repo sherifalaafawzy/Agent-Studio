@@ -133,9 +133,9 @@ export default function Scorecard({ initialAgent = "" }: { initialAgent?: string
   const again = () => { loadOverall(); if (mode === "agents") { loadRows(); if (sel) loadAgent(sel); } };
 
   const modes = (
-    <div className="tabs" role="tablist" aria-label="What to score" style={{ marginBottom: 12 }}>
+    <div className="seg" role="tablist" aria-label="What to score" style={{ marginBottom: 12 }}>
       {([["overall", "Overall"], ["agents", "Per agent"]] as const).map(([k, l]) => (
-        <button key={k} role="tab" aria-selected={mode === k} className={`tab ${mode === k ? "on" : ""}`} onClick={() => { setMode(k); if (k === "overall") pick(""); }}>{l}</button>))}
+        <button key={k} role="tab" aria-selected={mode === k} className={mode === k ? "on" : ""} onClick={() => { setMode(k); if (k === "overall") pick(""); }}>{l}</button>))}
     </div>);
   if (!card) return err ? <p className="err" role="alert">{err}</p> : null;
 

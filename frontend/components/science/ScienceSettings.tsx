@@ -50,7 +50,7 @@ export default function ScienceSettings({ cfg, connectors, onChange }: { cfg: Co
         <label>Most investigations kept<input type="number" min={1} max={5000} value={draft.max_investigations} aria-label="Most investigations" onChange={(e) => num("max_investigations", e.target.value)} /></label>
       </div>
       {err && <div className="err small" role="alert">{err}</div>}
-      <div className="row" style={{ marginTop: 8 }}><button className="acc" onClick={save}>Save Science settings</button></div>
+      <div className="row" style={{ marginTop: 8 }}><button className="pri" onClick={save}>Save Science settings</button></div>
     </div>
   );
 }

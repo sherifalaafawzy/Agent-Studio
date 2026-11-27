@@ -4,6 +4,7 @@ import Nav, { Frame, MobileBar } from "@/components/Nav";
 import SideAgent from "@/components/SideAgent";
 import TourRunner from "@/components/TourRunner";
 import OnboardingGate from "@/components/OnboardingGate";
+import TabStripFx from "@/components/TabStripFx";
 
 export const metadata: Metadata = { title: "Agent Studio", description: "Model-agnostic agent workbench" };
 
@@ -15,14 +16,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /></head>
       <body>
+        <a className="skip-link" href="#main">Skip to the page</a>
         <div className="app">
           <MobileBar />
           <Nav />
-          <main className="main"><Frame>{children}</Frame></main>
+          <main className="main" id="main" tabIndex={-1}><Frame>{children}</Frame></main>
         </div>
         <SideAgent />
         <TourRunner />
         <OnboardingGate />
+        <TabStripFx />
       </body>
     </html>
   );

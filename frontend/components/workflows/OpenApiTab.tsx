@@ -281,7 +281,7 @@ export default function OpenApiTab({ onChanged }: { onChanged?: () => void }) {
   return (
     <div data-testid="openapi-tab">
       <div className="row"><p className="small mut grow" style={{ margin: 0 }}>Upload an OpenAPI file, give an address or paste one. Every endpoint becomes a box you can use in a workflow. Only that API&apos;s own server is called, and anything that changes data needs your confirmation.</p>
-        <button className="pri" onClick={() => setAdding(true)}>Add an API</button></div>
+        <button className="acc" onClick={() => setAdding(true)}>Add an API</button></div>
       {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", margin: "8px 0" }}>{err}</div>}
       {srcs && srcs.length === 0 && <div className="card" style={{ marginTop: 12 }}>No APIs yet. Add one to use its endpoints as workflow steps.</div>}
       {srcs && srcs.length > 0 && (

@@ -50,8 +50,8 @@ export default function FolderPicker({ value, onChange, onPicked, placeholder, c
   }
   return (
     <span style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%" }}>
-      <span style={{ display: "flex", gap: 6 }}>
-        <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onPicked?.(); }} style={{ flex: 1, minWidth: compact ? 120 : 200 }} />
+      <span style={{ display: "flex", gap: 6, minWidth: 0 }}>
+        <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onPicked?.(); }} style={{ flex: `1 1 ${compact ? 120 : 160}px`, minWidth: 0 }} />
         <button onClick={browse} disabled={busy} title="Pick a folder on this PC" style={{ display: "inline-flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}>
           <IFolder size={14} />{busy ? "Choose in the dialog…" : "Browse…"}</button>
       </span>

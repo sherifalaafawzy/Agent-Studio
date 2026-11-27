@@ -314,15 +314,15 @@ def test_store_duplicate_drafts_versions_and_listing(rich):
     cp = rich.post("/api/workflows/wf_src/duplicate", json={}).json()
     assert cp["id"] == "wf_src_copy" and cp["name"] == "wf_src copy" and "pin" not in json.dumps(cp["nodes"][1].get("settings", {})) or cp["nodes"][1]["settings"]["pin"] is None
     assert rich.post("/api/workflows/wf_src/duplicate", json={"id": "wf_src_copy", "name": "Named"}).json()["id"] == "wf_src_copy_2" and rich.post("/api/workflows/ghost/duplicate", json={}).status_code == 404
-    assert rich.get("/api/workflows/wf_src/draft").status_code == 404
+    assert rich.get("/api/workflows/wf_src/draft").json() == {"doc": None}
     assert rich.put("/api/workflows/wf_src/draft", json={**d, "name": "Draft name"}).json()["doc"]["name"] == "Draft name"
     assert rich.get("/api/workflows/wf_src/draft").json()["doc"]["name"] == "Draft name" and rich.get("/api/workflows").json()["workflows"][0]["has_draft"] in (True, False)
     assert any(w["id"] == "wf_src" and w["has_draft"] for w in rich.get("/api/workflows").json()["workflows"])
     assert rich.put("/api/workflows/ghost/draft", json=d).status_code == 404 and rich.put("/api/workflows/wf_src/draft", json={"nodes": []}).status_code == 422
-    assert rich.delete("/api/workflows/wf_src/draft").status_code == 200 and rich.get("/api/workflows/wf_src/draft").status_code == 404
+    assert rich.delete("/api/workflows/wf_src/draft").status_code == 200 and rich.get("/api/workflows/wf_src/draft").json() == {"doc": None}
     rich.put("/api/workflows/wf_src/draft", json=d)
     rich.put("/api/workflows/wf_src", json=d)
-    assert rich.get("/api/workflows/wf_src/draft").status_code == 404                          # publishing a version clears the draft
+    assert rich.get("/api/workflows/wf_src/draft").json() == {"doc": None}                          # publishing a version clears the draft
     go(rich, "wf_src")
     row = next(w for w in rich.get("/api/workflows").json()["workflows"] if w["id"] == "wf_src")
     assert row["last_run"]["status"] == "done" and row["nodes"] == 3 and row["uses"] == []

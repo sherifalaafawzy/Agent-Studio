@@ -126,7 +126,7 @@ export default function Onboarding() {
 
         {id === "workspace" && (<div>
           <FolderPicker value={ws} onChange={setWs} placeholder="e.g. H:/my-project" />
-          <button className="acc small" disabled={!ws || ws === wsSaved} onClick={saveWs} style={{ marginTop: 8 }}>Save folder</button>
+          <button className="pri small" disabled={!ws || ws === wsSaved} onClick={saveWs} style={{ marginTop: 8 }}>Save folder</button>
           <div className="small mut" style={{ marginTop: 6 }}>Agents can only touch files in this folder. <InfoTip id="workspace" /></div>
         </div>)}
 

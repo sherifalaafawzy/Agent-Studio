@@ -43,13 +43,15 @@ describe("Dashboard", () => {
     routeFetch({ "GET /api/dashboard": () => new Promise<Response>(() => {}) });
     const { container } = render(<DashboardPage />);
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(container.querySelectorAll(".kpi.skeleton")).toHaveLength(6);
+    expect(container.querySelectorAll(".skel-kpi")).toHaveLength(6);
+    expect(screen.getByTestId("dash-loading")).toHaveAttribute("aria-busy", "true");          // the whole page is sketched, not just one row
+    expect(container.querySelectorAll(".skel-chart, .skel-card")).toHaveLength(3);
   });
 
   it("explains that the backend is offline when the first load fails", async () => {
     routeFetch({ "GET /api/dashboard": () => textResponse("x", 500) });
     render(<DashboardPage />);
-    expect(await screen.findByText(/Backend offline/)).toHaveTextContent("(HTTP 500)");
+    expect(await screen.findByText(/server is not answering/)).toHaveTextContent("(HTTP 500)");
   });
 
   it("shows the headline figures", async () => {
@@ -228,6 +230,6 @@ describe("Dashboard", () => {
     fail = true;
     // trigger a reload through the interval-free path: unmount/remount is not needed; the page keeps its data
     expect(screen.getByText("$12.50")).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByText(/Backend offline/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/server is not answering/)).toBeNull());
   });
 });

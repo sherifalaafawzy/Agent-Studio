@@ -30,7 +30,7 @@ function SpendChart({ days }: { days: Day[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const max = Math.max(...days.map((d) => d.cost_usd), 0);
-  const W = 720, H = 200, L = 46, B = 22, T = 10, R = 6;
+  const W = 720, H = 200, L = 56, B = 22, T = 10, R = 6;
   const bw = (W - L - R) / days.length;
   const nice = (v: number) => { if (v <= 0) return 0.01; const e = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map((m) => m * e).find((x) => x >= v)!; };
   const top = nice(max);
@@ -121,8 +121,15 @@ export default function DashboardPage() {
   const [err, setErr] = useState("");
   const load = useCallback(() => api<Dash>("/api/dashboard").then((x) => { setD(x); setErr(""); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
-  if (err && !d) return <div><h2>Dashboard</h2><div className="empty">Backend offline — run <code>npm run dev</code>. ({err})</div></div>;
-  if (!d) return <div><h2>Dashboard</h2><div className="kpis">{Array.from({ length: 6 }, (_, i) => <div key={i} className="kpi skeleton" />)}</div></div>;
+  if (err && !d) return <div><h2>Dashboard</h2><div className="empty" role="alert">Agent Studio&apos;s server is not answering, so there is nothing to show yet. It retries every 15 seconds. ({err})</div></div>;
+  if (!d) return (
+    <div aria-busy="true" data-testid="dash-loading">
+      <div className="page-head"><h2>Dashboard</h2></div>
+      <p className="page-sub">Loading spend, activity and system health…</p>
+      <div className="kpis">{Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton skel-kpi" />)}</div>
+      <div className="skeleton skel-chart" />
+      <div className="dash-2"><div className="skeleton skel-card" /><div className="skeleton skel-card" /></div>
+    </div>);
   const k = d.kpis, h = d.health;
   return (
     <div>

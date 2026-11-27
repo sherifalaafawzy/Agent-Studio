@@ -116,6 +116,9 @@ function SidebarInner() {
     return () => { window.removeEventListener("as:sessions", on); clearInterval(t); };
   }, [load]);
 
+  // the page list scrolls on its own: keep the current page's link in view (a link below the fold looked like no page was selected)
+  useEffect(() => { document.querySelector<HTMLElement>(".sb-nav .sb-link.on")?.scrollIntoView?.({ block: "nearest" }); }, [path]);
+
   const toggleMin = () => setMin((m) => { try { localStorage.setItem("as-sb-min", m ? "0" : "1"); } catch { /* ignore */ } return !m; });
   const cycleTheme = () => { const n: Theme = theme === "system" ? "light" : theme === "light" ? "dark" : "system"; setTheme(n); applyTheme(n); };
 
@@ -146,7 +149,7 @@ function SidebarInner() {
       </nav>
       <div className="sb-sec hide-min">Recents</div>
       <div className="sb-recents hide-min">
-        {rows.length === 0 && <div className="small mut" style={{ padding: "4px 10px" }}>{online === false ? "Backend offline — run npm run dev" : "Your chats will appear here."}</div>}
+        {rows.length === 0 && <div className="small mut" style={{ padding: "4px 10px" }}>{online === false ? "The server is not answering. It is tried again every 20 seconds." : "Your chats will appear here."}</div>}
         {rows.map((r) => (
           <Link key={r.id} href={`/?s=${r.id}`} className={`sb-chat ${r.id === current ? "on" : ""}`} title={`${r.agent ?? "plain chat"} · ${r.provider}`} style={{ textDecoration: "none" }}>
             {r.running && <span className="run-dot" title="running in the background" />}<span className="t">{r.title}</span>
@@ -156,13 +159,18 @@ function SidebarInner() {
       </div>
       {min && <div style={{ flex: 1 }} />}
       <div className="sb-foot">
-        <span className={`dot ${online ? "ok" : online === false ? "bad" : ""}`} title={online ? "backend connected" : "backend offline"} />
-        <span className="hide-min grow">{online ? "Connected" : online === false ? "Offline" : "…"} <kbd title="Command palette">Ctrl K</kbd></span>
+        <div className="sb-status">
+          <span className={`dot ${online ? "ok" : online === false ? "bad" : ""}`} title={online ? "backend connected" : "backend offline"} />
+          <span className="hide-min grow">{online ? "Connected" : online === false ? "Offline" : "…"}</span>
+          <kbd className="hide-min" title="Command palette">Ctrl K</kbd>
+        </div>
+        <div className="sb-tools">
         <NotificationBell />
         <Link href="/setup/" className="icon-btn" title="Set-up guide: install Ollama, add a model, install coding agents" aria-label="Set-up guide"><ISetup size={16} /></Link>
         <button className="icon-btn" onClick={() => window.dispatchEvent(new CustomEvent("as:docs", { detail: {} }))} title="Documentation beside this screen (Ctrl+/)" aria-label="Open the documentation beside this screen"><IBook size={16} /></button>
         <button className="icon-btn" onClick={() => startTour("welcome")} title="Take the guided tour" aria-label="Take the guided tour"><IHelp size={16} /></button>
-        <button className="icon-btn" onClick={cycleTheme} title={`Theme: ${theme}`}>{theme === "light" ? <ISun size={16} /> : theme === "dark" ? <IMoon size={16} /> : <IMonitor size={16} />}</button>
+        <button className="icon-btn" onClick={cycleTheme} title={`Theme: ${theme}`} aria-label={`Theme: ${theme}. Change it`}>{theme === "light" ? <ISun size={16} /> : theme === "dark" ? <IMoon size={16} /> : <IMonitor size={16} />}</button>
+        </div>
       </div>
     </aside>
   );

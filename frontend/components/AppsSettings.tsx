@@ -49,7 +49,7 @@ export default function AppsSettings() {
           <input type="text" value={cfg.git_email} aria-label="Git email" onChange={(e) => set("git_email", e.target.value)} placeholder="ada@example.com" /></label>
       </div>
       {err && <div className="err small" role="alert">{err}</div>}
-      <div className="row" style={{ marginTop: 8 }}><button className="acc" onClick={save}>Save apps settings</button></div>
+      <div className="row" style={{ marginTop: 8 }}><button className="pri" onClick={save}>Save apps settings</button></div>
     </div>
   );
 }

@@ -20,7 +20,7 @@ export default function SecurityPage() {
     <div>
       <div className="page-head"><h2>Security</h2><InfoTip id="security-score" /><span className="grow" /><a className="small" href="/settings/#security">Guardrails and identity settings →</a></div>
       <p className="page-sub">See how your setup lines up with the OWASP lists of AI risks, attack your own agents on purpose, and review what the safety checks caught.</p>
-      <div className="tabs">{TABS.map(([k, l]) => <button key={k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => go(k)}>{l}</button>)}</div>
+      <div className="tabs" role="tablist">{TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => go(k)}>{l}</button>)}</div>
       {tab === "scorecard" && <Scorecard initialAgent={agent} />}
       {tab === "redteam" && <RedTeamPanel />}
       {tab === "activity" && <SecurityActivity />}

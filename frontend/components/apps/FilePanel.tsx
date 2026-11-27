@@ -79,7 +79,7 @@ export default function FilePanel({ appId, files, onChanged, refreshKey }: { app
           <>
             <div className="row" style={{ marginBottom: 6, flexWrap: "wrap" }}>
               <b className="small" data-testid="open-file">{file.path}</b>{dirty && <span className="chip small" style={{ color: "var(--warn-text)" }}>unsaved</span>}<span className="grow" />
-              {!file.binary && <button className="acc" disabled={!dirty} onClick={save}>Save</button>}
+              {!file.binary && <button className="pri" disabled={!dirty} onClick={save}>Save</button>}
               {file.path !== "app.json" && <button onClick={() => setDel(true)} aria-label={`Delete ${file.path}`}>Delete file</button>}
             </div>
             {file.binary

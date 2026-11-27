@@ -77,11 +77,13 @@ export default function EvalsPage() {
           <div className="row" style={{ justifyContent: "space-between" }}><b>Test sets</b><button onClick={() => { setIsNew(true); setF(blankSet()); setSel(""); setRun(null); }}>+ New</button></div>
           {sets.length === 0 && <p className="small mut">None yet.</p>}
           {sets.map((s) => (
-            <div key={s.id} onClick={() => open(s.id)} style={{ padding: "6px 8px", marginTop: 4, borderRadius: 6, cursor: "pointer", background: sel === s.id ? "var(--panel2)" : "transparent" }}>
+            <div key={s.id} role="button" tabIndex={0} aria-pressed={sel === s.id} className={`ag-item ${sel === s.id ? "on" : ""}`} onClick={() => open(s.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(s.id); } }}>
               {s.name} <span className="mut small">· {s.case_count} cases</span>
               {s.last_run && <span className={`pill ${s.last_run.status === "done" && (s.last_run.pass_rate ?? 0) >= 80 ? "ok" : "warn"}`} style={{ marginLeft: 6 }}>{s.last_run.pass_rate ?? 0}%</span>}
             </div>))}
         </div><EvalStarters onAdded={(id) => { loadSets(); open(id); }} /></div>
+        {!f && <div className="ag-main"><div className="empty" data-testid="evals-empty">Pick a test set on the left to see its cases and run it, or press <b>+ New</b> to write your own.</div></div>}
         {f && (
           <div className="ag-main">
             <div className="card">

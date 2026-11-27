@@ -102,7 +102,7 @@ describe("settings: the Security tab", () => {
       "GET /api/identity/config": () => jsonResponse({ trust_domain: "t.org", issuer: "http://x", ttl_s: 300, enforce: false, active: "local", provider: { kind: "local", params: {}, secrets_set: [] }, providers: [{ id: "local", label: "Built-in issuer", summary: "s", exchange: "rfc8693", fields: [] }], scopes: {} }),
       "GET /api/identity/agents": () => jsonResponse({ agents: [] }), "GET /api/identity/events": () => jsonResponse({ events: [] }) });
     render(<SettingsPage />);
-    await userEvent.click(await screen.findByRole("button", { name: "Security" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Security" }));
     expect(await screen.findByText("Guardrails")).toBeInTheDocument();
     expect(await screen.findByText("Agent identity")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/security/");

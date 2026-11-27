@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import AgentsPage from "@/app/agents/page";
@@ -63,6 +63,36 @@ describe("Agents: directory and delegation tree", () => {
     expect(await screen.findByDisplayValue("Reviewer")).toBeInTheDocument();
     expect(field("Provider")).toHaveValue("openai");
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+  });
+
+  it("lets the keyboard pick an agent: each row is a button, and Enter or Space selects it", async () => {
+    setup();
+    render(<AgentsPage />);
+    await screen.findByDisplayValue("Engineer");
+    const engineer = pick("Engineer"), reviewer = pick("Reviewer");
+    expect(engineer).toHaveAttribute("role", "button");
+    expect(engineer).toHaveAttribute("aria-pressed", "true");
+    expect(reviewer).toHaveAttribute("tabindex", "0");
+    expect(reviewer).toHaveAttribute("aria-pressed", "false");
+    fireEvent.keyDown(reviewer, { key: "a" });                                                     // any other key does nothing
+    expect(screen.getByDisplayValue("Engineer")).toBeInTheDocument();
+    fireEvent.keyDown(reviewer, { key: "Enter" });
+    expect(await screen.findByDisplayValue("Reviewer")).toBeInTheDocument();
+    fireEvent.keyDown(pick("Engineer"), { key: " " });
+    expect(await screen.findByDisplayValue("Engineer")).toBeInTheDocument();
+    const deploy = screen.getByTestId("deploy-claude-list");                                       // a key pressed on a button inside the row is the button's, not the row's
+    fireEvent.keyDown(deploy, { key: "Enter" });
+    expect(screen.getByDisplayValue("Engineer")).toBeInTheDocument();
+  });
+
+  it("marks the tools that can change things with an icon, and explains the mark", async () => {
+    setup();
+    const { container } = render(<AgentsPage />);
+    await screen.findByDisplayValue("Engineer");
+    expect(container.querySelector(".tool-legend")).toHaveTextContent("marks a tool that can change files");
+    expect(container.querySelector("#ag-tools")!.parentElement!.textContent).not.toContain("✎");
+    const marks = container.querySelectorAll(".tool-writes");
+    marks.forEach((m) => expect(m).toHaveAttribute("aria-label", "can make changes"));
   });
 
   it("reports when the backend is offline", async () => {

@@ -163,7 +163,7 @@ describe("gaps: runs inspector", () => {
     });
     const { container } = render(<RunsPage />);
     await screen.findByRole("heading", { name: "Many tools" });
-    await userEvent.click(screen.getByRole("button", { name: "Tools" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
     const rows = container.querySelectorAll(".insp-side tbody tr");
     expect(rows[0]).toHaveTextContent("grep");
     expect(rows[1]).toHaveTextContent("read_file");

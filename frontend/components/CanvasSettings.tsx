@@ -35,7 +35,7 @@ export default function CanvasSettings() {
           <input type="number" min={5} max={1000} value={cfg.keep_versions} aria-label="Versions kept" onChange={(e) => set("keep_versions", Number(e.target.value))} /></label>
       </div>
       {err && <div className="err small" role="alert">{err}</div>}
-      <div className="row" style={{ marginTop: 8 }}><button className="acc" onClick={save}>Save canvas settings</button></div>
+      <div className="row" style={{ marginTop: 8 }}><button className="pri" onClick={save}>Save canvas settings</button></div>
     </div>
   );
 }

@@ -478,8 +478,8 @@ def register(app: FastAPI) -> None:
 
     @r.get("/{wid}/draft")
     def get_draft(wid: str, request: Request):
-        d = S(request).workflows.get_draft(wid)
-        return d or _bad("no draft", 404)
+        # "no draft" is the usual answer, not an error: a 404 here showed as a red line in the browser console every time an editor opened
+        return S(request).workflows.get_draft(wid) or {"doc": None}
 
     @r.put("/{wid}/draft")
     def put_draft(wid: str, body: dict, request: Request):

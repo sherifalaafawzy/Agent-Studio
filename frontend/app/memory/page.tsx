@@ -138,8 +138,8 @@ export default function MemoryPage() {
         {stats && <span className="pill" title="Where memories are kept">{stats.backend === "local" ? "on this PC" : stats.backend}</span>}</div>
       <p className="page-sub">What agents remember between chats. See it, correct it, approve new memories, or forget anything.</p>
       {err && <p className="err" role="alert">{err}</p>}
-      <div className="tabs">{TABS.map(([k, label]) => (
-        <button key={k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => go(k)}>{label}{k === "review" && (stats?.pending ?? 0) > 0 && <span className="count">{stats?.pending}</span>}</button>))}</div>
+      <div className="tabs" role="tablist">{TABS.map(([k, label]) => (
+        <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? "on" : ""}`} onClick={() => go(k)}>{label}{k === "review" && (stats?.pending ?? 0) > 0 && <span className="count">{stats?.pending}</span>}</button>))}</div>
 
       {tab === "memories" && <>
         <div className="kpis" style={{ marginBottom: 14 }}>

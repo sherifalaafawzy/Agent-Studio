@@ -58,12 +58,12 @@ describe("Security page", () => {
     net();
     render(<SecurityPage />);
     expect(await screen.findByTestId("scorecard")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Red team" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Red team" }));
     expect(await screen.findByTestId("redteam")).toBeInTheDocument();
     expect(window.location.hash).toBe("#redteam");
-    await userEvent.click(screen.getByRole("button", { name: "Activity" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Activity" }));
     expect(await screen.findByTestId("activity")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Scorecard" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Scorecard" }));
     expect(await screen.findByTestId("scorecard")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Guardrails and identity settings/ })).toHaveAttribute("href", "/settings/#security");
   });

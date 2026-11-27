@@ -137,7 +137,7 @@ export default function SkillsPage() {
                 <span>Brings MCP</span><span>{detail.mcp.length ? detail.mcp.join(", ") : "—"}</span>
                 <span>Used by</span><span className="sk-used">{detail.used_by?.length ? detail.used_by.map((a) => <span key={a} className="pill">{a}</span>) : "no agent yet"}</span>
               </div>
-              <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 14, fontFamily: "var(--serif)", fontSize: 15.5, lineHeight: 1.7 }}>
+              <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 14, fontFamily: "var(--serif)", fontSize: 15, lineHeight: 1.7 }}>
                 <Markdown text={detail.body ?? ""} /></div>
             </div>
           ) : <div className="empty">Select a skill, or create one.</div>}

@@ -140,7 +140,9 @@ async function shoot(cdp, shot, base) {
   if (shot.wait) await sleep(shot.wait);
   await sleep(900);                                              // let data arrive and animations settle
   if (mobile) {                                                 // a phone screen must never scroll sideways
-    const w = await cdp.eval("[document.documentElement.scrollWidth, innerWidth, document.body.scrollWidth]");
+    // Measured against the device's width: when a page overflows, a phone browser widens innerWidth to fit it, so comparing
+    // the content with innerWidth could never fail (the November 2026 design review found four screens this check had passed).
+    const w = await cdp.eval("[Math.max(document.documentElement.scrollWidth, (document.querySelector('.main') || document.body).scrollWidth), Math.min(innerWidth, screen.width || innerWidth)]");
     if (w[0] > w[1] + 1) throw new Error(`the page scrolls sideways on a phone (content ${w[0]}px wide, screen ${w[1]}px)`);
   }
   const params = { format: "webp", quality: 82, captureBeyondViewport: false };

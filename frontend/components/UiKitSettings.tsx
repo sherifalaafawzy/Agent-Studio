@@ -53,7 +53,7 @@ export default function UiKitSettings() {
       {cfg.basemap.kind === "pmtiles" && <label>PMTiles file (artifact id)
         <input aria-label="PMTiles artifact" placeholder="12-character id from the Artifacts page" value={cfg.basemap.pmtiles} onChange={(e) => base({ pmtiles: e.target.value })} /></label>}
       {err && <div className="err small" role="alert">{err}</div>}
-      <div className="row" style={{ marginTop: 8 }}><button className="acc" onClick={save}>Save component settings</button></div>
+      <div className="row" style={{ marginTop: 8 }}><button className="pri" onClick={save}>Save component settings</button></div>
     </div>
   );
 }

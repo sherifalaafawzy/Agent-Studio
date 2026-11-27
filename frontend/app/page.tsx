@@ -1,5 +1,6 @@
 "use client";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Ticks } from "@/components/Ticks";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, ApiError, AUTO_ID, AutoInfo, AutoRoute, followSse, Provider, streamSse, usd } from "@/lib/api";
 import Markdown from "@/components/Markdown";
@@ -52,7 +53,7 @@ function ErrorNotice({ m, onRetry, onTry }: { m: Msg; onRetry?: () => void; onTr
   return (
     <div className="err-card" role="alert">
       <div className="err-head"><span className="err-dot">!</span><b>{title}</b></div>
-      {m.hint && <div className="err-hint">{m.hint}</div>}
+      {m.hint && <div className="err-hint"><Ticks text={m.hint} /></div>}
       {!m.hint && m.text && m.text !== title && <div className="err-hint">{m.text}</div>}
       {m.meta && <div className="err-hint">{m.meta}</div>}
       {onTry && m.suggestions && m.suggestions.length > 0 && <div className="err-try">
@@ -499,7 +500,7 @@ function ChatPage() {
       <div className="cv-main">
         <div className="cv-head">
           <span className="cv-title">{title || (msgs.length ? "New chat" : "")}</span>
-          {offline && <span className="pill bad">backend offline — run npm run dev</span>}
+          {offline && <span className="pill bad">the server is not answering</span>}
           <span className="grow" />
           {session && <ContextMeter sid={session} info={ctx} busy={busy} onSummarized={() => { if (session) openSession(session); reloadCtx(); }} />}
           {session && !busy && <Link href={`/runs/?s=${session}`} className="chip" title="Timeline, threads, tools and cost for this chat"><ITimeline size={15} />Inspect</Link>}

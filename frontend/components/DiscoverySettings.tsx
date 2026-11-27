@@ -122,7 +122,7 @@ export default function DiscoverySettings() {
       </div>
 
       <div className="row" style={{ marginTop: 14 }}>
-        <button className="acc" disabled={!dirty || busy} onClick={save}>Save</button>
+        <button className="pri" disabled={!dirty || busy} onClick={save}>Save</button>
         <span className="small mut" role="status">{note}</span>
       </div>
       {cfg.not_ready.length > 0 && <ul className="small mut dc-list" aria-label="Not ready because">{cfg.not_ready.map((r) => <li key={r}>{r}</li>)}</ul>}

@@ -36,7 +36,7 @@ function setup(extra: Record<string, any> = {}) {
     ...extra,
   });
 }
-const goTab = (name: string) => userEvent.click(screen.getByRole("button", { name }));
+const goTab = (name: string) => userEvent.click(screen.getByRole("tab", { name }));
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

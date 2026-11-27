@@ -46,8 +46,8 @@ function Editor() {
       try {
         const d = await api<Doc>(`/api/workflows/${id}`);
         setProblems(d.problems ?? []);
-        const draft = await api<{ doc: Doc }>(`/api/workflows/${id}/draft`).catch(() => null);
-        if (draft) { setDoc({ ...draft.doc, version: d.version }); setDirty(true); setRestored(true); } else { setDoc(d); if (wantRun) setRunOpen(true); }
+        const draft = await api<{ doc: Doc | null }>(`/api/workflows/${id}/draft`).catch(() => null);
+        if (draft?.doc) { setDoc({ ...draft.doc, version: d.version }); setDirty(true); setRestored(true); } else { setDoc(d); if (wantRun) setRunOpen(true); }
       } catch (e) { setErr((e as Error).message); }
     })();
   }, [id, wantRun]);
