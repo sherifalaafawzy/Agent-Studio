@@ -515,7 +515,7 @@ export default function SettingsPage() {
               <div key={a.id} className={`li ${selA === a.id ? "on" : ""}`} onClick={() => setSelA(a.id)}>
                 <span className={`dot ${a.installed && a.enabled ? "ok" : a.installed ? "" : "bad"}`} />
                 <span className="t">{a.label}</span><span className="s">{!a.installed ? "not installed" : a.enabled ? "" : "off"}</span></div>))}
-            <div className={`li ${selA === "__add" ? "on" : ""}`} onClick={() => setSelA("__add")}><span className="t" style={{ color: "var(--acc)" }}>+ Add custom agent</span></div>
+            <div className={`li ${selA === "__add" ? "on" : ""}`} onClick={() => setSelA("__add")}><span className="t" style={{ color: "var(--acc-text)" }}>+ Add custom agent</span></div>
           </div>
           <div>{selA === "__add" ? <AddAcp onSaved={load} /> : ext && <AcpRow key={ext.id + ext.command + ext.args.join()} a={ext} onSaved={load} />}</div>
         </div>

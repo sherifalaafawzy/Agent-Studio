@@ -262,6 +262,49 @@ CHECKS: tuple[Callable[[Any], Check], ...] = (
     c_external, c_mcp_pins, c_mcp_writes, c_aibom, c_telemetry, c_ocsf, c_memory_pii, c_memory_review, c_retrieval, c_vector_stores, c_identity,
     c_inter_agent, c_evals, c_redteam, c_transparency, c_secrets)
 
+# ---------------------------------------------------------------------------------------------------------- Science Lab
+SCIENCE_SETS = ("science-citations", "science-refusal")
+
+
+def _science_eval(s, set_id: str) -> bool:
+    """True when the ready-made science test set was run and at least one case was really answered."""
+    for r in s.db.query("SELECT status, summary FROM eval_runs WHERE set_id=? AND status='done'", (set_id,)):
+        try:
+            sm = json.loads(r["summary"] or "{}")
+        except ValueError:
+            continue
+        if sm.get("done", 0) > 0 and sm.get("errors", 0) < sm.get("done", 0):
+            return True
+    return False
+
+
+def science_checks(s) -> dict:
+    """Checks that only matter when the Science Lab is on. They are shown in their own section and do not change the overall score."""
+    sci = getattr(s, "science", None)
+    cfg = sci.config() if sci is not None else {}
+    if not cfg.get("enabled", False):
+        return dict(enabled=False, checks=[], note="The Science Lab is switched off, so these checks do not apply.")
+    checks = []
+    strict = cfg.get("safety_level") == "strict"
+    checks.append(Check("science-safety", "The science safety screen is at its strictest level", ("LLM05", "ASI02"), "pass" if strict else "warn",
+                        "Level 'strict': wet-lab requests that name a biological agent are refused, not just held for a person." if strict else
+                        "Level 'standard': harmful requests are blocked; wet-lab requests that name a biological agent wait for a person to confirm.",
+                        "" if strict else "On a shared computer, raise the safety level to 'strict' (Science > Settings). It can only be raised.", "/science/"))
+    net = s.db.get_setting("sandbox_network", "0") == "1"
+    checks.append(Check("science-compute", "Science code runs in a sandbox without network", ("LLM05", "ASI05"), "warn" if net else "pass",
+                        "science_run_python runs in the sandbox, which can reach the internet." if net else "science_run_python runs only in the sandbox, which has no network.",
+                        "Switch 'allow network inside the sandbox' off." if net else "", "/settings/#harness"))
+    budget = int(cfg.get("max_calls_per_investigation", 0) or 0)
+    checks.append(Check("science-budget", "Investigations have a small call budget", ("LLM10", "ASI08"), "pass" if 0 < budget <= 200 else "warn",
+                        f"An investigation may call the data sources at most {budget} times.", "" if 0 < budget <= 200 else "Lower 'calls per investigation' to 200 or less (Science > Settings).", "/science/"))
+    ran = {sid: _science_eval(s, sid) for sid in SCIENCE_SETS}
+    for sid, title, maps in (("science-citations", "Citations were tested (real DOIs, no invented papers)", ("LLM09",)), ("science-refusal", "Refusals were tested (harmful asks refused, safety questions answered)", ("LLM01", "LLM05"))):
+        checks.append(Check(f"{sid}-eval", title, maps, "pass" if ran[sid] else "warn",
+                            "The ready-made test set was run and answered." if ran[sid] else "The ready-made test set has not been run yet.",
+                            "" if ran[sid] else "Evaluations > Ready-made sets: add it and run it against your science agent.", "/evals/"))
+    counts = {k: sum(1 for c in checks if c.status == k) for k in ("pass", "warn", "fail")}
+    return dict(enabled=True, checks=[c.public() for c in checks], counts=counts, note="Science checks are shown on their own and do not change the overall score.")
+
 
 def build(s) -> dict:
     checks = [c(s) for c in CHECKS]
@@ -276,7 +319,7 @@ def build(s) -> dict:
     counts = {k: sum(1 for c in checks if c.status == k) for k in ("pass", "warn", "fail")}
     percent = round(100 * sum(POINTS[c.status] for c in checks) / len(checks))
     from . import agentcard
-    return dict(generated=time.time(), percent=percent, counts=counts, checks=[c.public() for c in checks], frameworks=frameworks, agents=agentcard.summary(s),
+    return dict(generated=time.time(), percent=percent, counts=counts, checks=[c.public() for c in checks], frameworks=frameworks, agents=agentcard.summary(s), science=science_checks(s),
                 note="This measures how your settings line up with the OWASP lists. It cannot tell whether an attack would work; the red-team tools test that.")
 
 
@@ -294,6 +337,9 @@ def to_markdown(card: dict) -> str:
             if not r["checks"]:
                 lines.append("- No control in Agent Studio is mapped to this risk yet.")
             lines.append("")
+    sci = card.get("science") or {}
+    if sci.get("enabled"):
+        lines += ["## Science Lab", sci["note"], ""] + [f"- **{icon[c['status']]}** {c['title']}: {c['detail']}" + (f" Fix: {c['fix']}" if c["fix"] else "") for c in sci["checks"]] + [""]
     return "\n".join(lines)
 
 

@@ -566,7 +566,7 @@ function ChatPage() {
                   {!plainRich && m.uis && m.uis.length > 0 && m.uis.map((u, j) => <UiBlock key={j} spec={u} />)}
                   {m.artifacts && m.artifacts.length > 0 && <ArtifactList items={m.artifacts} />}
                   {!m.streaming && m.runs && (m.runs.length > 1 || (m.steps ?? []).length > 0) && <StatePanel state={runState(m)} />}
-                  {m.warnings?.map((w, j) => <div key={j} className="small" style={{ color: "var(--warn)", fontFamily: "var(--sans)" }}>⚠ {w}</div>)}
+                  {m.warnings?.map((w, j) => <div key={j} className="small" style={{ color: "var(--warn-text)", fontFamily: "var(--sans)" }}>⚠ {w}</div>)}
                   {!m.streaming && (
                     <div className="turn-meta">
                       <CopyBtn text={m.text} />

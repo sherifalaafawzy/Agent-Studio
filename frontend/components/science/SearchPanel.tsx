@@ -55,7 +55,7 @@ export default function SearchPanel({ connectors, investigationId, onEvidence }:
         <button className="acc" disabled={busy || !query.trim() || !!blockedWhy} onClick={go} style={{ alignSelf: "end" }}>{busy ? "Asking…" : "Ask"}</button>
       </div>
       {spec && <div className="small mut" style={{ marginTop: 4 }}>{spec.summary} Limit: {spec.limits} Licence: {spec.licence}{!spec.verified ? " (not yet verified from the source)" : ""}</div>}
-      {blockedWhy && <div className="small" role="note" style={{ color: "var(--warn)" }}>{blockedWhy}</div>}
+      {blockedWhy && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>{blockedWhy}</div>}
       {out && !out.ok && (
         <div className="err small" role="alert" data-testid="science-search-error" style={{ marginTop: 8 }}>
           {out.blocked ? <><b>Not available:</b> {out.safety?.reason} {out.safety?.help}</> : out.error}

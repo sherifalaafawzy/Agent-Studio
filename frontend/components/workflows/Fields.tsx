@@ -16,7 +16,7 @@ function JsonField({ label, value, onChange }: { label: string; value: unknown; 
   return (
     <label>{label} (JSON, may use {"{{ $prev }}"})
       <input value={text} aria-label={label} onChange={(e) => { setText(e.target.value); try { const v = JSON.parse(e.target.value || "{}"); if (v && typeof v === "object" && !Array.isArray(v)) { onChange(v); setBad(false); } else setBad(true); } catch { setBad(true); } }} />
-      {bad && <span className="small" style={{ color: "var(--bad)" }}>Not valid JSON yet</span>}</label>
+      {bad && <span className="small" style={{ color: "var(--bad-text)" }}>Not valid JSON yet</span>}</label>
   );
 }
 

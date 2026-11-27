@@ -6,6 +6,7 @@ import { ago, AUTONOMY, ENTRY, ROOTS, type Catalog, type Doc, type FormField, ty
 import Fields, { type Ctx } from "@/components/workflows/Fields";
 import TryBox from "@/components/workflows/TryBox";
 import WebhookBox from "@/components/workflows/WebhookBox";
+import ScheduleBox from "@/components/workflows/ScheduleBox";
 import { Modal } from "@/components/Modal";
 import InfoTip from "@/components/InfoTip";
 
@@ -64,9 +65,10 @@ export function NodePanel({ node, spec, ctx, run, doc, saved, runFromWhy, onRunF
       <label style={{ marginTop: 8 }}>Name<input value={node.label} aria-label="Box name" onChange={(e) => onChange({ ...node, label: e.target.value })} /></label>
       <div className="seg" role="tablist" style={{ margin: "10px 0" }}>{(["settings", "input", "output", "notes"] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div>
       {tab === "settings" && (<>
-        {ENTRY.includes(node.type) && <label>This workflow starts when<select value={node.type} aria-label="Starts when" onChange={(e) => onSwitchEntry(e.target.value)}><option value="input">a task is typed, sent over the API or run by another workflow</option><option value="webhook">something calls its secret address (Webhook)</option></select></label>}
+        {ENTRY.includes(node.type) && <label>This workflow starts when<select value={node.type} aria-label="Starts when" onChange={(e) => onSwitchEntry(e.target.value)}><option value="input">a task is typed, sent over the API or run by another workflow</option><option value="webhook">something calls its secret address (Webhook)</option><option value="schedule">a schedule says so (Schedule)</option></select></label>}
         {spec && <Fields spec={spec} node={node} ctx={ctx} onChange={(config) => onChange({ ...node, config })} />}
         {node.type === "webhook" && <WebhookBox workflowId={doc.id} saved={saved} />}
+        {node.type === "schedule" && <ScheduleBox workflowId={doc.id} saved={saved} />}
         {!ROOTS.includes(node.type) && node.type !== "note" && <TryBox key={node.id} doc={doc} node={node} lastInput={rn?.input} canRunFrom={!runFromWhy} runFromWhy={runFromWhy} onRunFrom={onRunFrom} />}
         {!ROOTS.includes(node.type) && node.type !== "note" && (
           <details style={{ marginTop: 12 }} data-testid="common-settings"><summary><b className="small">When something goes wrong</b> <InfoTip id="wf-common-settings" /></summary>
@@ -81,7 +83,7 @@ export function NodePanel({ node, spec, ctx, run, doc, saved, runFromWhy, onRunF
       </>)}
       {tab === "input" && <DataView title="Input" text={rn?.input} />}
       {tab === "output" && (<>
-        {rn?.error && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{rn.error}</div>}
+        {rn?.error && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{rn.error}</div>}
         {rn?.status && <div className="small mut">{rn.status.replace("_", " ")}{rn.attempts && rn.attempts > 1 ? ` after ${rn.attempts} tries` : ""}{rn.decision ? ` · went ${rn.decision}` : ""}</div>}
         <DataView title="Output" text={rn?.output} onPin={rn?.output ? () => setSt({ pin: rn.output }) : undefined} /></>)}
       {tab === "notes" && <label>Notes for you or your team<textarea rows={6} value={st.notes ?? ""} aria-label="Notes" onChange={(e) => setSt({ notes: e.target.value })} /></label>}
@@ -122,12 +124,12 @@ export function BuilderChat({ doc, ctx, autonomy, onApply, onClose, initial }: {
           {m.diff && (<div className="card small" data-testid="diff-card" style={{ marginTop: 6 }}>
             {changes(m.diff) === 0 ? "No changes proposed." : <>Proposed: {m.diff.added.length > 0 && `+${m.diff.added.length} boxes `}{m.diff.changed.length > 0 && `~${m.diff.changed.length} changed `}{m.diff.removed.length > 0 && `−${m.diff.removed.length} removed `}{(m.diff.edges_added + m.diff.edges_removed) > 0 && `· ${m.diff.edges_added} new / ${m.diff.edges_removed} removed connections`}
               <ul style={{ margin: "4px 0", paddingLeft: 16 }}>{(m.applied ?? []).map((a, j) => <li key={j}>{a}</li>)}</ul></>}
-            {(m.refused ?? []).length > 0 && <div style={{ color: "var(--warn)" }}>Left out: {(m.refused ?? []).join("; ")}</div>}
+            {(m.refused ?? []).length > 0 && <div style={{ color: "var(--warn-text)" }}>Left out: {(m.refused ?? []).join("; ")}</div>}
             {changes(m.diff) > 0 && <div className="row" style={{ marginTop: 6 }}><button className="pri small" disabled={m.done} onClick={() => { onApply(m.workflow!); setMsgs(msgs.map((x, j) => (j === i ? { ...x, done: true } : x))); }}>{m.done ? "Applied" : "Apply"}</button>
               {!m.done && <button className="small" onClick={() => setMsgs(msgs.map((x, j) => (j === i ? { ...x, diff: undefined } : x)))}>Dismiss</button>}</div>}
           </div>)}</div>))}
         {busy && <div className="small mut">Thinking…</div>}
-        {err && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{err}</div>}
+        {err && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{err}</div>}
       </div>
       <div className="row"><textarea rows={2} className="grow" value={text} aria-label="Tell the builder" placeholder="e.g. When a customer writes in, classify it and draft a reply for me to approve" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
         <button className="pri" disabled={busy || !text.trim()} onClick={send}>Send</button></div>
@@ -165,14 +167,14 @@ export function Drawer({ run, problems, workflowId, tab, onTab, onDecide, onStop
       {tab === "run" && (!run ? <div className="small mut" style={{ marginTop: 8 }}>No run yet. Type a task and press Run.</div> : (
         <div style={{ marginTop: 8 }} data-testid="run-log">
           <div className="small"><span className={`pill ${run.status === "done" ? "ok" : run.status === "error" ? "bad" : "acc"}`}>{run.status === "plan" ? "plan only" : run.status}</span>{run.cost_usd > 0 && <span className="mut"> ${run.cost_usd.toFixed(4)}</span>}</div>
-          {run.error && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{run.error}</div>}
+          {run.error && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{run.error}</div>}
           {run.status === "plan" && <ol className="small" data-testid="plan">{run.plan.map((p) => <li key={p.node}><b>{p.label}</b>: {p.does}</li>)}</ol>}
           {run.status !== "plan" && Object.entries(run.nodes).map(([id, n]) => (<div key={id} className="small" data-testid="run-node" style={{ margin: "4px 0" }}>
             <button className="link" onClick={() => onSelect(id)}><b>{n.label}</b></button> <span className="mut">{n.status.replace("_", " ")}{n.decision ? ` → ${n.decision}` : ""}{n.reused ? " · reused from the earlier run" : ""}</span>
             {n.status === "waiting_approval" && <span style={{ marginLeft: 8 }}>{n.message && <i>{n.message} </i>}
               {n.form && n.form.length > 0 ? <Details form={n.form} onAnswer={(values) => onDecide(id, "approve", values)} /> : <button className="pri small" onClick={() => onDecide(id, "approve")}>{n.type === "approval" ? "Yes" : "Approve"}</button>}
               {" "}<button className="small" onClick={() => onDecide(id, "skip")}>{n.type === "approval" ? "No" : "Skip"}</button> <button className="small" onClick={() => onDecide(id, "stop")}>Stop</button></span>}
-            {n.error && <div style={{ color: "var(--bad)" }}>{n.error}</div>}</div>))}
+            {n.error && <div style={{ color: "var(--bad-text)" }}>{n.error}</div>}</div>))}
           {run.final && <div style={{ marginTop: 6 }}><b className="small">Result</b><pre className="small" style={{ whiteSpace: "pre-wrap" }} data-testid="run-final">{run.final}</pre></div>}
         </div>))}
       {tab === "problems" && (<div style={{ marginTop: 8 }} data-testid="problems">{problems.length === 0 ? <div className="small mut">No problems found.</div> : <ul className="small" style={{ paddingLeft: 18 }}>{problems.map((p, i) => <li key={i} style={{ color: p.severity === "error" ? "var(--bad)" : "var(--warn)" }}>{p.node ? <button className="link" onClick={() => onSelect(p.node)}>{p.node}</button> : null}{p.node ? ": " : ""}{p.message}</li>)}</ul>}</div>)}

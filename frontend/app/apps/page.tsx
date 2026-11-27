@@ -91,7 +91,7 @@ export default function AppsPage() {
             <div className="small mut">{a.description || "No description"}</div>
             <div className="small">{a.agents.length ? <>Calls: {a.agents.join(", ")}</> : <span className="mut">Calls no agent yet</span>}</div>
             <div className="small mut">{a.files} files · {fmtSize(a.size)} · version {a.version} · edited {ago(a.updated)}{a.git?.remote ? " · git" : ""}</div>
-            {a.pending > 0 && <div className="small" style={{ color: "var(--warn)" }}>{a.pending} change{a.pending === 1 ? "" : "s"} waiting for your review</div>}
+            {a.pending > 0 && <div className="small" style={{ color: "var(--warn-text)" }}>{a.pending} change{a.pending === 1 ? "" : "s"} waiting for your review</div>}
             <div className="row" style={{ marginTop: 6, gap: 6 }}>
               <button onClick={() => open(a.id)}>Open</button><button onClick={() => copy(a)} aria-label={`Duplicate ${a.name}`}>Duplicate</button>
               <button onClick={() => setDel(a)} aria-label={`Delete ${a.name}`}>Delete</button>

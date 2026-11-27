@@ -10,7 +10,7 @@ import { ConfirmDelete, Modal } from "@/components/Modal";
 import WorkflowSettings from "@/components/workflows/WorkflowSettings";
 import { ago, blankDoc, slug, type Doc } from "@/lib/workflows";
 
-type Row = { id: string; name: string; description: string; version: number; updated: number; nodes: number; autonomy: string; last_run: { status: string; started: number; cost_usd: number } | null; has_draft: boolean; uses: string[]; trigger?: string; has_hook?: boolean };
+type Row = { id: string; name: string; description: string; version: number; updated: number; nodes: number; autonomy: string; last_run: { status: string; started: number; cost_usd: number } | null; has_draft: boolean; uses: string[]; trigger?: string; has_hook?: boolean; schedule?: { enabled: boolean; next_run: number | null } | null };
 type Past = { id: string; status: string; task: string; started: number; cost_usd: number; version: number };
 type Tpl = { id: string; name: string; description: string; nodes: number; doc: Doc };
 const AUTO_LABEL: Record<string, string> = { suggest: "plan only", approve: "asks first", auto: "automatic" };
@@ -44,7 +44,7 @@ function NewWorkflow({ onClose, onImport }: { onClose: () => void; onImport: () 
       </div>
       {tpls.length > 0 && (<><div className="small" style={{ marginTop: 12 }}><b>Or start from a template</b></div>
         <div className="grid" style={{ marginTop: 6 }}>{tpls.map((t) => <button key={t.id} className="card wf-choice" disabled={busy} onClick={() => create({ ...t.doc, name: name.trim() || t.name, id: "" } as Doc, false)}><b>{t.name}</b><span className="small mut">{t.description} · {t.nodes} boxes</span></button>)}</div></>)}
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 8 }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 8 }}>{err}</div>}
       <div className="row" style={{ marginTop: 12 }}><button className="link" onClick={onImport}>Import a workflow file instead</button><span className="grow" /><button onClick={onClose}>Cancel</button></div>
     </Modal>
   );
@@ -72,7 +72,7 @@ function ImportDialog({ onClose, onDone }: { onClose: () => void; onDone: (id: s
       <label style={{ marginTop: 8 }}>Workflow file<input type="file" accept=".json,application/json" aria-label="Workflow file" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setText(await f.text()); setClash(null); } }} /></label>
       <label style={{ marginTop: 8 }}>…or paste it<textarea rows={6} value={text} aria-label="Pasted workflow" onChange={(e) => { setText(e.target.value); setClash(null); }} /></label>
       {many && <label style={{ marginTop: 8 }}>This file holds {many.length} workflow(s). If a name is taken<select value={how} aria-label="If a name is taken" onChange={(e) => setHow(e.target.value)}><option value="rename">keep both (rename the new one)</option><option value="replace">replace it (a new version)</option><option value="cancel">leave the existing one</option></select></label>}
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{err}</div>}
       {clash ? (<div className="card" role="alert" style={{ marginTop: 8 }}><div className="small">{clash}. What should happen?</div>
         <div className="row" style={{ marginTop: 6 }}><button className="pri" onClick={() => go("replace")}>Replace it (new version)</button><button onClick={() => go("rename")}>Keep both</button><button onClick={onClose}>Cancel</button></div></div>)
         : <div className="row" style={{ marginTop: 10 }}><button className="pri" disabled={!text.trim()} onClick={() => go("cancel")}>{many ? `Import ${many.length}` : "Import"}</button><button onClick={onClose}>Cancel</button></div>}
@@ -121,7 +121,7 @@ export default function FlowsTab() {
         <select value={status} aria-label="Last run" onChange={(e) => setStatus(e.target.value)}><option value="">Any last run</option><option value="done">Last run worked</option><option value="error">Last run failed</option><option value="stopped">Last run stopped</option><option value="never">Never run</option></select>
         <span className="grow" /><InfoTip id="workflows" />{picked.size > 0 && <button onClick={exportPicked}>Export {picked.size} selected</button>}<button onClick={() => setSettings(true)}>Settings</button><button onClick={() => setImporting(true)}>Import</button><button className="pri" onClick={() => setAdding(true)}>New workflow</button>
       </div>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginBottom: 8 }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginBottom: 8 }}>{err}</div>}
       {rows && rows.length === 0 && <div className="card" data-testid="flows-empty">No workflows yet. <button className="link" onClick={() => setAdding(true)}>Create the first one</button>: build it yourself, or describe it and let an agent propose it.</div>}
       {rows && rows.length > 0 && shown.length === 0 && <div className="small mut">No workflow matches.</div>}
       {shown.length > 0 && (
@@ -129,7 +129,7 @@ export default function FlowsTab() {
           {shown.flatMap((r) => [(<tr key={r.id}>
             <td><input type="checkbox" aria-label={`Select ${r.id}`} checked={picked.has(r.id)} onChange={() => toggle(r.id)} /></td>
             <td><button className="icon-btn" aria-label={`Show earlier runs of ${r.id}`} aria-expanded={r.id in open} onClick={() => showRuns(r.id)}>{r.id in open ? "▾" : "▸"}</button> <button className="link" onClick={() => router.push(`/workflows/edit/?id=${r.id}`)}><b>{r.name}</b></button>
-              {r.trigger === "webhook" && <span className="pill" style={{ marginLeft: 6 }}>{r.has_hook ? "webhook" : "webhook (no address yet)"}</span>}{r.has_draft && <span className="pill warn" style={{ marginLeft: 6 }}>unsaved draft</span>}<div className="small mut">{r.description || r.id}</div></td>
+              {r.trigger === "webhook" && <span className="pill" style={{ marginLeft: 6 }}>{r.has_hook ? "webhook" : "webhook (no address yet)"}</span>}{r.trigger === "schedule" && <span className={`pill ${r.schedule?.enabled ? "ok" : ""}`} style={{ marginLeft: 6 }}>{r.schedule?.enabled ? `scheduled · next ${new Date((r.schedule.next_run ?? 0) * 1000).toLocaleString()}` : "schedule off"}</span>}{r.has_draft && <span className="pill warn" style={{ marginLeft: 6 }}>unsaved draft</span>}<div className="small mut">{r.description || r.id}</div></td>
             <td data-label="Boxes">{r.nodes}</td><td data-label="Asks"><span className="pill">{AUTO_LABEL[r.autonomy] ?? r.autonomy}</span></td>
             <td data-label="Last run">{r.last_run ? <><span className={`pill ${dot(r.last_run.status)}`}>{r.last_run.status}</span> <span className="small mut">{ago(r.last_run.started)}</span></> : <span className="small mut">never</span>}</td>
             <td data-label="Version">v{r.version}</td><td data-label="Updated" className="small">{ago(r.updated)}</td>

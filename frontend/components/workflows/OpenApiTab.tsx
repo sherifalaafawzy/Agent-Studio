@@ -58,7 +58,7 @@ function AddApi({ onClose, onDone }: { onClose: () => void; onDone: (id: string)
         {mode === "upload" && filename && <div className="small mut">{filename} ready ({Math.round(content.length / 1024)} KB)</div>}
         {mode === "url" && <label>Address of the description or a workspace file<input value={url} placeholder="https://api.example.com/openapi.json" aria-label="Address" onChange={(e) => setUrl(e.target.value)} /></label>}
         {mode === "paste" && <label>The description (JSON or YAML)<textarea rows={10} value={content} aria-label="Pasted description" onChange={(e) => setContent(e.target.value)} /></label>}
-        {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 8 }}>{err}</div>}
+        {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 8 }}>{err}</div>}
         <div className="row" style={{ marginTop: 12 }}><button className="pri" disabled={!ready || busy} onClick={read}>{busy ? "Reading…" : "Read it"}</button><button onClick={onClose}>Cancel</button></div>
       </>)}
       {pv && (<>
@@ -66,7 +66,7 @@ function AddApi({ onClose, onDone }: { onClose: () => void; onDone: (id: string)
           <b>{pv.title}</b> <span className="mut small">v{pv.version || "?"} · OpenAPI {pv.spec_version}</span>
           <div className="small">{pv.counts.total} operations: {pv.counts.read} read, <b>{pv.counts.write} change data</b> (they stay off until you allow writes).</div>
           <div className="small mut">{Object.entries(pv.counts.tags).slice(0, 8).map(([t, n]) => `${t} (${n})`).join(" · ")}</div>
-          {pv.warnings.map((w, i) => <div key={i} className="small" style={{ color: "var(--warn)" }}>⚠ {w}</div>)}
+          {pv.warnings.map((w, i) => <div key={i} className="small" style={{ color: "var(--warn-text)" }}>⚠ {w}</div>)}
         </div>
         <div className="grid">
           <label>Id<input value={f.id} aria-label="API id" onChange={(e) => setF({ ...f, id: e.target.value.toLowerCase() })} /></label>
@@ -77,7 +77,7 @@ function AddApi({ onClose, onDone }: { onClose: () => void; onDone: (id: string)
           {f.auth !== "none" && <label>Key or token (write-only)<input type="password" autoComplete="off" value={f.token} aria-label="API key" onChange={(e) => setF({ ...f, token: e.target.value })} /></label>}
         </div>
         <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={f.allow_write} onChange={(e) => setF({ ...f, allow_write: e.target.checked })} /> Allow endpoints that change data (each box still needs &quot;I confirm&quot;)</label>
-        {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 8 }}>{err}</div>}
+        {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 8 }}>{err}</div>}
         <div className="row" style={{ marginTop: 12 }}><button className="pri" disabled={!f.id || busy} onClick={add}>{busy ? "Importing…" : "Import"}</button><button onClick={() => setPv(null)}>Back</button></div>
       </>)}
     </Modal>
@@ -133,7 +133,7 @@ function EndpointForm({ sid, op, onClose, onSaved }: { sid: string; op: Op | nul
           <label className="check"><input type="checkbox" checked={f.confirm_required} onChange={(e) => setF({ ...f, confirm_required: e.target.checked })} /> Always ask for &quot;I confirm&quot;</label></div>
         {!custom && <div className="small mut">Method and path come from the API description. Refresh the API to pick up changes there.</div>}
       </>)}
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 8 }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 8 }}>{err}</div>}
       <div className="row" style={{ marginTop: 12 }}><button className="pri" disabled={!op && !f.id.trim() && !f.label.trim()} onClick={save}>Save</button><button onClick={onClose}>Cancel</button></div>
     </Modal>
   );
@@ -157,13 +157,13 @@ function TestEndpoint({ sid, op, onClose }: { sid: string; op: Op; onClose: () =
   };
   return (
     <Modal title={`Test ${op.method.toUpperCase()} ${op.path}`} onClose={onClose} wide>
-      {op.risk !== "read" && <div className="small" style={{ color: "var(--warn)", margin: "8px 0" }}>This endpoint changes data. It only runs if the API allows writes and you tick the box below.</div>}
+      {op.risk !== "read" && <div className="small" style={{ color: "var(--warn-text)", margin: "8px 0" }}>This endpoint changes data. It only runs if the API allows writes and you tick the box below.</div>}
       <div className="grid">{names.map((n) => <label key={n}>{n}<input value={args[n] ?? ""} aria-label={n} onChange={(e) => setArgs({ ...args, [n]: e.target.value })} /></label>)}</div>
       <label style={{ marginTop: 6 }}>Other arguments (JSON, for the body)<input value={json} aria-label="Other arguments" onChange={(e) => setJson(e.target.value)} /></label>
       {(op.risk !== "read" || op.confirm_required) && <label className="check" style={{ marginTop: 6 }}><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /> I confirm this call may change data</label>}
       <div className="row" style={{ marginTop: 10 }}><button className="pri" disabled={busy} onClick={go}>{busy ? "Calling…" : "Send test call"}</button></div>
       {res && (<div data-testid="test-result" style={{ marginTop: 10 }}>
-        {res.error && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{res.error}</div>}
+        {res.error && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{res.error}</div>}
         {res.request && <div className="small mut">Sent {res.request.method} {res.request.url}{Object.keys(res.request.query).length ? ` ?${new URLSearchParams(res.request.query as Record<string, string>).toString()}` : ""} (keys hidden)</div>}
         {res.status !== undefined && <div className="small"><span className={`pill ${res.ok ? "ok" : "bad"}`}>{res.status}</span>{res.truncated ? " (cut at 20 000 characters)" : ""}</div>}
         {res.body !== undefined && <pre className="small" style={{ whiteSpace: "pre-wrap", maxHeight: 260, overflow: "auto" }}>{typeof res.body === "string" ? res.body : JSON.stringify(res.body, null, 2)}</pre>}
@@ -186,13 +186,13 @@ function RefreshApi({ src, onClose, onDone }: { src: Src; onClose: () => void; o
       {fromFile ? <label style={{ marginTop: 8 }}>Upload the new version<input type="file" accept=".json,.yaml,.yml" aria-label="New file" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setContent(await f.text()); }} /></label>
         : <p className="small">Reads the description again from where it came from and shows what changed before anything is saved.</p>}
       <div className="row" style={{ marginTop: 8 }}><button disabled={fromFile && !content} onClick={check}>Check for changes</button></div>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 8 }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 8 }}>{err}</div>}
       {d && (<div className="small" data-testid="diff" style={{ marginTop: 10 }}>
         {none ? "Nothing changed." : <>
           {d.diff.added.length > 0 && <div><b>New:</b> {d.diff.added.join(", ")}</div>}
           {d.diff.changed.length > 0 && <div><b>Changed:</b> {d.diff.changed.join(", ")}</div>}
-          {d.diff.removed.length > 0 && <div style={{ color: "var(--warn)" }}><b>Gone:</b> {d.diff.removed.join(", ")}</div>}
-          {d.affected.length > 0 && <div style={{ color: "var(--warn)" }}>Workflows affected: {d.affected.join(", ")}. They will show a problem on those steps.</div>}</>}
+          {d.diff.removed.length > 0 && <div style={{ color: "var(--warn-text)" }}><b>Gone:</b> {d.diff.removed.join(", ")}</div>}
+          {d.affected.length > 0 && <div style={{ color: "var(--warn-text)" }}>Workflows affected: {d.affected.join(", ")}. They will show a problem on those steps.</div>}</>}
         <div className="row" style={{ marginTop: 10 }}><button className="pri" disabled={!!none} onClick={apply}>Apply</button><button onClick={onClose}>Close</button></div>
       </div>)}
     </Modal>
@@ -227,7 +227,7 @@ function SourceDetail({ sid, onBack, onChanged }: { sid: string; onBack: () => v
     <div data-testid="source-detail">
       <div className="row"><button onClick={onBack}>← All APIs</button><h3 style={{ margin: 0 }}>{src.name}</h3><span className="grow" />
         <button onClick={() => setRefresh(true)}>Refresh from source</button><a className="btn" href={`${API_BASE}/api/workflows/apis/${sid}/spec`} download>Export description</a></div>
-      {src.warnings.map((w, i) => <div key={i} className="small" style={{ color: "var(--warn)", marginTop: 4 }}>⚠ {w}</div>)}
+      {src.warnings.map((w, i) => <div key={i} className="small" style={{ color: "var(--warn-text)", marginTop: 4 }}>⚠ {w}</div>)}
       <div className="card" style={{ marginTop: 10 }}>
         <div className="card-head"><b>Connection</b><InfoTip id="openapi-source" /></div>
         <div className="grid" style={{ marginTop: 6 }}>
@@ -238,7 +238,7 @@ function SourceDetail({ sid, onBack, onChanged }: { sid: string; onBack: () => v
           {settings.auth !== "none" && <label>{src.has_token ? "Replace the key (write-only)" : "Key or token (write-only)"}<input type="password" autoComplete="off" value={settings.token} aria-label="Key" placeholder={src.has_token ? "•••••• stored" : ""} onChange={(e) => setSettings({ ...settings, token: e.target.value })} /></label>}
         </div>
         <label className="check" style={{ marginTop: 6 }}><input type="checkbox" checked={settings.allow_write} onChange={(e) => setSettings({ ...settings, allow_write: e.target.checked })} /> Allow endpoints that change data</label>
-        {err && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{err}</div>}
+        {err && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{err}</div>}
         <div className="row" style={{ marginTop: 8 }}><button className="pri" onClick={saveSettings}>Save connection</button><span className="small mut">Imported {when(src.refreshed)}{src.used_by.length ? ` · used by ${src.used_by.join(", ")}` : ""}</span></div>
       </div>
       <div className="card" style={{ marginTop: 10 }}>
@@ -282,7 +282,7 @@ export default function OpenApiTab({ onChanged }: { onChanged?: () => void }) {
     <div data-testid="openapi-tab">
       <div className="row"><p className="small mut grow" style={{ margin: 0 }}>Upload an OpenAPI file, give an address or paste one. Every endpoint becomes a box you can use in a workflow. Only that API&apos;s own server is called, and anything that changes data needs your confirmation.</p>
         <button className="pri" onClick={() => setAdding(true)}>Add an API</button></div>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", margin: "8px 0" }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", margin: "8px 0" }}>{err}</div>}
       {srcs && srcs.length === 0 && <div className="card" style={{ marginTop: 12 }}>No APIs yet. Add one to use its endpoints as workflow steps.</div>}
       {srcs && srcs.length > 0 && (
         <table className="tbl" data-testid="api-table" style={{ marginTop: 12 }}><thead><tr><th>Name</th><th>Address</th><th>Sign-in</th><th>Endpoints</th><th>Writes</th><th>Refreshed</th><th>Used by</th><th /></tr></thead><tbody>

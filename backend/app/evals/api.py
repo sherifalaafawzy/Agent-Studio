@@ -5,6 +5,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 
 from .service import EXPORTS, EvalError
+from .starters import starters
 
 
 def register(app: FastAPI) -> None:
@@ -24,6 +25,20 @@ def register(app: FastAPI) -> None:
     @r.get("/sets")
     def sets(request: Request):
         return {"sets": svc(request).sets(), "exports": {k: v[0] for k, v in EXPORTS.items()}}
+
+    @r.get("/starters")
+    def starters_list(request: Request):
+        """Ready-made test sets (Science Lab citation validity and refusal behaviour) and whether each is already added."""
+        have = {x["id"] for x in svc(request).sets()}
+        return {"starters": [dict(id=s["id"], name=s["name"], description=s["description"], cases=len(s["cases"]), added=s["id"] in have) for s in starters()]}
+
+    @r.post("/starters/{sid}")
+    def starters_add(sid: str, request: Request):
+        """Add (or reset to the original) one ready-made test set. It is an ordinary set afterwards: edit it as you like."""
+        found = next((s for s in starters() if s["id"] == sid), None)
+        if found is None:
+            raise HTTPException(404, "no such ready-made set")
+        return wrap(svc(request).save_set, found)
 
     @r.get("/sets/{sid}")
     def get_set(sid: str, request: Request):

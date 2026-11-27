@@ -13,7 +13,7 @@ from ..aibom.redact import SECRET_VALUE
 from . import core as C
 from .core import WorkflowError
 
-ORIGINS = ("manual", "webhook", "agent", "run_from")
+ORIGINS = ("manual", "webhook", "schedule", "agent", "run_from")
 STATUSES = ("running", "done", "error", "stopped", "plan")
 SORTS = ("started", "duration", "cost", "status")
 MAX_WINDOW = 5000                                   # offset + limit: deeper than this means "narrow the filters"

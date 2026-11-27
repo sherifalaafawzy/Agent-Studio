@@ -51,7 +51,7 @@ export default function SimpleCreate({ onCreated }: { onCreated: (id: string) =>
             {templates.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select></label>
       </div>
-      {chosen && !chosen.api_access && <div className="small" role="note" style={{ color: "var(--warn)" }}>{chosen.name} has API access switched off, so an app cannot call it yet. You can turn it on in the app&apos;s settings.</div>}
+      {chosen && !chosen.api_access && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>{chosen.name} has API access switched off, so an app cannot call it yet. You can turn it on in the app&apos;s settings.</div>}
       {templates.find((t) => t.id === template) && <div className="small mut">{templates.find((t) => t.id === template)!.description}</div>}
       <div style={{ marginTop: 8 }}>
         <input ref={pick} type="file" multiple hidden aria-label="Attach files" onChange={(e) => setFiles([...files, ...Array.from(e.target.files ?? [])])} />

@@ -243,7 +243,7 @@ export default function AgentWizard({ agents, mcp, skills, kbs, ext, onCreated, 
           {agui && aguiBadge({ agui }) && <><dt>AG-UI</dt><dd>{aguiBadge({ agui })}</dd></>}
           {liveBadge({ live }) && <><dt>Live</dt><dd>{liveBadge({ live })}</dd></>}
         </dl>
-        {!instr.trim() && <div className="small" style={{ color: "var(--warn)" }}>No instructions yet. It will still work, but it will not know its job. Go back to add some.</div>}
+        {!instr.trim() && <div className="small" style={{ color: "var(--warn-text)" }}>No instructions yet. It will still work, but it will not know its job. Go back to add some.</div>}
       </div>)}
 
       {err && <div className="small err" style={{ marginTop: 8 }}>{err}</div>}

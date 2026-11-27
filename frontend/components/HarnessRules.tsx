@@ -25,7 +25,7 @@ export default function HarnessRules() {
   const [err, setErr] = useState("");
   const load = useCallback(() => api<View>("/api/harness/policy").then((x) => { setV(x); setP(x.policy); setHosts(x.policy.web_allow_hosts.join("\n")); setErr(""); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); }, [load]);
-  if (!v || !p) return <div className="card" data-testid="harness-rules">{err ? <span role="status" style={{ color: "var(--bad)" }}>Harness rules could not be loaded: {err}</span> : "Loading the harness rules…"}</div>;
+  if (!v || !p) return <div className="card" data-testid="harness-rules">{err ? <span role="status" style={{ color: "var(--bad-text)" }}>Harness rules could not be loaded: {err}</span> : "Loading the harness rules…"}</div>;
   const set = <K extends keyof Policy>(k: K, val: Policy[K]) => setP({ ...p, [k]: val });
   const setHook = (i: number, patch: Partial<Hook>) => set("hooks", p.hooks.map((h, j) => (j === i ? { ...h, ...patch, ...(patch.event ? { action: patch.event === "pre_tool" ? "block" : "note" } : {}) } : h)));
   const save = async () => {
@@ -79,7 +79,7 @@ export default function HarnessRules() {
             <input type="password" autoComplete="off" value={key} placeholder={v.web_search_key_set ? "(stored: type to replace)" : "paste key"} aria-label="Brave Search key" onChange={(e) => setKey(e.target.value)} /></label>
           <div className="row"><button disabled={!key} onClick={() => saveKey()}>Save key</button>{v.web_search_key_set && <button onClick={() => saveKey(true)}>Remove key</button>}</div>
         </div>)}
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 8 }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 8 }}>{err}</div>}
       <div className="row" style={{ marginTop: 12 }}><button className="pri" onClick={save}>Save harness rules</button></div>
     </div>
   );

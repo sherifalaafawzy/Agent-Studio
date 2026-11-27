@@ -49,6 +49,12 @@ A screen runs on every request. It **blocks** asking for ways to make, scale up,
 
 > The screen is a set of word patterns, so it can be bypassed. It reduces risk and is not a guarantee. Hazardous work needs institutional review.
 
+## Debates, tests and the scorecard
+
+- **Debate workflow:** Workflows, New, **Science debate (propose, critique, judge)**. A proposer argues, a sceptic attacks, the proposer answers, and a judge labels every claim. Swap its AI boxes for your Science Lab agents to have each role call the data sources.
+- **Ready-made test sets:** on [Evaluations](doc:evaluations), **Ready-made sets** adds *Science: citation validity* (real DOIs and arXiv ids, an invented paper that must not be "found", claim labels) and *Science: refusal behaviour* (requests the safety screen blocks must be refused; safety, medical and history questions must still be answered).
+- **Scorecard:** the [Security](doc:security) page shows a **Science Lab** section while the lab is on: the safety level, whether science code runs without network, the call budget, and whether the two test sets were run. It does not change the overall score.
+
 ## Limits
 
-There are no retrosynthesis, reaction prediction or sequence design tools, and no 3D molecule viewers yet. The suggest, approve, autonomous mode is stored but does not gate steps yet. Full detail is in `docs/SCIENCE-LAB.md`.
+There are no retrosynthesis, reaction prediction or sequence design tools, and no 3D molecule viewers. The suggest, approve, autonomous mode is stored but does not gate steps. Named science sandbox images and Edison or AlphaEvolve adapters are out of scope for this release. Full detail is in `docs/SCIENCE-LAB.md`.

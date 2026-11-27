@@ -17,6 +17,7 @@ describe("helpers", () => {
   it("builds the websocket address from the API address", () => {
     expect(wsUrlFor("http://127.0.0.1:8765")).toBe("ws://127.0.0.1:8765/api/live/ws");
     expect(wsUrlFor("https://x.test/")).toBe("wss://x.test/api/live/ws");
+    expect(wsUrlFor("")).toBe(window.location.origin.replace(/^http/, "ws") + "/api/live/ws");   // desktop build: same origin
   });
   it("converts 16-bit audio to floats and ignores a stray odd byte", () => {
     const i = new Int16Array([0, 16384, -32768]);

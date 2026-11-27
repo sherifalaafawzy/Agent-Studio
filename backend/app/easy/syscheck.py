@@ -90,7 +90,7 @@ def check(workspace: Path, data: Path, *, line: Callable[[list[str]], str | None
              detail=(f"running, version {oll['version']}" if oll["running"] else ("installed but not running" if found else "not installed")),
              why="Runs AI models on this PC for free, with nothing sent to the internet. You can skip it if you will use an online provider."),
         dict(id="node", label="Node.js", state="ok" if node and npm else "missing", detail=f"{node} (npm {npm})" if node and npm else "not installed",
-             why="Needed to install and run most coding agents (Claude Code, Codex, Gemini CLI). Optional."),
+             why="Needed for most coding agents (Claude Code, Codex, Gemini CLI), MCP servers started with npx, and the promptfoo red-team tool. Optional: install Node.js 22 or newer from nodejs.org."),
         dict(id="disk", label="Free disk space", state="missing" if disk is None else ("warn" if disk < 15 else "ok"),
              detail="unknown" if disk is None else f"{disk} GB free", why="Local models are large (2-20 GB each). Keep at least 15 GB free if you plan to use them."),
         dict(id="ram", label="Memory (RAM)", state="missing" if mem is None else ("warn" if mem < 8 else "ok"), detail="unknown" if mem is None else f"{mem} GB",

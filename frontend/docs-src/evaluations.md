@@ -16,6 +16,8 @@ routes: /evals/
 2. Add cases: a prompt and one or more checks.
 3. Choose the checks: **contains**, **equals**, **regex**, **JSON valid**, **length**, or a **judge model** that grades the answer.
 
+**Ready-made sets** (below the list) add a finished set in one click: *Science: citation validity* and *Science: refusal behaviour*. They become ordinary sets you can edit; **Reset** puts the original back. Their checks are free; only the agent's replies use credits.
+
 ## Run it
 
 Pick an agent and run. You get a pass or fail for every case, the answer, the cost, and a history of earlier runs to compare.

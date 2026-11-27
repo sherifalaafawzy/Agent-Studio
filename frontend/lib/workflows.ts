@@ -9,7 +9,7 @@ export type Ref = { id: string; label: string; ready?: boolean; read_only?: stri
 export type Refs = { mcp: Ref[]; knowledge: Ref[]; data_source: Ref[]; guardrail: Ref[]; credential: Ref[] };
 export const NO_REFS: Refs = { mcp: [], knowledge: [], data_source: [], guardrail: [], credential: [] };
 export type FormField = { name: string; label: string; type: string; options: string[]; required: boolean };
-export const ENTRY = ["input", "webhook"];
+export const ENTRY = ["input", "webhook", "schedule"];
 export const ROOTS = [...ENTRY, "error_handler"];
 export const RULE_OPS: [string, string][] = [["equals", "is"], ["not_equals", "is not"], ["contains", "contains"], ["not_contains", "does not contain"], ["starts_with", "starts with"], ["ends_with", "ends with"],
   ["gt", "is greater than"], ["gte", "is at least"], ["lt", "is less than"], ["lte", "is at most"], ["is_empty", "is empty"], ["not_empty", "is not empty"], ["regex", "matches pattern"]];
@@ -27,7 +27,7 @@ export type TestResult = { status: string; output?: string; error?: string | nul
 
 export const AUTONOMY: [string, string][] = [["suggest", "Suggest only: show me the plan, run nothing"], ["approve", "Ask me before each step"], ["auto", "Run it all by itself"]];
 export const SAFE = new Set(["read_file", "list_dir", "glob_files", "search_text", "repo_map", "rag_search", "memory_search", "web_fetch", "web_search"]);
-export const ORIGIN_LABEL: Record<string, string> = { manual: "Run by you", webhook: "Webhook", agent: "An agent", run_from: "From a box" };
+export const ORIGIN_LABEL: Record<string, string> = { manual: "Run by you", webhook: "Webhook", schedule: "Schedule", agent: "An agent", run_from: "From a box" };
 export const RUN_STATUS: Record<string, { label: string; icon: string; tone: string }> = {
   running: { label: "Running", icon: "◔", tone: "acc" }, done: { label: "Worked", icon: "✓", tone: "ok" }, error: { label: "Failed", icon: "✕", tone: "bad" }, stopped: { label: "Stopped", icon: "■", tone: "warn" }, plan: { label: "Plan only", icon: "☰", tone: "" },
 };
@@ -108,6 +108,7 @@ const SUM: Record<string, (c: any) => string> = {
   join: (c) => `join with "${c.separator ?? ""}"`, merge_by_key: (c) => `on ${c.key || "a key"} (${c.mode ?? "inner"})`, date_time: (c) => String(c.operation ?? "now").replace("_", " "), regex: (c) => `${c.mode ?? "first"} /${String(c.pattern ?? "").slice(0, 30)}/`,
   template: (c) => String(c.text ?? "").replace(/\s+/g, " ").slice(0, 50) || "write the text", stop: (c) => String(c.message ?? "").slice(0, 50) || "stop with a message",
   webhook: (c) => `starts when called · answers ${String(c.respond ?? "immediately").replace("_", " ")}`, respond_webhook: (c) => `answers with status ${c.status ?? 200}`, error_handler: () => "runs only if something fails",
+  schedule: (c) => (c.mode === "cron" ? `cron ${c.cron ?? ""}` : c.mode === "daily" ? `every day at ${c.at ?? "09:00"}` : `every ${c.every_minutes ?? 60} min`), notify: (c) => `notify: ${String(c.title ?? "").slice(0, 40)}`,
 };
 
 /** Text a box shows as its one-line summary. */

@@ -49,6 +49,18 @@ TEMPLATES = [
              _n("start", "input", "Notes", x=0, y=120), _n("head", "set", "Report header", dict(fields=[dict(name="date", value="{{ format_date(now()) }}"), dict(name="notes", value="{{ $input }}")]), 260, 120),
              _n("body", "llm", "Write the report", dict(prompt="Turn these notes into a short report with headings:\n{{ $prev }}"), 520, 120), _n("result", "output", "Report", x=780, y=120)],
              edges=[dict(source="start", target="head"), dict(source="head", target="body"), dict(source="body", target="result")])),
+    dict(id="science-debate", name="Science debate (propose, critique, judge)", description="Three roles argue a research question: a proposer, a sceptic and a judge who labels every claim. Swap the AI boxes for your Science Lab agents for real data-source calls.",
+         doc=dict(name="Science debate", autonomy="auto", description="A proposer argues a hypothesis, a sceptic attacks it, the proposer answers, a judge weighs both and labels each claim.", nodes=[
+             _n("start", "input", "Research question", x=0, y=140),
+             _n("propose", "llm", "Proposer", dict(system="You are the proposer in a scientific debate. Be specific and cite sources you are sure exist (DOI, PMID or arXiv id); never invent one. Say 'no source' when you have none.",
+                                                   prompt="Question: {{ $input }}\n\nPropose the most likely answer as a testable hypothesis, with the evidence for it and how it could be tested."), 260, 140),
+             _n("critique", "llm", "Sceptic", dict(system="You are the sceptic in a scientific debate. Attack weak evidence, missing controls, confounders and any citation that looks invented. Do not be polite at the cost of accuracy.",
+                                                   prompt="Question: {{ $input }}\n\nProposal:\n{{ $prev }}\n\nList the strongest objections, most serious first, and what evidence would settle each."), 520, 140),
+             _n("rebut", "llm", "Proposer answers", dict(prompt="Question: {{ $input }}\n\nYour proposal:\n{{ $node[\"Proposer\"].text }}\n\nObjections:\n{{ $prev }}\n\nAnswer each objection: concede, narrow the claim, or defend it with evidence."), 780, 140),
+             _n("judge", "llm", "Judge", dict(system="You judge a scientific debate. Label every claim as one of: established (2+ independent sources), single source, computed, inference, conflicting, unsupported. Never upgrade a claim without a source.",
+                                              prompt="Question: {{ $input }}\n\nProposal:\n{{ $node[\"Proposer\"].text }}\n\nObjections:\n{{ $node[\"Sceptic\"].text }}\n\nAnswers:\n{{ $prev }}\n\nGive: the verdict, a table of claims with labels, the open questions and the next experiment."), 1040, 140),
+             _n("result", "output", "Verdict", x=1300, y=140)],
+             edges=[dict(source="start", target="propose"), dict(source="propose", target="critique"), dict(source="critique", target="rebut"), dict(source="rebut", target="judge"), dict(source="judge", target="result")])),
 ]
 
 

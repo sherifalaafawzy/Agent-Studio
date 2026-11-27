@@ -118,7 +118,7 @@ function Editor() {
     const entry = doc?.nodes.find((n) => ENTRY.includes(n.type));
     const spec = specs[type];
     if (!doc || !entry || !spec) return;
-    apply({ ...doc, nodes: doc.nodes.map((n) => (n.id === entry.id ? { ...n, type, label: type === "webhook" ? "Webhook" : "Task", config: defaultConfig(spec) } : n)) });
+    apply({ ...doc, nodes: doc.nodes.map((n) => (n.id === entry.id ? { ...n, type, label: type === "webhook" ? "Webhook" : type === "schedule" ? "Schedule" : "Task", config: defaultConfig(spec) } : n)) });
   };
 
   // -- saving, checking, running
@@ -197,7 +197,7 @@ function Editor() {
         <button className="pri" onClick={saveVersion} disabled={saving || !dirty}>Save version</button>
         <InfoTip id="wf-editor" />
       </header>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", padding: "4px 14px" }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", padding: "4px 14px" }}>{err}</div>}
       {waiting > 0 && <div className="wf-banner" role="status">{waiting} step(s) waiting for you <button className="small" onClick={() => setDrawer(true)}>Open</button></div>}
       <div className="wf-body">
         <nav className="wf-rail" aria-label="Editor tools">

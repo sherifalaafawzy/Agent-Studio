@@ -33,7 +33,7 @@ export default function OllamaPull({ pid, onPulled }: { pid: string; onPulled: (
   return (
     <div style={{ gridColumn: "1 / -1", borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 4 }}>
       <div className="row"><b>Models on this PC</b><span className="mut small">{installed === null ? "checking…" : installed.length ? installed.join(", ") : "none yet"}</span></div>
-      {listErr && <div className="small" style={{ color: "var(--warn)", marginTop: 4 }}>{listErr}</div>}
+      {listErr && <div className="small" style={{ color: "var(--warn-text)", marginTop: 4 }}>{listErr}</div>}
       <div className="row" style={{ marginTop: 10 }}>
         <input value={name} placeholder="model name, e.g. qwen2.5-coder:7b" onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 220 }} disabled={busy} />
         <button className="acc" disabled={busy || !name.trim()} onClick={() => pull(name.trim())}>{busy ? "Downloading…" : "Download a model"}</button>

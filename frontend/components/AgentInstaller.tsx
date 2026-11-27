@@ -97,7 +97,7 @@ export default function AgentInstaller({ only, onChange }: { only?: string[]; on
         {job && job.agent === a.id && (job.log.length > 0 || job.error) && (
           <div style={{ marginTop: 6 }}>
             {job.state === "failed" && <div className="small err">{job.error}</div>}
-            {job.state === "done" && <div className="small" style={{ color: "var(--ok)" }}>Done.</div>}
+            {job.state === "done" && <div className="small" style={{ color: "var(--ok-text)" }}>Done.</div>}
             <details><summary className="small mut">Details</summary><pre className="small" style={{ whiteSpace: "pre-wrap", margin: 0 }}>{job.log.join("\n")}</pre></details>
           </div>)}
       </div>);

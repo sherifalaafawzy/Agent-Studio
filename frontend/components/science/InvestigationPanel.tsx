@@ -36,7 +36,7 @@ function ClaimRow({ c, byId, onDelete }: { c: Claim; byId: Record<string, Eviden
       <div><span className={`sci-badge ${s.tone}`} title={c.label_text}><span aria-hidden="true">{s.icon}</span> {c.label_text}</span></div>
       <div>{c.text}</div>
       {c.evidence.map((id) => byId[id] && <div key={id} className="small mut">– {byId[id].title || byId[id].ref || byId[id].source} ({byId[id].source}{byId[id].kind === "source" ? `, ${VERIFIED_TEXT[byId[id].verified]}` : `, ${byId[id].kind}`})</div>)}
-      {c.flags.map((f) => <div key={f} className="small" role="note" style={{ color: "var(--warn)" }}>⚠ {f}</div>)}
+      {c.flags.map((f) => <div key={f} className="small" role="note" style={{ color: "var(--warn-text)" }}>⚠ {f}</div>)}
       <button className="ghost small" onClick={onDelete}>Remove claim</button>
     </li>
   );

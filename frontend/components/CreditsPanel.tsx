@@ -32,7 +32,7 @@ export default function CreditsPanel({ pid, credits, onChange }: { pid: string; 
         {c.auto_available ? "Fetched automatically from the provider when you connect and before chats (every 10 min)." : c.why_not}
         {" "}Calls whose worst-case cost exceeds the credits left are refused before they are sent.
       </div>
-      {c.error && <div className="small" style={{ color: "var(--warn)", marginTop: 4 }}>{c.error}</div>}
+      {c.error && <div className="small" style={{ color: "var(--warn-text)", marginTop: 4 }}>{c.error}</div>}
       <div className="row" style={{ marginTop: 8 }}>
         <input type="number" min={0} step="0.01" value={bal} placeholder={c.auto_available ? "or enter a balance manually ($)" : "your current balance ($)"}
           onChange={(e) => setBal(e.target.value)} style={{ width: 230 }} />

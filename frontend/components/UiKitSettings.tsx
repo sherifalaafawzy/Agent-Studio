@@ -15,7 +15,7 @@ export default function UiKitSettings() {
   const [err, setErr] = useState("");
   const load = useCallback(() => api<Cfg>("/api/uikit/config").then((c) => { setCfg(c); setErr(""); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); }, [load]);
-  if (!cfg) return <div className="card" data-testid="uikit-settings">{err ? <span role="status" style={{ color: "var(--bad)" }}>The component settings could not be loaded: {err}</span> : "Loading the component settings…"}</div>;
+  if (!cfg) return <div className="card" data-testid="uikit-settings">{err ? <span role="status" style={{ color: "var(--bad-text)" }}>The component settings could not be loaded: {err}</span> : "Loading the component settings…"}</div>;
   const set = <K extends keyof Cfg>(k: K, v: Cfg[K]) => setCfg({ ...cfg, [k]: v });
   const na = cfg.new_agents ?? { components: true, endpoint: true };                  // what a new agent starts with (each agent has its own AG-UI switches)
   const base = (patch: Partial<Basemap>) => set("basemap", { ...cfg.basemap, ...patch });

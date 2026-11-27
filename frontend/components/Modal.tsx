@@ -25,7 +25,7 @@ export function ConfirmDelete({ what, usedBy, onConfirm, onClose }: { what: stri
   return (
     <Modal title={`Delete ${what}?`} onClose={onClose}>
       <p className="small">This cannot be undone.</p>
-      {used.length > 0 && <p className="small" role="alert" style={{ color: "var(--warn)" }}>It is used by: {used.join(", ")}. Those workflows will show a problem until you pick something else.</p>}
+      {used.length > 0 && <p className="small" role="alert" style={{ color: "var(--warn-text)" }}>It is used by: {used.join(", ")}. Those workflows will show a problem until you pick something else.</p>}
       <div className="row" style={{ marginTop: 10 }}><button onClick={onClose}>Cancel</button><button className="pri" onClick={onConfirm}>{used.length ? "Delete anyway" : "Delete"}</button></div>
     </Modal>
   );

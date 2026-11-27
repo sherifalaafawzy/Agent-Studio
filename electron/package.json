@@ -1,13 +1,41 @@
 {
   "name": "agent-studio-desktop",
+  "productName": "Agent Studio",
   "version": "0.1.0",
+  "description": "Agent Studio: build, run and test AI agents on your own PC",
+  "author": "Agent Studio",
+  "license": "UNLICENSED",
   "private": true,
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
-    "pack": "echo \"Packaging (electron-builder + PyInstaller sidecar) is a later phase\" && exit 1"
+    "dist": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
-    "electron": "^45.4.1"
+    "electron": "45.3.2",
+    "electron-builder": "26.18.1"
+  },
+  "build": {
+    "appId": "com.agentstudio.desktop",
+    "productName": "Agent Studio",
+    "artifactName": "Agent-Studio-Setup-${version}.${ext}",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "package.json", "build/icon.png"],
+    "extraResources": [{ "from": "stage/studio", "to": "studio", "filter": ["**/*"] }],
+    "asar": true,
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.ico", "signAndEditExecutable": true },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Agent Studio",
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    }
   }
 }

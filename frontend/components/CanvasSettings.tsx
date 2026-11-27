@@ -13,7 +13,7 @@ export default function CanvasSettings() {
   const [err, setErr] = useState("");
   const load = useCallback(() => api<Cfg>("/api/canvas/config").then((c) => { setCfg(c); setErr(""); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); }, [load]);
-  if (!cfg) return <div className="card" data-testid="canvas-settings">{err ? <span role="status" style={{ color: "var(--bad)" }}>The canvas settings could not be loaded: {err}</span> : "Loading the canvas settings…"}</div>;
+  if (!cfg) return <div className="card" data-testid="canvas-settings">{err ? <span role="status" style={{ color: "var(--bad-text)" }}>The canvas settings could not be loaded: {err}</span> : "Loading the canvas settings…"}</div>;
   const set = <K extends keyof Cfg>(k: K, v: Cfg[K]) => setCfg({ ...cfg, [k]: v });
   const save = async () => {
     try { setCfg(await api<Cfg>("/api/canvas/config", { method: "PUT", body: JSON.stringify(cfg) })); setErr(""); toast("Canvas settings saved"); }

@@ -28,13 +28,13 @@ export default function TryBox({ doc, node, lastInput, canRunFrom, runFromWhy, o
         <button onClick={onRunFrom} disabled={!canRunFrom} title={canRunFrom ? "Run from here, reusing the last run for everything before this box" : runFromWhy}>Run from here</button>
       </div>
       {!canRunFrom && <div className="small mut" style={{ marginTop: 4 }}>{runFromWhy}</div>}
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 6 }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 6 }}>{err}</div>}
       {res && (
         <div data-testid="try-result" style={{ marginTop: 8 }}>
           <span className={`pill ${res.status === "done" ? "ok" : res.status === "error" ? "bad" : "warn"}`}>{res.status === "not_run" ? "not run" : res.status}</span>
           {res.ports && res.ports.length > 0 && res.ports[0] !== "out" && <span className="small mut"> went {res.ports.join(", ")}</span>}
           {res.message && <div className="small" style={{ marginTop: 4 }}>{res.message}</div>}
-          {res.error && <div className="small" role="alert" style={{ color: "var(--bad)", marginTop: 4 }}>{res.error}</div>}
+          {res.error && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginTop: 4 }}>{res.error}</div>}
           {res.status === "done" && <pre className="small" style={{ whiteSpace: "pre-wrap", maxHeight: 220, overflow: "auto", marginTop: 4 }}>{(res.output ?? "").slice(0, 4000) || "(empty)"}</pre>}
         </div>)}
     </section>

@@ -567,6 +567,28 @@ def register(app: FastAPI) -> None:
         S(request).wf_hooks.delete(wid)
         return {"ok": True}
 
+    @r.get("/{wid}/schedule")
+    def schedule_status(wid: str, request: Request):
+        s = S(request)
+        if s.workflows.get(wid) is None:
+            return _bad("unknown workflow", 404)
+        return s.wf_schedule.status(wid)
+
+    @r.post("/{wid}/schedule")
+    def schedule_set(wid: str, body: dict, request: Request):
+        """Switch the schedule on (from the saved Schedule box) or off."""
+        s = S(request)
+        try:
+            if body.get("enabled") is True:
+                return s.wf_schedule.enable(wid)
+            if body.get("enabled") is False:
+                return s.wf_schedule.pause(wid)
+        except KeyError:
+            return _bad("unknown workflow", 404)
+        except ValueError as e:
+            return _bad(str(e))
+        return _bad("send enabled: true or false")
+
     @r.post("/{wid}/run")
     async def run(wid: str, body: dict, request: Request):
         try:

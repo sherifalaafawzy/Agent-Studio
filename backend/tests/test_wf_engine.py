@@ -348,17 +348,17 @@ def test_import_modes_and_delete_protection(rich):
 def test_catalog_and_templates_endpoints_and_every_template_runs(rich, state, monkeypatch):
     assert rich.get("/api/workflows/nodes").json()["nodes"][0]["type"] == "input"
     ts = rich.get("/api/workflows/templates").json()["templates"]
-    assert {t["id"] for t in ts} == {"research", "approve", "route", "report"}
+    assert {t["id"] for t in ts} == {"research", "approve", "route", "report", "science-debate"}
 
     async def llm(run_, prompt):
         return "question" if "Classify" in prompt else "AI text"
     monkeypatch.setattr(state.wf_runner, "_llm", llm)
     for t in ts:
-        doc = {**t["doc"], "id": f"tpl_{t['id']}"}
+        doc = {**t["doc"], "id": f"tpl_{t['id'].replace('-', '_')}"}
         saved = save(rich, doc)
         assert saved["problems"] == [] or all(p["severity"] == "warning" for p in saved["problems"]), saved["problems"]
     assert go(rich, "tpl_research", "bees")["final"] == "AI text" and go(rich, "tpl_route", "why?")["final"] == "AI text"
-    assert "Daily" not in go(rich, "tpl_report", "notes")["final"]
+    assert "Daily" not in go(rich, "tpl_report", "notes")["final"] and go(rich, "tpl_science_debate", "Does X cause Y?")["final"] == "AI text"
     rid = rich.post("/api/workflows/tpl_approve/run", json={"task": "hi"}).json()["id"]
     for _ in range(200):
         if rich.get(f"/api/workflows/runs/{rid}").json()["nodes"]["ask"]["status"] == "waiting_approval":

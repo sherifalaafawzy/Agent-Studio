@@ -14,7 +14,7 @@ from typing import Any
 from . import core as C
 
 CONFIG_KEY, SECRETS_KEY = "workflow_config", "workflow_secrets"
-DEFAULTS: dict[str, Any] = dict(webhooks_enabled=False, hook_rate_per_min=30, hook_max_body_kb=256, hook_wait_max_s=30, max_nodes=60, run_retention=100, http_timeout_s=30, http_max_kb=512, http_allow_hosts=[])
+DEFAULTS: dict[str, Any] = dict(webhooks_enabled=False, schedules_enabled=True, hook_rate_per_min=30, hook_max_body_kb=256, hook_wait_max_s=30, max_nodes=60, run_retention=100, http_timeout_s=30, http_max_kb=512, http_allow_hosts=[])
 BOUNDS = dict(hook_rate_per_min=(1, 600), hook_max_body_kb=(1, 4096), hook_wait_max_s=(0, 120), max_nodes=(10, 200), run_retention=(5, 1000), http_timeout_s=(1, 120), http_max_kb=(1, 4096))
 KINDS = ("bearer", "header", "basic")
 CRED_ID = re.compile(r"^[a-z][a-z0-9_]{1,30}$")
@@ -47,9 +47,9 @@ class WorkflowSettings:
         for k, v in (patch or {}).items():
             if k not in DEFAULTS or v is None:
                 continue
-            if k == "webhooks_enabled":
+            if k in ("webhooks_enabled", "schedules_enabled"):
                 if not isinstance(v, bool):
-                    raise C.WorkflowError("webhooks_enabled must be true or false")
+                    raise C.WorkflowError(f"{k} must be true or false")
             elif k == "http_allow_hosts":
                 if not isinstance(v, list) or len(v) > 30:
                     raise C.WorkflowError("give at most 30 allowed hosts")

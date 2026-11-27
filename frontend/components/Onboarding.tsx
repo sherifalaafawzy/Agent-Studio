@@ -100,7 +100,7 @@ export default function Onboarding() {
         <div className="row"><h3 style={{ margin: 0 }}>{info.title}</h3>{check && id !== "welcome" && id !== "done" && <span className={`pill ${TONE[check.state]}`}>{WORD[check.state]}</span>}</div>
         <p className="small" style={{ lineHeight: 1.6 }}>{info.why}</p>
         {info.cost && <p className="small mut"><b>Cost:</b> {info.cost}</p>}
-        {optionalHere && <p className="small" style={{ color: "var(--warn)" }}>You chose {choice === "online" ? "online providers" : "local models"}, so this step is optional.</p>}
+        {optionalHere && <p className="small" style={{ color: "var(--warn-text)" }}>You chose {choice === "online" ? "online providers" : "local models"}, so this step is optional.</p>}
         {check?.detail && id !== "welcome" && id !== "done" && <p className="small mut">Right now: {check.detail}</p>}
 
         {id === "welcome" && (<div>

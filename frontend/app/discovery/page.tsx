@@ -33,7 +33,7 @@ function Problems({ c, label }: { c: Check; label: string }) {
       <span className={`pill ${c.ok ? "ok" : "bad"}`}>{c.ok ? "valid" : `${c.error_count} error${c.error_count === 1 ? "" : "s"}`}</span>
       {c.schema && <span className="small mut"> {c.schema}</span>}
       {c.errors.map((e, i) => <div key={i} className="small err dc-wrap">{e.path}: {e.message}</div>)}
-      {(c.warnings ?? []).map((w, i) => <div key={i} className="small dc-wrap" style={{ color: "var(--warn)" }}>warning · {w.path}: {w.message}</div>)}
+      {(c.warnings ?? []).map((w, i) => <div key={i} className="small dc-wrap" style={{ color: "var(--warn-text)" }}>warning · {w.path}: {w.message}</div>)}
     </div>
   );
 }

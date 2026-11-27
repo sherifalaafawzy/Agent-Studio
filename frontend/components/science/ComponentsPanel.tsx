@@ -36,11 +36,11 @@ export default function ComponentsPanel() {
           <div className="card-head"><b>{c.name}</b> <span className="chip">{c.kind === "hosted" ? "hosted service" : "self-hostable"}</span> {c.state === "ready" && <span className="chip">installed {c.installed_version}</span>}</div>
           <div>{c.summary}</div>
           <dl className="sci-dl small">
-            <dt>Licence</dt><dd>{c.licence || "unknown"} {c.licence_verified ? <span className="mut">(confirmed: {c.licence_source})</span> : <span style={{ color: "var(--warn)" }}>(not confirmed)</span>}</dd>
+            <dt>Licence</dt><dd>{c.licence || "unknown"} {c.licence_verified ? <span className="mut">(confirmed: {c.licence_source})</span> : <span style={{ color: "var(--warn-text)" }}>(not confirmed)</span>}</dd>
             {c.hardware && <><dt>Needs</dt><dd>{c.hardware}</dd></>}{c.disk && <><dt>Disk</dt><dd>{c.disk}</dd></>}{c.keys && <><dt>Keys</dt><dd>{c.keys}</dd></>}
             {c.egress && <><dt>Where data goes</dt><dd>{c.egress}</dd></>}{c.cost && <><dt>Cost</dt><dd>{c.cost}</dd></>}
           </dl>
-          {c.caution && <div className="small" role="note" style={{ color: "var(--warn)" }}>⚠ {c.caution}</div>}
+          {c.caution && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>⚠ {c.caution}</div>}
           {c.link && /^https:\/\//.test(c.link) && <a className="small" href={c.link} target="_blank" rel="noopener noreferrer">Project page ↗</a>}
           {!c.can_install && c.reasons.length > 0 && <div className="small mut" role="note" style={{ marginTop: 4 }}>{c.reasons.join(" ")}</div>}
           {c.can_install && c.state !== "ready" && (

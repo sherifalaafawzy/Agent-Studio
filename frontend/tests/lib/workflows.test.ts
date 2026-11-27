@@ -69,6 +69,7 @@ describe("workflow helpers", () => {
       sum("merge_by_key", { key: "id", mode: "left" }), sum("merge_by_key"), sum("date_time", { operation: "diff_days" }), sum("date_time"), sum("regex", { mode: "all", pattern: "a+" }), sum("regex"),
       sum("webhook", { respond: "when_done" }), sum("webhook"), sum("respond_webhook", { status: 201 }), sum("respond_webhook"), sum("error_handler"), sum("never_heard_of_it"),
       sum("template", { text: "got\n  {{ $input }}" }), sum("template"), sum("stop", { message: "Stopped" }), sum("stop"),
+      sum("schedule"), sum("schedule", { mode: "daily" }), sum("schedule", { mode: "daily", at: "07:30" }), sum("schedule", { mode: "cron", cron: "0 9 * * 1" }), sum("schedule", { mode: "cron" }), sum("schedule", { every_minutes: 5 }), sum("notify", { title: "Hi" }), sum("notify"),
     ]).toEqual([
       "2 condition(s), any must hold", "0 condition(s), all must hold", "keep items where n gt, item equals", "keep items where …", "POST https://api.test/items", "GET set an address", "s.t", "choose a server and tool",
       "save procedural memory", "search semantic memory", "search docs", "choose a knowledge base", "db: select 1", "choose a data source", "keep as r.md", "keep as file", "check the output", "check the input",
@@ -76,12 +77,13 @@ describe("workflow helpers", () => {
       "on id (left)", "on a key (inner)", "diff days", "now", "all /a+/", "first //", "starts when called · answers when done", "starts when called · answers immediately", "answers with status 201", "answers with status 200",
       "runs only if something fails", "never heard of it",
       "got {{ $input }}", "write the text", "Stopped", "stop with a message",
+      "every 60 min", "every day at 09:00", "every day at 07:30", "cron 0 9 * * 1", "cron ", "every 5 min", "notify: Hi", "notify: ",
     ]);
     const field = (name: string, kind: string) => ({ name, label: name, kind });
     const fields = [field("r", "rules"), field("c", "conditions"), field("f", "formfields")];
     expect(defaultConfig(spec("x", ["out"], fields))).toEqual({ r: [{ field: "", op: "equals", value: "" }], c: [{ left: "", op: "equals", right: "" }], f: [] });
-    expect(ENTRY).toEqual(["input", "webhook"]);
-    expect(ROOTS).toEqual(["input", "webhook", "error_handler"]);
+    expect(ENTRY).toEqual(["input", "webhook", "schedule"]);
+    expect(ROOTS).toEqual(["input", "webhook", "schedule", "error_handler"]);
     expect(NO_REFS.mcp).toEqual([]);
     expect(RULE_OPS.find(([v]) => v === "gte")![1]).toBe("is at least");
   });

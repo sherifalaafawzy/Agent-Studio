@@ -1,9 +1,36 @@
 # Agent Studio
 
 Model-agnostic desktop agent app: **Next.js** UI + **FastAPI** backend on **Google ADK**, providers via **LiteLLM**,
-**Electron** shell (packaging later). Per-provider hard spend caps enforced *before* every model call.
+**Electron** desktop app with a Windows installer. Per-provider hard spend caps enforced *before* every model call.
 
-## Run (Windows)
+## Install (Windows desktop app)
+Download `Agent-Studio-Setup-<version>.exe` from the GitHub release and run it. It installs for your user only (no admin
+rights), adds Start-menu and desktop shortcuts, and keeps your data in `%APPDATA%\Agent Studio\data` (chats, agents,
+settings, saved keys, tools you install later). Uninstalling asks whether to delete that data; the default keeps it.
+
+- The installer is **not code-signed**, so Windows SmartScreen shows "Windows protected your PC": choose *More info* then *Run anyway*.
+- The first start after installing is slower than later ones while Windows Defender checks the new files (measured on
+  the build PC: about 10 s, then 7 s). The start window shows the elapsed time and what the server is loading; it never
+  gives up while the server is still working.
+- Python is included. Optional parts install themselves on demand into the data folder (local voice, red-team tools, guard
+  and decision models, Ollama). **Node.js 22+** is needed only for coding agents (Claude Code, Codex...), MCP servers started
+  with `npx`, and promptfoo; **Docker** only for the code sandbox and vector-database stores. *Setup* shows what is missing.
+- Logs: `%APPDATA%\Agent Studio\data\logs\server.log`.
+
+### Build the installer
+```powershell
+npm run setup           # once: backend venv + frontend deps
+npm --prefix electron install
+npm run pack            # -> electron\dist\Agent-Studio-Setup-<version>.exe
+```
+`scripts/pack.mjs` builds the static UI with a same-origin API (`NEXT_PUBLIC_API_BASE=""`), copies a private Python
+runtime (the Python the backend venv was made from, plus the venv's packages without the test tools) and the backend,
+skills and sandbox Dockerfile into `electron/stage/studio`, byte-compiles it, checks the server imports, then runs
+electron-builder (NSIS, per-user). The installed app starts the bundled server on a free loopback port; that server also
+serves the UI (`AGENT_STUDIO_WEB_DIR`), so the window, API and Live WebSocket share one origin. Closing the window stops
+the server and everything it started (process-tree kill).
+
+## Run from source (Windows)
 Prereqs: Python ≥ 3.11, Node ≥ 20.
 ```powershell
 npm install            # root dev tooling (concurrently)
@@ -249,7 +276,7 @@ Backend: `app/apps/{studio,lint,design,choose,studio_js}.py`; frontend: `compone
 
 ## Science Lab: research with evidence for every claim
 
-**Science** in the sidebar (`/science`) is our own lab for biology, chemistry, physics and maths (not Claude Science, not Google's co-scientist: Agent Studio does not connect to them). It reads open databases (PubMed, Europe PMC, UniProt, AlphaFold, RCSB PDB, PubChem, arXiv, INSPIRE-HEP, NASA ADS, OEIS, Crossref, OpenAlex, optional Wolfram|Alpha) read-only, with a limit per host and provenance on every answer; calculates on this PC (units, CODATA constants, molar mass, sequence statistics, numeric calculus); and keeps investigations of hypotheses (Elo-ranked), evidence and claims. A claim's label (established, single source, computed here, model inference, conflicting, unsupported) is worked out by the server from its evidence, citations are checked against Crossref and PubMed, and reports are kept as artifacts. A safety screen refuses requests for ways to make or strengthen hazardous agents; its level can be raised but never lowered. Agents get eleven `science_*` tools (and a built-in **Science Lab** agent); PaperQA2 and ToolUniverse can be installed into their own environments. See `docs/SCIENCE-LAB.md` for what is built and what is not.
+**Science** in the sidebar (`/science`) is our own lab for biology, chemistry, physics and maths (not Claude Science, not Google's co-scientist: Agent Studio does not connect to them). It reads open databases (PubMed, Europe PMC, UniProt, AlphaFold, RCSB PDB, PubChem, arXiv, INSPIRE-HEP, NASA ADS, OEIS, Crossref, OpenAlex, optional Wolfram|Alpha) read-only, with a limit per host and provenance on every answer; calculates on this PC (units, CODATA constants, molar mass, sequence statistics, numeric calculus); and keeps investigations of hypotheses (Elo-ranked), evidence and claims. A claim's label (established, single source, computed here, model inference, conflicting, unsupported) is worked out by the server from its evidence, citations are checked against Crossref and PubMed, and reports are kept as artifacts. A safety screen refuses requests for ways to make or strengthen hazardous agents; its level can be raised but never lowered. Agents get eleven `science_*` tools (and a built-in **Science Lab** agent); PaperQA2 and ToolUniverse can be installed into their own environments. A **debate workflow template** (proposer, sceptic, judge), two **ready-made evaluation sets** (citation validity, refusal behaviour) and a **Science Lab section on the security scorecard** come with it. See `docs/SCIENCE-LAB.md` for what is built and what is not.
 
 ## Documentation and the assistant
 
@@ -272,18 +299,20 @@ Agents > **Deploy to Claude Code…** takes an agent to the Claude Code CLI in o
 * **API and A2A** (Settings > API & A2A): an authenticated OpenAI-compatible API (`/v1/models`, `/v1/chat/completions`, streaming) and A2A 1.0 (official `a2a-sdk`; each agent has a card at `/a2a/<agent>/.well-known/agent-card.json`). Both are off until switched on, need a key (shown once, stored as a hash, scoped to agents, rate-limited, revocable, rotatable) and only reach agents that opted in. Agents can also call remote A2A agents you register.
 
 
-## Workflow boxes, webhooks and testing
+## Workflow boxes, webhooks, schedules and testing
 
-- **42 kinds of box** (the palette opens with `/`): triggers (Task input, Webhook, On error), AI (Agent, AI prompt, Classifier, Guardrail check), flow (If, Compare, Switch, Merge, Wait, Ask a person, Stop, Run a workflow, For each, Sequence, Parallel, Loop), data (Set fields, Text template, Parse JSON, Filter, Sort, Limit, Remove duplicates, Summarise, Split, Join, Merge by key, Date and time, Text pattern), integrations (Tool, API call, HTTP request, MCP tool, Memory, Knowledge search, Data query) and output (Result, Respond to webhook, Save as artifact). There is no code box.
+- **44 kinds of box** (the palette opens with `/`): triggers (Task input, Webhook, Schedule, On error), AI (Agent, AI prompt, Classifier, Guardrail check), flow (If, Compare, Switch, Merge, Wait, Ask a person, Stop, Run a workflow, For each, Sequence, Parallel, Loop), data (Set fields, Text template, Parse JSON, Filter, Sort, Limit, Remove duplicates, Summarise, Split, Join, Merge by key, Date and time, Text pattern), integrations (Tool, API call, HTTP request, MCP tool, Memory, Knowledge search, Data query) and output (Result, Respond to webhook, Save as artifact, Notify me). There is no code box, on purpose: code typed into a workflow would bypass the sandbox and the read-only guards every other box goes through.
 - **Safety defaults:** HTTP request calls public addresses only (a private host must be allowed in *Workflows > Settings*), uses GET unless you pick another method and tick *I confirm*, and never takes secrets as plain headers (use a credential: write-only, kept apart from the workflow). An MCP tool that its server does not mark read-only needs *I confirm*. Data query uses the same read-only guard as agents. A Guardrail check fails instead of passing when guardrails are switched off.
 - **Webhook:** switch the start of a workflow to *Webhook* in the right-hand panel, save a version, then *Make the address*. The address is shown once; only a hash is kept. Webhooks are **off** until you tick them on in *Workflows > Settings* (an import never switches them on). Calls are rate-limited and size-limited, and the workflow's *asks first* setting still applies.
+- **Schedule:** switch the start to *Schedule* (every N minutes, every day at a time, or a 5-part cron pattern, local time), save a version, then *Switch on* in the box's panel. A clock inside the server starts what is due; the on/off state lives in the database (`workflow_schedules`), survives a restart and is never exported or imported. A time missed while the app was closed runs once (or is skipped); a schedule never starts a run while its last one is still working, starts at most *N runs a day*, and switches itself off after 3 failed runs in a row. Every model call still goes through the spend caps. *Workflows > Settings > Let scheduled workflows run* pauses them all. API: `GET/POST /api/workflows/{id}/schedule` (`{"enabled": true|false}`).
+- **Notifications:** a *Notify me* box (and the scheduler, when a scheduled run fails) puts a message under the **bell** in the sidebar footer, with an unread count, a link to the run, mark read, delete and clear. A notification can also ask for a desktop pop-up once you allowed them. Nothing is sent outside the computer. API: `GET /api/notifications`, `POST /api/notifications/{id}/read`, `POST /api/notifications/read-all`, `DELETE /api/notifications[/{id}]`.
 - **Try it:** *Test this box* runs one box with the text you type (a box that could change something only runs with *Allow side effects* ticked); *Run from here* starts at a box and reuses the last run for everything before it. Select several boxes (Shift-click) to copy and paste them together with their connections.
 - **On error:** an *On error* box starts when something fails and nothing else caught it (the failed box is its input as JSON); the run still ends as failed.
 - **Flows table:** tick workflows and *Export selected* for one file; *Import* accepts one workflow or a file of several; the arrow on a row shows its earlier runs. Settings: `docs/SETTINGS.md` (*Workflows*).
 
 ## Workflow runs (the Runs tab)
 
-- **Every run in one table** (*Workflows > Runs*): result (icon and words), what started it (you, a webhook, an agent, or "from a box"), when, how long, how many boxes ran, failed or were skipped, cost and tokens, and the workflow version. Search by task, error or workflow; filter by workflow, result, what started it, when, and **Needs you** (a run waiting for an approval); sort by when, time taken, cost or result; page through them. Running runs refresh by themselves.
+- **Every run in one table** (*Workflows > Runs*): result (icon and words), what started it (you, a webhook, a schedule, an agent, or "from a box"), when, how long, how many boxes ran, failed or were skipped, cost and tokens, and the workflow version. Search by task, error or workflow; filter by workflow, result, what started it, when, and **Needs you** (a run waiting for an approval); sort by when, time taken, cost or result; page through them. Running runs refresh by themselves.
 - **One run in detail** (a side panel; a slide-over on a narrow screen; a full screen with a Back button on a phone; the address `/workflows/?tab=runs&run=<id>` opens it): what it was given, the workflow as it was drawn when it ran with each box's status, each box's input, output, error and time, the run log, the result, and the version it ran on with a link to the editor's versions.
 - **Actions:** *Run again* (the same task, on the workflow as it is now), *Run again from the box that failed* (earlier outputs are reused), *Run again from this box*, *Stop*, approve or answer a waiting step right there, *Export JSON*, *Open in editor*, and *Delete* (one or many, after a confirmation; a run that is still working cannot be deleted).
 - **Secrets never show:** the server replaces anything that looks like a key or password in the task, the result and every box's text. A webhook run keeps the payload as it came (so it can be repeated) but shows it with secrets removed. Only the latest runs of each workflow are kept (*Workflows > Settings > run retention*); deleting a workflow deletes its runs.

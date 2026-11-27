@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { IAgents, IBook, IChat, ICoin, IGear, IGrid, IHelp, ISetup, IKnowledge, IMonitor, IMoon, IPlug, IPlus, IPulse, IServer, ISide, ISun, ITimeline, IX, Spark, IBrain, IShield, ICatalog, ILock, IFlask, IMic, IArchive, IFlow, IApp, IAtom } from "./Icons";
 import { startTour } from "./TourRunner";
+import NotificationBell from "@/components/NotificationBell";
 
 type NavItem = [string, string, (p: { size?: number }) => React.ReactElement];
 const groups: [string, NavItem[]][] = [
@@ -157,6 +158,7 @@ function SidebarInner() {
       <div className="sb-foot">
         <span className={`dot ${online ? "ok" : online === false ? "bad" : ""}`} title={online ? "backend connected" : "backend offline"} />
         <span className="hide-min grow">{online ? "Connected" : online === false ? "Offline" : "…"} <kbd title="Command palette">Ctrl K</kbd></span>
+        <NotificationBell />
         <Link href="/setup/" className="icon-btn" title="Set-up guide: install Ollama, add a model, install coding agents" aria-label="Set-up guide"><ISetup size={16} /></Link>
         <button className="icon-btn" onClick={() => window.dispatchEvent(new CustomEvent("as:docs", { detail: {} }))} title="Documentation beside this screen (Ctrl+/)" aria-label="Open the documentation beside this screen"><IBook size={16} /></button>
         <button className="icon-btn" onClick={() => startTour("welcome")} title="Take the guided tour" aria-label="Take the guided tour"><IHelp size={16} /></button>

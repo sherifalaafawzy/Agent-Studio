@@ -14,7 +14,8 @@
     "demo:p2": "backend\\.venv\\Scripts\\python scripts\\demo_phase2.py",
     "demo:p3": "backend\\.venv\\Scripts\\python scripts\\demo_phase3.py",
     "check:mcp": "backend\\.venv\\Scripts\\python scripts\\check_mcp.py",
-    "build:sandbox": "docker build -t agent-studio-sandbox:1 docker/sandbox"
+    "build:sandbox": "docker build -t agent-studio-sandbox:1 docker/sandbox",
+    "pack": "node scripts/pack.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

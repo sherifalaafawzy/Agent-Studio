@@ -1,4 +1,10 @@
+// Dev: the API runs on its own port. Desktop build: NEXT_PUBLIC_API_BASE="" and the API serves this UI, so paths stay relative.
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8765";
+
+/** The API's full address (for text users copy, and WebSockets): same-origin in the desktop build. */
+export function apiOrigin(base: string = API_BASE): string {
+  return base || (typeof window !== "undefined" ? window.location.origin : "");
+}
 
 export class ApiError extends Error {
   constructor(public status: number, public detail: any) {

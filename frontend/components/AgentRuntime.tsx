@@ -52,7 +52,7 @@ function Deploy({ agentId, runtime, label }: { agentId: string; runtime: string;
       <div className="card-head"><b>Deploy to {label}</b><InfoTip id="runtime-shadow" /></div>
       {mig && <div className="small mut" data-testid="migration-message">{mig.message}</div>}
       {mig?.stale && (
-        <div className="small" role="alert" data-testid="migration-changes" style={{ margin: "6px 0", color: "var(--warn)" }}>
+        <div className="small" role="alert" data-testid="migration-changes" style={{ margin: "6px 0", color: "var(--warn-text)" }}>
           Changed since it was deployed: {mig.changes.map((c) => <div key={c.field}><b>{c.field}</b>: {c.before || "(empty)"} → {c.after || "(empty)"}</div>)}
           {mig.candidate ? <div>A shadow version (v{mig.candidate.version}) is already deployed: test it, then switch to it below.</div> : <div>Review and deploy it as a shadow version: it receives no traffic until you switch.</div>}
         </div>)}
@@ -78,13 +78,13 @@ function Deploy({ agentId, runtime, label }: { agentId: string; runtime: string;
         <div data-testid="plan" style={{ marginTop: 8 }}>
           <div className="small mut">{plan.shadow ? "A live version exists, so this is deployed next to it as a shadow version." : "The first version goes live by itself once the platform says it is ready."}</div>
           <div className="lbl" style={{ marginTop: 8 }}>What this agent loses there</div>
-          <ul className="small" style={{ margin: "2px 0", paddingLeft: 18 }}>{plan.compat.map((c) => <li key={c.text} style={c.level === "block" ? { color: "var(--bad)" } : c.level === "warn" ? { color: "var(--warn)" } : undefined}>{c.level === "block" && <b>Blocks deploy: </b>}{c.text}</li>)}</ul>
+          <ul className="small" style={{ margin: "2px 0", paddingLeft: 18 }}>{plan.compat.map((c) => <li key={c.text} style={c.level === "block" ? { color: "var(--bad-text)" } : c.level === "warn" ? { color: "var(--warn-text)" } : undefined}>{c.level === "block" && <b>Blocks deploy: </b>}{c.text}</li>)}</ul>
           {plan.diff.length > 0 && <div className="small">Changed from the live version: {plan.diff.map((c) => c.field).join(", ")}</div>}
           <div className="lbl" style={{ marginTop: 8 }}>1. Build and push the image ({plan.info.platform})</div>
           <div className="small mut">The files are in <code>{plan.bundle.folder}</code> ({plan.bundle.files.join(", ")}). Run these commands:</div>
           {plan.commands.length > 0 ? <pre className="small" style={{ overflowX: "auto" }}>{plan.commands.join("\n")}</pre> : <div className="small mut">Set an image address template in Settings &gt; Runtimes, or type the image address below.</div>}
           <label style={{ marginTop: 6 }}>2. Image to deploy<input value={image} placeholder="registry/name:tag" aria-label="Image to deploy" onChange={(e) => setImage(e.target.value)} /></label>
-          <div className="small" style={{ marginTop: 6, color: "var(--warn)" }}>{plan.cost_note}</div>
+          <div className="small" style={{ marginTop: 6, color: "var(--warn-text)" }}>{plan.cost_note}</div>
           <ul className="small" style={{ margin: "2px 0", paddingLeft: 18 }}>{plan.side_effects.map((s) => <li key={s}>{s}</li>)}</ul>
           {!plan.ready && <div className="small err" role="alert">{plan.problem}</div>}
           <label className="check" style={{ marginTop: 6, flexDirection: "row", alignItems: "center", gap: 6 }}><input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} /> I understand this creates resources on {plan.info.label} that may cost money</label>
@@ -123,7 +123,7 @@ export default function AgentRuntime({ agent, isNew, onChange }: { agent: AgentL
           </select></label>
       </div>
       {cur && rt !== "local" && <div className="small mut" style={{ marginTop: 6 }}>{cur.cost_note}{!cur.enabled && <> Switch it on in <a href="/settings/#runtimes">Settings &gt; Runtimes</a>.</>}</div>}
-      {sb && !sb.available && <div className="small" role="alert" style={{ color: "var(--warn)", marginTop: 6 }}>{sb.label}: {sb.detail}</div>}
+      {sb && !sb.available && <div className="small" role="alert" style={{ color: "var(--warn-text)", marginTop: 6 }}>{sb.label}: {sb.detail}</div>}
       {sb?.experimental && <div className="small mut" style={{ marginTop: 4 }}>{sb.notice}</div>}
       <div className="lbl" id="ag-data" style={{ marginTop: 12 }}>Data sources it may read <InfoTip id="data-sources" /></div>
       {sources.length === 0

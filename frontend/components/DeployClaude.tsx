@@ -127,7 +127,7 @@ export default function DeployClaude({ agent, onClose }: { agent: { id: string; 
                     <div className="small mut" style={{ marginTop: 6 }}>Then set it as <code>AGENT_STUDIO_KEY</code> where Claude Code starts. In PowerShell: <code>{PWSH_KEY}</code></div>
                   </div>)}
               </div>)}
-            {plan.warnings.length > 0 && <ul className="small" data-testid="deploy-warnings" style={{ margin: "8px 0", paddingLeft: 18, color: "var(--warn)" }}>{plan.warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
+            {plan.warnings.length > 0 && <ul className="small" data-testid="deploy-warnings" style={{ margin: "8px 0", paddingLeft: 18, color: "var(--warn-text)" }}>{plan.warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
             {plan.notes.length > 0 && <ul className="small mut" style={{ margin: "8px 0", paddingLeft: 18 }}>{plan.notes.map((w) => <li key={w}>{w}</li>)}</ul>}
 
             <h4 style={{ margin: "12px 0 4px" }}>Files</h4>

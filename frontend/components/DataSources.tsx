@@ -79,7 +79,7 @@ function Explorer({ s }: { s: Source }) {
         </div>)}
       {audit && (
         <ul className="small" data-testid="audit" style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-          {audit.length === 0 ? <li className="mut">Nothing yet.</li> : audit.map((a) => <li key={a.id} style={a.ok ? undefined : { color: "var(--bad)" }}>{new Date(a.ts * 1000).toLocaleString()} · {a.agent || "system"} · {a.kind} · {a.statement || "(no statement)"} · {a.ok ? `${a.rows} rows, ${a.ms} ms` : a.error}</li>)}
+          {audit.length === 0 ? <li className="mut">Nothing yet.</li> : audit.map((a) => <li key={a.id} style={a.ok ? undefined : { color: "var(--bad-text)" }}>{new Date(a.ts * 1000).toLocaleString()} · {a.agent || "system"} · {a.kind} · {a.statement || "(no statement)"} · {a.ok ? `${a.rows} rows, ${a.ms} ms` : a.error}</li>)}
         </ul>)}
     </div>
   );

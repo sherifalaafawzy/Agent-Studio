@@ -171,7 +171,7 @@ export default function ServerDetail({ row, issues, onChange, onBack, onAdd, hea
             <button className="ghost small" disabled={!m.ready || testing} onClick={runTest} title={m.ready ? "Start it, list its tools, stop it" : "Turn it on (and add credentials) first"}>
               <IPlay size={13} />{testing ? "Starting… (first run downloads it)" : "Test"}</button>
           </div>
-          {test?.ok && <p className="small" style={{ color: "var(--ok)" }}>Works: {test.tools?.length} tools.</p>}
+          {test?.ok && <p className="small" style={{ color: "var(--ok-text)" }}>Works: {test.tools?.length} tools.</p>}
           {test && !test.ok && <div className="small err">{test.error}</div>}
           {!test && m.last_test?.ok && <p className="small mut">Last test passed: {m.last_test.tools} tools · tested {ago(m.last_test.ts)}</p>}
           {!test && m.last_test && !m.last_test.ok && <div className="small err" title={m.last_test.error}>Last test: {m.last_test.error}</div>}

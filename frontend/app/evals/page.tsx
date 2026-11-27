@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { API_BASE, api } from "@/lib/api";
 import InfoTip from "@/components/InfoTip";
 import { toast } from "@/components/Nav";
+import EvalStarters from "@/components/EvalStarters";
 
 type Assertion = { type: string; value?: string | number };
 type Case = { id: string; prompt: string; expect: Assertion[] };
@@ -80,7 +81,7 @@ export default function EvalsPage() {
               {s.name} <span className="mut small">· {s.case_count} cases</span>
               {s.last_run && <span className={`pill ${s.last_run.status === "done" && (s.last_run.pass_rate ?? 0) >= 80 ? "ok" : "warn"}`} style={{ marginLeft: 6 }}>{s.last_run.pass_rate ?? 0}%</span>}
             </div>))}
-        </div></div>
+        </div><EvalStarters onAdded={(id) => { loadSets(); open(id); }} /></div>
         {f && (
           <div className="ag-main">
             <div className="card">

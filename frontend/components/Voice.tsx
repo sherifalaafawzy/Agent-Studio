@@ -85,7 +85,7 @@ export function MicButton({ onText, className }: { onText: (t: string) => void; 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       <button className={className ?? "chip"} onClick={toggle} title={state === "recording" ? "Stop and transcribe" : "Dictate (ElevenLabs)"}
-        style={state === "recording" ? { color: "var(--bad)", borderColor: "var(--bad)" } : undefined}>
+        style={state === "recording" ? { color: "var(--bad-text)", borderColor: "var(--bad)" } : undefined}>
         <Mic />{state === "recording" ? "Stop" : state === "transcribing" ? "…" : ""}</button>
       {err && <span className="small err" title={err}>{err.slice(0, 50)}</span>}
     </span>

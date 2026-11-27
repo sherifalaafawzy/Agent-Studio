@@ -32,9 +32,9 @@ export default function AgentAccess({ agent, onChange }: { agent: AgentLike; onC
           </select></label>
       </div>
       {cur && <div className="small mut" style={{ marginTop: 6 }}>{cur.blurb} <i>{cur.models}.</i></div>}
-      {compat && !compat.ready && <div className="small" role="alert" style={{ marginTop: 6, color: "var(--warn)" }}>This framework is not installed yet. Install it in <a href="/settings/#harness">Settings &gt; Agents &amp; sandbox</a>, or the agent will not run.</div>}
+      {compat && !compat.ready && <div className="small" role="alert" style={{ marginTop: 6, color: "var(--warn-text)" }}>This framework is not installed yet. Install it in <a href="/settings/#harness">Settings &gt; Agents &amp; sandbox</a>, or the agent will not run.</div>}
       {compat && compat.warnings.length > 0 && (
-        <ul className="small" data-testid="compat-warnings" style={{ margin: "6px 0 0", paddingLeft: 18, color: "var(--warn)" }}>{compat.warnings.map((w) => <li key={w}>{w}</li>)}</ul>)}
+        <ul className="small" data-testid="compat-warnings" style={{ margin: "6px 0 0", paddingLeft: 18, color: "var(--warn-text)" }}>{compat.warnings.map((w) => <li key={w}>{w}</li>)}</ul>)}
       <div className="row" style={{ marginTop: 12, gap: 18, flexWrap: "wrap" }}>
         <label className="check"><input type="checkbox" checked={!!agent.api_access} onChange={(e) => onChange({ api_access: e.target.checked })} /> API access (OpenAI-compatible)<InfoTip id="api-access" /></label>
         <label className="check"><input type="checkbox" checked={!!agent.a2a} onChange={(e) => onChange({ a2a: e.target.checked })} /> A2A (other agents can call it)</label>

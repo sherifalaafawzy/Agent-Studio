@@ -35,7 +35,7 @@ export default function FrameworksPanel() {
     <div className="card" data-testid="frameworks-panel">
       <div className="card-head"><b>Agent frameworks</b><InfoTip id="frameworks" /></div>
       <div className="card-desc">Pick which library runs each agent in the agent editor. Google ADK is built in. The others install into their own folder with one click (nothing is installed until you accept its licence and size). Models, tools, memory and guardrails are always Agent Studio&apos;s.</div>
-      {err && <div className="small" role="status" style={{ color: "var(--bad)" }}>Frameworks could not be loaded: {err}</div>}
+      {err && <div className="small" role="status" style={{ color: "var(--bad-text)" }}>Frameworks could not be loaded: {err}</div>}
       {m && (
         <div style={{ overflowX: "auto" }}>
           <table className="tbl" aria-label="What each framework can do">
@@ -60,12 +60,12 @@ export default function FrameworksPanel() {
                 <li>Good for: {f.strengths.join("; ")}.</li><li>{f.billing}</li><li>Models: {f.models}.</li><li>{f.notes}</li>
                 <li>Installs {f.packages.join(", ")} (about {f.size_mb} MB, {f.licence}), only versions published at least 14 days ago.</li>
               </ul>
-              {f.state === "failed" && f.error && <div className="small" role="alert" style={{ color: "var(--bad)" }}>The last install failed: {f.error}</div>}
+              {f.state === "failed" && f.error && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>The last install failed: {f.error}</div>}
               <label className="check"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} /> I accept the licence ({f.licence}) and the download size</label>
               <div className="row" style={{ marginTop: 8 }}><button className="pri" disabled={!ok} onClick={() => install(f.id)}>Install {f.label}</button><button onClick={() => setOpen(null)}>Cancel</button></div>
             </div>))}
           {m.install.running && <pre className="small mut" data-testid="install-log" style={{ whiteSpace: "pre-wrap", maxHeight: 160, overflow: "auto" }}>Installing {m.install.framework}…{"\n"}{m.install.log.join("\n")}</pre>}
-          {!m.install.running && m.install.error && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{m.install.error}</div>}
+          {!m.install.running && m.install.error && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{m.install.error}</div>}
         </div>)}
     </div>
   );

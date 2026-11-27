@@ -64,6 +64,7 @@ describe("loadVoice / useVoice", () => {
   it("gives components the current settings and refreshes on as:voice", async () => {
     let current = cfg;
     routeFetch({ "GET /api/voice/settings": () => jsonResponse(current) });
+    await loadVoice(true);                                          // the shared cache must come from this test's fake, not from whatever answered in beforeEach
     render(<Probe />);
     expect(await screen.findByText("configured")).toBeInTheDocument();
     current = { ...cfg, configured: false };

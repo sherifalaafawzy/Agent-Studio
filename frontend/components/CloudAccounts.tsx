@@ -54,7 +54,7 @@ export default function CloudAccounts() {
           <div key={p.id} className="card cat-card" data-provider={p.id} style={{ boxShadow: "none" }}>
             <div className="card-head"><b>{p.label}</b><span className="grow" /><span className={`pill ${p.configured ? "ok" : ""}`}>{p.configured ? "Connected" : "Not connected"}</span></div>
             <div className="small mut">Can look at: {p.kinds.join(", ")}</div>
-            <p className="small" style={{ margin: "6px 0", color: "var(--warn)" }}>Cost: {p.cost_note}</p>
+            <p className="small" style={{ margin: "6px 0", color: "var(--warn-text)" }}>Cost: {p.cost_note}</p>
             <div className="row"><button className={p.configured ? "ghost" : "acc"} onClick={() => { setOpen(open === p.id ? null : p.id); setVals({}); setClear([]); }}>{open === p.id ? "Close" : p.configured ? "Change keys" : "Connect"}</button>
               <a className="small" href={p.docs} target="_blank" rel="noreferrer">API reference</a></div>
             {open === p.id && (

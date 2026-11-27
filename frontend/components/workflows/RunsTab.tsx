@@ -16,7 +16,7 @@ const RANGES: [string, string, number][] = [["", "Any time", 0], ["1h", "Last ho
 function Boxes({ r }: { r: RunRow }) {
   const c = r.counts;
   return (
-    <span className="small">{c.done + c.error} of {c.total} ran{c.error > 0 && <span style={{ color: "var(--bad)" }}> · {c.error} failed</span>}{c.skipped > 0 && <span className="mut"> · {c.skipped} skipped</span>}{c.waiting > 0 && <span style={{ color: "var(--warn)" }}> · {c.waiting} waiting</span>}</span>
+    <span className="small">{c.done + c.error} of {c.total} ran{c.error > 0 && <span style={{ color: "var(--bad-text)" }}> · {c.error} failed</span>}{c.skipped > 0 && <span className="mut"> · {c.skipped} skipped</span>}{c.waiting > 0 && <span style={{ color: "var(--warn-text)" }}> · {c.waiting} waiting</span>}</span>
   );
 }
 
@@ -95,7 +95,7 @@ export default function RunsTab() {
       <div className="runs-chips" role="group" aria-label="Show runs by result">
         {chips.map(([k, label, n]) => <button key={k || "all"} className={`chip ${status === k ? "on" : ""}`} aria-pressed={status === k} onClick={() => change(setStatus)(k)}>{k && <span aria-hidden="true">{RUN_STATUS[k].icon}</span>} {label} <b>{n}</b></button>)}
       </div>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", marginBottom: 8 }}>{err} <button className="link" onClick={load}>Try again</button></div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginBottom: 8 }}>{err} <button className="link" onClick={load}>Try again</button></div>}
 
       <div className={`runs-layout ${sel ? "has-detail" : ""}`}>
         <div className="runs-main">
@@ -112,7 +112,7 @@ export default function RunsTab() {
                   <tr key={r.id} className={sel === r.id ? "on" : ""} data-testid="run-row">
                     <td><input type="checkbox" aria-label={`Select run ${r.id}`} disabled={r.status === "running"} checked={picked.has(r.id)} onChange={() => toggle(r.id)} /></td>
                     <td><button className="link" aria-label={`Open run ${r.id}`} onClick={() => open(r.id)}><b>{r.name}</b></button>{r.needs_you && <span className="pill warn" style={{ marginLeft: 6 }}>needs you</span>}
-                      <div className="small mut" style={{ overflowWrap: "anywhere" }}>{r.error ? <span style={{ color: "var(--bad)" }}>{r.error}</span> : r.task || "(no task)"}</div></td>
+                      <div className="small mut" style={{ overflowWrap: "anywhere" }}>{r.error ? <span style={{ color: "var(--bad-text)" }}>{r.error}</span> : r.task || "(no task)"}</div></td>
                     <td data-label="Result"><span className={`pill ${s.tone}`}><span aria-hidden="true">{s.icon}</span> {s.label}</span></td>
                     <td data-label="Started by">{ORIGIN_LABEL[r.origin] ?? r.origin}</td>
                     <td data-label="Started" title={new Date(r.started * 1000).toLocaleString()}>{ago(r.started)}</td>

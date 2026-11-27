@@ -1,3 +1,4 @@
+import { apiOrigin } from "./api";
 // Live mode in the browser: the microphone goes to the backend as small 16 kHz frames over one WebSocket, the voice comes back as 24 kHz audio
 // that is played the moment it arrives (scheduled gaplessly), and every state change and timing is reported to the screen.
 export type LiveState = "idle" | "connecting" | "loading" | "listening" | "hearing" | "thinking" | "speaking";
@@ -71,7 +72,7 @@ export const IN_RATE = 16000;
 export const OUT_RATE = 24000;
 
 export function wsUrlFor(apiBase: string): string {
-  return apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/api/live/ws";
+  return apiOrigin(apiBase).replace(/^http/, "ws").replace(/\/$/, "") + "/api/live/ws";
 }
 
 export function realDeps(apiBase: string): Deps {

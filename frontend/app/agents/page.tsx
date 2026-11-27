@@ -120,17 +120,23 @@ export default function AgentsPage() {
             <div className="row" style={{ justifyContent: "space-between" }}><b>Agents</b>
               <button onClick={() => { closePanes(); setChoose(true); setMsg(""); }}>+ New</button></div>
             {agents.map((a) => (
-              <div key={a.id} onClick={() => { closePanes(); setIsNew(false); setSel(a.id); setMsg(""); }}
-                style={{ padding: "6px 8px", marginTop: 4, borderRadius: 6, cursor: "pointer", background: !isNew && !selRemote && sel === a.id ? "var(--panel2)" : "transparent" }}>
-                {a.name} <span className={`pill ${a.tier === "pro" ? "ok" : ""}`}>{a.tier}</span>
-                {a.sub_agents.length > 0 && <span className="mut small"> · {a.sub_agents.length} sub</span>}
-                {a.can_spawn && <span className="mut small" title="can create its own sub-agents"> · ⚙</span>}
-                {liveBadge(a) && <span className={`pill ${liveBadge(a) === "Live off" ? "" : "ok"}`} data-testid="live-badge" title="This agent's Live profile (see its Live section)">{liveBadge(a)}</span>}
-                {aguiBadge(a) && <span className="pill" data-testid="agui-badge" title="AG-UI is partly or fully switched off for this agent (see its AG-UI section)">{aguiBadge(a)}</span>}
+              <div key={a.id} role="button" tabIndex={0} aria-pressed={!isNew && !selRemote && sel === a.id} className={`ag-item ${!isNew && !selRemote && sel === a.id ? "on" : ""}`}
+                onClick={() => { closePanes(); setIsNew(false); setSel(a.id); setMsg(""); }}
+                onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); closePanes(); setIsNew(false); setSel(a.id); setMsg(""); } }}>
+                <div className="ag-item-top">
+                  <span className="ag-item-name">{a.name}</span> <span className={`pill ${a.tier === "pro" ? "ok" : ""}`}>{a.tier}</span>
+                  <span className="grow" />
+                  {scores[a.id] && <a className={`pill ag-score ${SCORE_TONE[scores[a.id].band] ?? ""}`} href={`/security/?agent=${a.id}`} onClick={(e) => e.stopPropagation()}
+                    title="Security score: open this agent's scorecard" aria-label={`Security score ${scores[a.id].percent} percent: open the scorecard of ${a.name}`}>{scores[a.id].percent}%</a>}
+                </div>
+                {(a.sub_agents.length > 0 || a.can_spawn || liveBadge(a) || aguiBadge(a)) && <div className="ag-item-meta">
+                  {a.sub_agents.length > 0 && <span className="mut small">{a.sub_agents.length} sub</span>}
+                  {a.can_spawn && <span className="mut small" title="can create its own sub-agents">builds agents</span>}
+                  {liveBadge(a) && <span className={`pill ${liveBadge(a) === "Live off" ? "" : "ok"}`} data-testid="live-badge" title="This agent's Live profile (see its Live section)">{liveBadge(a)}</span>}
+                  {aguiBadge(a) && <span className="pill" data-testid="agui-badge" title="AG-UI is partly or fully switched off for this agent (see its AG-UI section)">{aguiBadge(a)}</span>}
+                </div>}
                 {!isNew && !selRemote && sel === a.id && <div><button className="ghost small" data-testid="deploy-claude-list" aria-label={`Deploy ${a.name} to Claude Code`}
                   onClick={(e) => { e.stopPropagation(); setDeploy({ id: a.id, name: a.name }); }}>Deploy to Claude Code…</button></div>}
-                {scores[a.id] && <a className={`pill ag-score ${SCORE_TONE[scores[a.id].band] ?? ""}`} href={`/security/?agent=${a.id}`} onClick={(e) => e.stopPropagation()}
-                  title="Security score: open this agent's scorecard" aria-label={`Security score ${scores[a.id].percent} percent: open the scorecard of ${a.name}`}>{scores[a.id].percent}%</a>}
               </div>
             ))}
             {remotes.length > 0 && <div className="mut small" style={{ marginTop: 10 }}>Remote A2A agents</div>}

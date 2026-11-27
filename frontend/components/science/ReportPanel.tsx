@@ -24,7 +24,7 @@ export default function ReportPanel({ investigationId, refreshKey }: { investiga
       <div className="card-head"><b>Report</b></div>
       <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
         {Object.entries(rep.label_counts).map(([l, n]) => { const s = labelShow(l); return <span key={l} className={`sci-badge ${s.tone}`}><span aria-hidden="true">{s.icon}</span> {l.replace(/_/g, " ")}: {n}</span>; })}
-        {rep.unsupported > 0 && <span role="note" className="small" style={{ color: "var(--bad)" }}>{rep.unsupported} claim(s) have no usable evidence.</span>}
+        {rep.unsupported > 0 && <span role="note" className="small" style={{ color: "var(--bad-text)" }}>{rep.unsupported} claim(s) have no usable evidence.</span>}
       </div>
       <div className="sci-report"><Markdown text={rep.markdown} /></div>
       <div className="row" style={{ gap: 6 }}>

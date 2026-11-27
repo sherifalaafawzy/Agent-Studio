@@ -45,7 +45,7 @@ class Run:
     ended: float | None = None
     cost_usd: float = 0.0
     tokens: int = 0
-    origin: str = "manual"                   # manual | webhook | agent | run_from: what started this run
+    origin: str = "manual"                   # manual | webhook | schedule | agent | run_from: what started this run
     decisions: dict = field(default_factory=dict)
     stop: asyncio.Event = field(default_factory=asyncio.Event)
     task_ref: Any = None
@@ -385,7 +385,7 @@ class Runner:
                 "if": f"Branch on {c.get('condition', '')[:80]}", "switch": f"Branch by {c.get('value', '')[:60]}", "merge": "Combine the branches that ran", "wait": f"Wait {c.get('seconds', 0)} s",
                 "approval": "Ask you before continuing", "stop": "Stop with a message", "sub_workflow": f"Run workflow '{c.get('workflow', '')}'", "for_each": f"Run '{c.get('workflow', '')}' for each item",
                 "set": f"Set {len(c.get('fields', []))} field(s)", "template": "Fill in a text", "parse_json": "Read JSON",
-                "compare": f"Check {len(c.get('conditions', []))} condition(s)", "error_handler": "Runs only if something fails", "webhook": "Start when the secret address is called",
+                "compare": f"Check {len(c.get('conditions', []))} condition(s)", "error_handler": "Runs only if something fails", "webhook": "Start when the secret address is called", "schedule": "Start on a schedule", "notify": f"Notify: {str(c.get('title', ''))[:60]}",
                 "respond_webhook": f"Answer the caller with status {c.get('status')}", "http_request": f"{c.get('method')} {str(c.get('url', ''))[:80]}",
                 "mcp_tool": f"Call {c.get('server')}.{c.get('tool')}", "memory": f"{c.get('operation', '').capitalize()} memory", "knowledge": f"Search the knowledge base '{c.get('kb')}'",
                 "data_query": f"Read from the data source '{c.get('source')}'", "artifact": f"Keep a file named {str(c.get('name', ''))[:40]}", "guardrail": f"Check the {c.get('stage')} with your guardrails",

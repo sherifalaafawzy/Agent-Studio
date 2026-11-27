@@ -23,7 +23,7 @@ Press **New workflow**, give it a name, and choose how to start:
 
 - **Build it myself** in the editor, starting from a blank canvas.
 - **Talk to an agent** that proposes the workflow in your own words. It shows exactly what would change and nothing happens until you press **Apply**. It can never tick "I confirm", create keys or run anything.
-- **Start from a template.**
+- **Start from a template:** research and summarise, draft-approve-send, classify and route, daily report, and the Science debate (propose, critique, judge).
 
 ## The editor
 
@@ -77,6 +77,14 @@ Every run of every workflow in one table: result, what started it (you, a webhoo
 ## Webhooks
 
 Switch the start of a workflow to **Webhook**, save a version, then press **Make the address**. The address is shown **once**; only a hash is kept. Webhooks are **off** until you switch them on in Workflows, Settings (an import never switches them on). Calls are rate-limited and size-limited.
+
+## Schedules
+
+Switch the start of a workflow to **Schedule**, choose every N minutes, every day at a time, or a cron pattern, save a version, then press **Switch on** in the box's panel. The panel shows the next three times and how the last scheduled run went; the Flows table shows **scheduled · next …** or **schedule off**. Rules: runs only while the app is running, a missed time runs once, at most N runs a day, never two at once, off after 3 failures in a row. Pause every schedule at once in Workflows, Settings. Details: [Workflow boxes](doc:workflow-boxes#schedules).
+
+## Notifications
+
+A **Notify me** box, and the scheduler when a scheduled run fails, put a message under the **bell** in the sidebar footer. The bell shows how many are unread; each message can open the run it came from. A notification can also ask for a desktop pop-up: press **Allow desktop pop-ups** under the bell once. Nothing is sent outside this computer.
 
 ## Safety defaults
 

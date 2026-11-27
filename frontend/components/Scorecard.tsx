@@ -14,6 +14,7 @@ type AgentInfo = { id: string; name: string; builtin: boolean; framework: string
 type Card = {
   percent: number; counts: { pass: number; warn: number; fail: number; na?: number }; note: string; checks: Check[];
   frameworks: { id: string; name: string; url: string; risks: Risk[]; covered: number }[]; agents?: Summary; agent?: AgentInfo;
+  science?: { enabled: boolean; checks: Check[]; note: string };
 };
 type Issue = { id: string; title: string; status: Status; detail: string; fix: string; link: string };
 type Row = AgentInfo & { percent: number; band: string; counts: { pass: number; warn: number; fail: number; na: number }; top_issue: Issue | null };
@@ -153,6 +154,17 @@ export default function Scorecard({ initialAgent = "" }: { initialAgent?: string
                 <button className="small" onClick={() => setMode("agents")}>See each agent →</button></div>
               <div className="small">{s.count} agents · average {s.average}% · weakest: <b>{s.lowest.name}</b> ({s.lowest.percent}%) · {s.bands.low ?? 0} below 50%</div>
               <div className="small mut">This score judges the app&apos;s settings. Each agent also has its own score from its own tools, guardrails, memory and access.</div>
+            </div>)}
+          {card.science?.enabled && (
+            <div className="card" data-testid="science-checks">
+              <div className="card-head"><b>Science Lab</b></div>
+              <div className="small mut">{card.science.note}</div>
+              {card.science.checks.map((c) => (
+                <div key={c.id} style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}>
+                  <div className="row"><span className={`pill ${TONE[c.status]}`}><span aria-hidden="true">{MARK[c.status]}</span> {WORD[c.status]}</span><b>{c.title}</b></div>
+                  <div className="small">{c.detail}</div>
+                  {c.fix && <div className="small">What to do: {c.fix} <a href={c.link}>Open →</a></div>}
+                </div>))}
             </div>)}
         </CardView>
       </div>);

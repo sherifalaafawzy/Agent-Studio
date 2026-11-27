@@ -123,7 +123,7 @@ export default function BuilderPanel({ app, onChanged, start, onStarted, request
   return (
     <div data-testid="builder-panel" className="builder">
       {model !== null && !ready && (
-        <div className="small" role="alert" style={{ color: "var(--warn)" }}>No model provider is switched on and signed in, so the builder cannot answer. <a href="/settings/">Open Settings</a> to connect one.</div>
+        <div className="small" role="alert" style={{ color: "var(--warn-text)" }}>No model provider is switched on and signed in, so the builder cannot answer. <a href="/settings/">Open Settings</a> to connect one.</div>
       )}
       {options && options.length > 0 && (
         <label className="small">Model for this app
@@ -140,7 +140,7 @@ export default function BuilderPanel({ app, onChanged, start, onStarted, request
       {busy && steps.length > 0 && <div className="small mut" aria-live="polite">Working: {steps[steps.length - 1]}</div>}
       {status && <div className="small mut" aria-live="polite" data-testid="builder-status">{status}</div>}
       {!busy && lastCheck && <div className="small" data-testid="last-check" style={{ color: lastCheck.ok ? "var(--ok)" : "var(--warn)" }}>{lastCheck.ok ? "✓ Checked: no problems found" : `Checked: ${lastCheck.problems.filter((p) => p.level === "error").length + lastCheck.console.length} problem(s) left`}</div>}
-      {start?.failed && start.failed.length > 0 && <div className="small" role="note" style={{ color: "var(--warn)" }}>Not attached: {start.failed.join("; ")}</div>}
+      {start?.failed && start.failed.length > 0 && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>Not attached: {start.failed.join("; ")}</div>}
       <div className="row" style={{ marginTop: 6, alignItems: "flex-end" }}>
         <textarea className="grow" rows={2} value={input} aria-label="Message to the builder" placeholder="Make the buttons bigger, or add a second page…" onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !busy) { e.preventDefault(); submit(); } }} />

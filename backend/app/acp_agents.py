@@ -39,7 +39,7 @@ from .cli_agents import CliError
 from .db import Database, data_dir
 from .harness.files import ToolError, jail, read_text, write_text
 
-CLIENT_VERSION = "0.3.0"
+CLIENT_VERSION = "0.1.0"
 INTERACT_TIMEOUT_S = 600          # a permission/question left unanswered this long is cancelled (= denied)
 DEFAULT_TURN_TIMEOUT_S = 900
 MAX_LIVE_SESSIONS = 6

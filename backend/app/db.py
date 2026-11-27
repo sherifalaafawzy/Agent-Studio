@@ -422,7 +422,7 @@ CREATE TABLE IF NOT EXISTS workflow_runs(                 -- finished (and runni
   error TEXT,
   final TEXT NOT NULL DEFAULT '',
   nodes TEXT NOT NULL DEFAULT '{}',
-  origin TEXT NOT NULL DEFAULT 'manual',                -- manual | webhook | agent | run_from: what started it
+  origin TEXT NOT NULL DEFAULT 'manual',                -- manual | webhook | schedule | agent | run_from: what started it
   tokens INTEGER NOT NULL DEFAULT 0,
   from_node TEXT NOT NULL DEFAULT ''
 );
@@ -435,6 +435,33 @@ CREATE TABLE IF NOT EXISTS workflow_hooks(                -- the secret address 
   last_used REAL,
   calls INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS workflow_schedules(            -- the on/off switch and bookkeeping of a workflow's Schedule box (never exported)
+  wf_id TEXT PRIMARY KEY,
+  enabled INTEGER NOT NULL DEFAULT 0,
+  spec TEXT NOT NULL DEFAULT '',
+  next_run REAL,
+  last_run REAL,
+  last_run_id TEXT,
+  last_status TEXT,
+  runs INTEGER NOT NULL DEFAULT 0,
+  fails INTEGER NOT NULL DEFAULT 0,
+  day TEXT NOT NULL DEFAULT '',
+  day_count INTEGER NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  created REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS notifications(                 -- the in-app notification center (workflows' Notify boxes, the scheduler); nothing is sent anywhere
+  id TEXT PRIMARY KEY,
+  created REAL NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  level TEXT NOT NULL DEFAULT 'info',
+  source TEXT NOT NULL DEFAULT '',
+  link TEXT NOT NULL DEFAULT '',
+  read INTEGER NOT NULL DEFAULT 0,
+  desktop INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS notifications_created ON notifications(created);
 CREATE TABLE IF NOT EXISTS workflow_drafts(               -- the autosaved, unpublished edit of a workflow (one per workflow id)
   wf_id TEXT PRIMARY KEY,
   doc TEXT NOT NULL,

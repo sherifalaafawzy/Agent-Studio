@@ -15,7 +15,7 @@ LEGACY = ("input", "agent", "tool", "openapi", "sequential", "parallel", "loop",
 STEP_KINDS = ("agent", "tool", "openapi")
 CONTAINERS = ("sequential", "parallel", "loop")
 MAX_CASES, MAX_FIELDS, MAX_WAIT = 12, 30, 300
-ENTRY = ("input", "webhook")                       # a workflow starts at exactly one of these
+ENTRY = ("input", "webhook", "schedule")           # a workflow starts at exactly one of these
 ROOTS = ENTRY + ("error_handler",)                 # boxes that nothing leads into
 METHODS = ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE")
 READ_METHODS = ("GET", "HEAD")
@@ -71,6 +71,15 @@ SPECS: list[dict] = [
     N("error_handler", "trigger", "On error", "Starts when any box fails and nothing else catches it: use it to tidy up or tell someone. The run still ends as failed.", [], inputs=0),
     N("webhook", "trigger", "Webhook", "Starts the workflow when something calls its secret address (set it up from the Flows table). What it sends becomes the task.", [F("payload", "What becomes the task", "select", options=["body", "json", "all"], default="body", help="body = the text sent; json = the JSON sent, tidied; all = body, query and headers together."),
       F("respond", "Answer the caller", "select", options=["immediately", "when_done", "node"], default="immediately", help="immediately = 'accepted' at once; when_done = the final result; node = what a Respond to webhook box says.")], inputs=0),
+    N("schedule", "trigger", "Schedule", "Starts the workflow on its own: every few minutes, every day at a time, or on a cron pattern (the computer's local time). Switch it on from this box's panel once the workflow is saved.",
+      [F("mode", "Repeat", "select", options=["interval", "daily", "cron"], default="interval", help="interval = every N minutes; daily = every day at a time; cron = a 5-part pattern."),
+       F("every_minutes", "Every (minutes)", "number", default=60, min=1, max=10080), F("at", "At (daily, 24-hour)", "text", default="09:00"),
+       F("cron", "Cron pattern", "text", default="0 9 * * 1-5", help="minute hour day month weekday, for example '0 9 * * 1-5' = 9:00 on weekdays, '*/15 * * * *' = every 15 minutes."),
+       F("task", "The task each run gets", "textarea", default="Scheduled run", required=True), F("missed", "A time missed while the app was closed", "select", options=["run_once", "skip"], default="run_once"),
+       F("max_per_day", "At most this many runs a day", "number", default=48, min=1, max=1440)], inputs=0),
+    N("notify", "output", "Notify me", "Show a notification in the app's notification center (the bell), and optionally a desktop pop-up. Nothing is sent outside this computer.",
+      [F("title", "Title", "text", default="{{ $workflow.name }}", required=True), F("message", "Message", "textarea", default="{{ $prev }}"),
+       F("level", "Kind", "select", options=["info", "success", "warning", "error"], default="info"), F("desktop", "Also show a desktop pop-up (if you allowed them)", "bool", default=False)]),
     N("respond_webhook", "output", "Respond to webhook", "What to send back to the caller of the Webhook (when the Webhook is set to 'node').", [F("status", "Status code", "number", default=200, min=100, max=599), F("content_type", "Content type", "select", options=["text/plain", "application/json"], default="text/plain"),
       F("body", "Body", "textarea", default="{{ $prev }}")]),
     N("http_request", "integration", "HTTP request", "Call any web address (GET unless you pick another method and confirm). Public addresses only, unless you allow a host in the workflow settings.", [F("method", "Method", "select", options=list(METHODS), default="GET"),
@@ -383,6 +392,19 @@ def _c_date(c: dict, w: str) -> dict:
                 unit=_choice(c.get("unit", "days"), ("minutes", "hours", "days", "weeks"), w, "the unit"), format=str(c.get("format", "%Y-%m-%d"))[:40], other=_expr_ok(c.get("other", "{{ now() }}"), w, "the other date"))
 
 
+def _c_schedule(c: dict, w: str) -> dict:
+    from .schedule import clean
+    return clean(c, w)
+
+
+def _c_notify(c: dict, w: str) -> dict:
+    title = str(c.get("title") or "").strip()
+    if not title or len(title) > 200:
+        raise ValueError(f"{w}: give the notification a title (up to 200 characters)")
+    return dict(title=_expr_ok(title, w, "the title"), message=_expr_ok(str(c.get("message", "{{ $prev }}"))[:4000], w, "the message"),
+                level=_choice(c.get("level", "info"), ("info", "success", "warning", "error"), w, "the kind"), desktop=bool(c.get("desktop")))
+
+
 def _c_regex(c: dict, w: str) -> dict:
     pattern = str(c.get("pattern") or "")
     if not pattern.strip() or len(pattern) > 200:
@@ -393,4 +415,4 @@ def _c_regex(c: dict, w: str) -> dict:
 
 EXTRA = {"compare": _c_compare, "filter": _c_filter, "webhook": _c_webhook, "respond_webhook": _c_respond, "http_request": _c_http, "mcp_tool": _c_mcp, "memory": _c_memory, "knowledge": _c_knowledge,
          "data_query": _c_data, "artifact": _c_artifact, "guardrail": _c_guardrail, "sort": _c_sort, "limit": _c_limit, "dedupe": _c_dedupe, "aggregate": _c_aggregate, "split_out": _c_split, "join": _c_join,
-         "merge_by_key": _c_merge_key, "date_time": _c_date, "regex": _c_regex, "error_handler": lambda c, w: {}}
+         "merge_by_key": _c_merge_key, "date_time": _c_date, "regex": _c_regex, "error_handler": lambda c, w: {}, "schedule": _c_schedule, "notify": _c_notify}

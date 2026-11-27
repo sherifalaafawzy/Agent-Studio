@@ -22,7 +22,7 @@ export default function AppsSettings() {
   const [err, setErr] = useState("");
   const load = useCallback(() => api<Cfg>("/api/apps/config").then((c) => { setCfg(c); setErr(""); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); }, [load]);
-  if (!cfg) return <div className="card" data-testid="apps-settings">{err ? <span role="status" style={{ color: "var(--bad)" }}>The apps settings could not be loaded: {err}</span> : "Loading the apps settings…"}</div>;
+  if (!cfg) return <div className="card" data-testid="apps-settings">{err ? <span role="status" style={{ color: "var(--bad-text)" }}>The apps settings could not be loaded: {err}</span> : "Loading the apps settings…"}</div>;
   const set = <K extends keyof Cfg>(k: K, v: Cfg[K]) => setCfg({ ...cfg, [k]: v });
   const save = async () => {
     try { setCfg(await api<Cfg>("/api/apps/config", { method: "PUT", body: JSON.stringify(cfg) })); setErr(""); toast("Apps settings saved"); }
@@ -37,7 +37,7 @@ export default function AppsSettings() {
         <label className="check"><input type="checkbox" checked={cfg.auto_apply} onChange={(e) => set("auto_apply", e.target.checked)} /> Apply the builder&apos;s changes straight away (otherwise you accept or reject each one)</label>
         <label className="check"><input type="checkbox" checked={cfg.allow_server_apps} onChange={(e) => set("allow_server_apps", e.target.checked)} /> Allow server apps to run <InfoTip id="app-server" /></label>
       </div>
-      {cfg.allow_server_apps && <div className="small" role="note" style={{ color: "var(--warn)" }}>A server app runs in a container on this PC. A container that opens a web port must be on an open network, so it can reach the internet. It has no packages and its files are read-only.</div>}
+      {cfg.allow_server_apps && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>A server app runs in a container on this PC. A container that opens a web port must be on an open network, so it can reach the internet. It has no packages and its files are read-only.</div>}
       <div className="grid" style={{ marginTop: 8 }}>
         {NUM.map((n) => (
           <label key={n.key}>{n.label}

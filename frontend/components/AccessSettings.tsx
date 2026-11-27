@@ -27,7 +27,7 @@ export default function AccessSettings() {
   const load = useCallback(() => api<Cfg>("/api/access/config").then((x) => { setC(x); setErr(""); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); api<Provider[]>("/api/providers").then(setPs).catch(() => setPs([])); }, [load]);
   const run = async (fn: () => Promise<unknown>, ok?: string) => { try { await fn(); if (ok) toast(ok); await load(); setErr(""); } catch (e) { setErr((e as Error).message); } };
-  if (!c) return <div className="card" data-testid="access-settings">{err ? <span role="status" style={{ color: "var(--bad)" }}>Access settings could not be loaded: {err}</span> : "Loading…"}</div>;
+  if (!c) return <div className="card" data-testid="access-settings">{err ? <span role="status" style={{ color: "var(--bad-text)" }}>Access settings could not be loaded: {err}</span> : "Loading…"}</div>;
   const put = (patch: object) => run(() => api("/api/access/config", { method: "PUT", body: JSON.stringify(patch) }));
   const createKey = () => run(async () => {
     const k = await api<{ id: string; key: string }>("/api/access/keys", { method: "POST", body: JSON.stringify({ name, agents: scope === "all" ? ["*"] : scope, rate_per_min: rate, expires_days: days ? Number(days) : null }) });
@@ -38,7 +38,7 @@ export default function AccessSettings() {
   return (
     <div data-testid="access-settings">
       <p className="page-sub">Let other programs and agents use your agents. Everything here is <b>off until you switch it on</b>, needs a key, and only reaches the agents you tick. Calls run through the normal engine, so spend limits, guardrails and memory still apply.</p>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", margin: "6px 0" }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", margin: "6px 0" }}>{err}</div>}
       <div className="card">
         <div className="card-head"><b>Switches</b><InfoTip id="api-access" /></div>
         <label className="check"><input type="checkbox" checked={c.api_enabled} onChange={(e) => put({ api_enabled: e.target.checked })} /> OpenAI-compatible API (<code>{c.base_url}</code>)</label>

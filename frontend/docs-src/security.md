@@ -14,6 +14,8 @@ The **Security** page measures how well your **configuration** protects you agai
 
 Each risk is mapped to controls with a live status: pass, partly or missing, computed from your real settings (26 live checks). Each one says what to do about it. You can download a Markdown report.
 
+While the [Science Lab](doc:science-lab) is on, a separate **Science Lab** section adds five checks (safety level, network-free science code, call budget, and whether the ready-made citation and refusal test sets were run). They do not change the overall score.
+
 ## Per agent
 
 Switch to **Per agent** (or open `/security/?agent=<id>`) for a ranking of your agents, weakest first, with the top issue for each, search, sort and filters. Each agent's card re-judges the same checks on **its own settings**: its guardrail choice, tools, permission mode, MCP servers, memory, knowledge bases, data sources, sandbox, provider and framework, who can call it over the API or A2A, where it runs, its identity and the remote agents it may call. A check that cannot apply to an agent is explained and left out of its score. Six extra checks are agent-only: permission mode, data sources, API and A2A exposure, runtime, framework and remote agents.

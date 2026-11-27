@@ -186,7 +186,7 @@ export function RunThread({ lane, query = "", onSave }: { lane: Lane; query?: st
                     <div className={`tool-row ${it.res?.ok === false ? "bad" : ""}`} onClick={() => setOpen((o) => ({ ...o, [`${gi}-${ii}`]: !o[`${gi}-${ii}`] }))}>
                       <ITool size={13} /><b>{it.call.tool}</b><span className="args"><Mark text={it.call.args ?? ""} q={q} /></span>
                       <span className="ms">{it.res?.ms != null ? `${Math.round(it.res.ms)}ms` : it.res ? "" : "…"}</span>
-                      <span style={{ transform: open[`${gi}-${ii}`] ? "rotate(90deg)" : "none", display: "grid", color: "var(--faint)" }}><IChevron size={13} /></span></div>
+                      <span style={{ transform: open[`${gi}-${ii}`] ? "rotate(90deg)" : "none", display: "grid", color: "var(--mut)" }}><IChevron size={13} /></span></div>
                     {open[`${gi}-${ii}`] && <pre className="tool-out"><Mark text={it.res?.result ?? "(no result yet)"} q={q} /></pre>}
                   </div>
                 ) : it.k === "text" ? <div key={ii} className="said"><Markdown text={it.text} /></div> : null)}

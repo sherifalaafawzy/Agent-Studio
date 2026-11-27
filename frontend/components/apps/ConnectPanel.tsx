@@ -34,9 +34,9 @@ export default function ConnectPanel({ app, onChanged }: { app: AppRow; onChange
         {c.agents.length === 0 && <li className="mut small">You have no agents yet.</li>}
         {c.agents.map((a) => (
           <li key={a.id} className="conn-row">
-            <div className="grow"><b>{a.name}</b> <span className="chip small">{RUNS[a.runtime] ?? `runs on ${a.runtime}`}</span>{a.connected && <span className="chip small" style={{ color: "var(--ok)" }}>connected</span>}
+            <div className="grow"><b>{a.name}</b> <span className="chip small">{RUNS[a.runtime] ?? `runs on ${a.runtime}`}</span>{a.connected && <span className="chip small" style={{ color: "var(--ok-text)" }}>connected</span>}
               {a.description && <div className="small mut">{a.description}</div>}
-              {a.connected && !a.api_access && <div className="small" role="note" style={{ color: "var(--warn)" }}>API access is off for this agent, so the page cannot call it yet.</div>}</div>
+              {a.connected && !a.api_access && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>API access is off for this agent, so the page cannot call it yet.</div>}</div>
             {a.connected
               ? <><button disabled={busy === `a:${a.id}`} onClick={() => dropAgent(a)} aria-label={`Disconnect ${a.name}`}>Disconnect</button>
                 {!a.api_access && <button className="acc" disabled={busy === `a:${a.id}`} onClick={() => connectAgent(a, true)} aria-label={`Turn on API access for ${a.name}`}>Turn on API access</button>}</>
@@ -51,7 +51,7 @@ export default function ConnectPanel({ app, onChanged }: { app: AppRow; onChange
         {c.data.length === 0 && <li className="mut small">No data source is set up yet. <a href="/settings/">Add one in Settings</a> (Data).</li>}
         {c.data.map((d) => (
           <li key={d.id} className="conn-row">
-            <div className="grow"><b>{d.label}</b> <span className="chip small">{d.kind}</span>{d.connected && <span className="chip small" style={{ color: "var(--ok)" }}>connected</span>}{!d.enabled && <span className="chip small">switched off</span>}
+            <div className="grow"><b>{d.label}</b> <span className="chip small">{d.kind}</span>{d.connected && <span className="chip small" style={{ color: "var(--ok-text)" }}>connected</span>}{!d.enabled && <span className="chip small">switched off</span>}
               {d.description && <div className="small mut">{d.description}</div>}</div>
             {d.connected
               ? <button disabled={busy === `d:${d.id}`} onClick={() => dropData(d)} aria-label={`Disconnect ${d.label}`}>Disconnect</button>

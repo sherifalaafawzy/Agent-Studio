@@ -50,7 +50,7 @@ export function ChangesPanel({ appId, onChanged, refreshKey }: { appId: string; 
           {p.changes.map((c, i) => (
             <div key={i} style={{ marginTop: 6 }}>
               <div className="small"><span className="chip small">{c.op === "write" ? (c.old === null ? "new file" : "replace") : c.op === "patch" ? "edit" : "delete"}</span> {c.path}</div>
-              {!c.fits && <div className="small" role="note" style={{ color: "var(--warn)" }}>This no longer fits the file as it is now.</div>}
+              {!c.fits && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>This no longer fits the file as it is now.</div>}
               {c.op !== "delete" ? <Diff before={c.old} after={c.new} /> : <div className="small mut">The file will be removed.</div>}
             </div>
           ))}

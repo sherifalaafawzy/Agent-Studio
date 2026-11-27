@@ -6,7 +6,7 @@ import InfoTip from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
 import { toast } from "@/components/Nav";
 
-type Settings = { webhooks_enabled: boolean; hook_rate_per_min: number; hook_max_body_kb: number; hook_wait_max_s: number; max_nodes: number; run_retention: number; http_timeout_s: number; http_max_kb: number; http_allow_hosts: string[] };
+type Settings = { webhooks_enabled: boolean; schedules_enabled?: boolean; hook_rate_per_min: number; hook_max_body_kb: number; hook_wait_max_s: number; max_nodes: number; run_retention: number; http_timeout_s: number; http_max_kb: number; http_allow_hosts: string[] };
 type Cred = { id: string; label: string; kind: string; header: string; set: boolean };
 const NUMBERS: [keyof Settings, string, number, number][] = [
   ["hook_rate_per_min", "Webhook calls per minute", 1, 600], ["hook_max_body_kb", "Largest webhook call (KB)", 1, 4096], ["hook_wait_max_s", "How long a webhook caller may wait (seconds)", 0, 120],
@@ -41,10 +41,11 @@ export default function WorkflowSettings({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Workflow settings" onClose={onClose} wide>
       <div className="row" style={{ marginTop: 4 }}><span className="small mut">Webhooks, limits and what the HTTP request box may reach.</span><InfoTip id="wf-settings" /></div>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", margin: "6px 0" }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", margin: "6px 0" }}>{err}</div>}
       {!s ? <div className="small mut">Loading…</div> : (
         <div className="stack" data-testid="wf-settings">
           <label className="check"><input type="checkbox" checked={s.webhooks_enabled} onChange={(e) => setS({ ...s, webhooks_enabled: e.target.checked })} /> Let Webhook boxes be called from outside (off until you switch it on)</label>
+          <label className="check"><input type="checkbox" checked={s.schedules_enabled ?? true} onChange={(e) => setS({ ...s, schedules_enabled: e.target.checked })} /> Let scheduled workflows run (switch off to pause every schedule at once)</label>
           <div className="grid">{NUMBERS.map(([k, label, lo, hi]) => (
             <label key={k}>{label}<input type="number" min={lo} max={hi} value={s[k] as number} aria-label={label} onChange={(e) => setS({ ...s, [k]: Number(e.target.value) })} /></label>))}</div>
           <label>Private hosts the HTTP request box may reach (one per line, like api.internal.example)<textarea rows={3} value={hosts} aria-label="Allowed hosts" onChange={(e) => setHosts(e.target.value)} /></label>

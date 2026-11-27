@@ -68,7 +68,7 @@ export default function RunDetail({ id, onClose, onChanged, onOpen }: { id: stri
         <b className="grow">Run {id}</b>
         <button className="icon-btn rd-close" aria-label="Close run details" onClick={onClose}>✕</button>
       </div>
-      {err && <div className="small" role="alert" style={{ color: "var(--bad)", margin: "6px 0" }}>{err}</div>}
+      {err && <div className="small" role="alert" style={{ color: "var(--bad-text)", margin: "6px 0" }}>{err}</div>}
       {!run && !err && <div className="skeleton" style={{ height: 120, marginTop: 8 }} aria-label="Loading the run" />}
       {run && st && (<>
         <div style={{ margin: "8px 0" }}>
@@ -83,7 +83,7 @@ export default function RunDetail({ id, onClose, onChanged, onOpen }: { id: stri
             <button className="link" onClick={() => router.push(`/workflows/edit/?id=${run.workflow}&versions=1`)}>See the versions in the editor</button>
           </div>
         </div>
-        {run.error && <div className="small" role="alert" style={{ color: "var(--bad)", marginBottom: 6 }}>{run.error}</div>}
+        {run.error && <div className="small" role="alert" style={{ color: "var(--bad-text)", marginBottom: 6 }}>{run.error}</div>}
         <div className="row" style={{ flexWrap: "wrap", gap: 6, margin: "8px 0" }}>
           {running ? <button className="small" disabled={busy} onClick={stop}>Stop</button> : <button className="small pri" disabled={busy} onClick={() => again()}>Run again</button>}
           {!running && failed && <button className="small" disabled={busy} onClick={() => again("failed")}>Run again from “{failed[1].label}”</button>}
@@ -124,14 +124,14 @@ export default function RunDetail({ id, onClose, onChanged, onOpen }: { id: stri
                   <span className={`pill ${n.status === "done" ? "ok" : n.status === "error" ? "bad" : n.status === "running" ? "acc" : n.status === "waiting_approval" ? "warn" : ""}`}><span aria-hidden="true">{NODE_ICON[n.status] ?? ""}</span> {NODE_TEXT[n.status] ?? n.status}</span>{" "}
                   <b>{n.label}</b></button>
                 <span className="small mut"> {n.started && n.ended ? fmtDuration(n.ended - n.started) : ""}{n.attempts && n.attempts > 1 ? ` · ${n.attempts} tries` : ""}{n.reused ? " · reused from the earlier run" : ""}{n.pinned ? " · pinned" : ""}</span>
-                {n.error && <div className="small" style={{ color: "var(--bad)" }}>{n.error}</div>}
+                {n.error && <div className="small" style={{ color: "var(--bad-text)" }}>{n.error}</div>}
               </div>))}</div>
           </section>)}
 
         {picked && (
           <section className="card" data-testid="run-box" style={{ margin: "10px 0" }}>
             <div className="row"><b>{picked[1].label}</b><span className="small mut">{specs[picked[1].type]?.label ?? picked[1].type}</span><span className="grow" /><button className="icon-btn" aria-label="Close box details" onClick={() => setSel(null)}>✕</button></div>
-            {picked[1].error && <div className="small" role="alert" style={{ color: "var(--bad)" }}>{picked[1].error}</div>}
+            {picked[1].error && <div className="small" role="alert" style={{ color: "var(--bad-text)" }}>{picked[1].error}</div>}
             <div className="small mut">{NODE_TEXT[picked[1].status] ?? picked[1].status}{picked[1].decision ? ` · went ${picked[1].decision}` : ""}{picked[1].started ? ` · started ${clock(picked[1].started)}` : ""}</div>
             <DataView title="Input" text={picked[1].input} />
             <DataView title="Output" text={picked[1].output} />

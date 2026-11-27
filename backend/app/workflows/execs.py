@@ -105,10 +105,19 @@ async def execute(r, run, doc: dict, n: dict, st: dict, scope: dict, prev: str) 
         return _artifact(r, run, doc, c, scope), out
     if t == "guardrail":
         return await _guardrail(r, run, st, c, scope)
+    if t == "notify":
+        return _notify(r, run, doc, c, scope), out
     raise WorkflowError(f"the engine does not run '{t}' boxes")      # pragma: no cover - every catalog type is handled above
 
 
 # -------------------------------------------------------------------------------------------------- integrations
+def _notify(r, run, doc: dict, c: dict, scope: dict) -> str:
+    """Put a message in the notification center. Passes on what it showed."""
+    title, message = X.render(c["title"], scope).strip()[:200] or doc["name"], X.render(c["message"], scope)[:4000]
+    r.s.notifications.add(title, message, level=c["level"], source="workflow", link=f"/workflows/?tab=runs&run={run.id}", desktop=c["desktop"])
+    return message
+
+
 async def _http(r, c: dict, scope: dict) -> str:
     if c["method"] not in READ_METHODS and not c["confirmed"]:
         raise WorkflowError(f"{c['method']} changes data: tick 'I confirm' on the box to allow it")

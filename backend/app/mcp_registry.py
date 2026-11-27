@@ -288,6 +288,21 @@ def _cmd(command: str) -> str:
     return shutil.which(command) or shutil.which(command + ".cmd") or command
 
 
+LAUNCHERS = {"npx": "Node.js", "node": "Node.js", "npm": "Node.js", "uvx": "uv", "uv": "uv", "docker": "Docker"}
+LAUNCHER_HELP = {"Node.js": "install Node.js 22 or newer from https://nodejs.org, then restart Agent Studio",
+                 "uv": "install uv from https://docs.astral.sh/uv/, then restart Agent Studio",
+                 "Docker": "install and start Docker Desktop"}
+
+
+def missing_launcher(command: str) -> str | None:
+    """A clear reason when a server's launcher (npx, uvx, docker) is not on this PC, instead of a FileNotFoundError."""
+    name = Path(command).name.lower().removesuffix(".cmd").removesuffix(".exe")
+    tool = LAUNCHERS.get(name)
+    if tool is None or shutil.which(command) or shutil.which(command + ".cmd"):
+        return None
+    return f"needs {tool}, which is not installed on this PC - {LAUNCHER_HELP[tool]}"
+
+
 def _subst(v: str, workspace: str) -> str:
     import sys as _sys
     backend = str(Path(__file__).resolve().parents[1])
@@ -337,6 +352,10 @@ async def build_toolsets(store: McpStore, ids: list[str], workspace: str, warnin
                         warnings.append(f"MCP '{sid}': this agent's identity may not call MCP servers (no mcp:call scope), so no identity token was sent")
                 params = StreamableHTTPConnectionParams(url=s.url, headers=headers, timeout=30)
             else:
+                missing = missing_launcher(_subst(s.command or "", workspace))
+                if missing:
+                    warnings.append(f"MCP '{sid}' skipped: {missing}")
+                    continue
                 env = {k: _subst(str(v), workspace) for k, v in {**{"PATH": __import__("os").environ.get("PATH", "")}, **s.env}.items()}
                 sp = StdioServerParameters(command=_cmd(_subst(s.command or "", workspace)), args=[_subst(a, workspace) for a in s.args], env=env)
                 params = StdioConnectionParams(server_params=sp, timeout=120)

@@ -79,7 +79,7 @@ export default function SettingsPanel({ app, onChanged }: { app: AppRow; onChang
       </select>
       {m.permissions.network === "allowlist" && <label style={{ marginTop: 4 }}>Allowed addresses, one per line (https://api.example.com)
         <textarea rows={3} value={allow} aria-label="Allowed addresses" onChange={(e) => setAllow(e.target.value)} /></label>}
-      {m.permissions.network === "open" && <div className="small" role="note" style={{ color: "var(--warn)" }}>The page can then send data to any https address. Only choose this if you trust what the app does.</div>}
+      {m.permissions.network === "open" && <div className="small" role="note" style={{ color: "var(--warn-text)" }}>The page can then send data to any https address. Only choose this if you trust what the app does.</div>}
 
       <h4 style={{ margin: "14px 0 4px" }}>Environment variables</h4>
       <div className="small mut">The app lists the names it needs; you enter the values here. Values are never shown again and never written into a file.</div>

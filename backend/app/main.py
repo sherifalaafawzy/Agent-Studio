@@ -35,6 +35,7 @@ from .science.catalog import ComponentInstaller
 from .science.service import ScienceService
 from .uikit.api import register as register_uikit
 from .uikit.service import UiKitService
+from .desktop import mount_web, own_origins
 from .db import Database, data_dir
 from .pricing import known_models
 from .harness import sandbox as sandbox_mod
@@ -74,6 +75,8 @@ from .workflows.api import register as register_workflows
 from .workflows.config import WorkflowSettings
 from .workflows.core import WorkflowStore
 from .workflows.hooks import HookStore
+from .workflows.schedule import Scheduler
+from .notifications import NotificationStore, register as register_notifications
 from .workflows.engine import Runner
 from .workflows.sources import OpenApiSources
 from .harness.policy_api import register as register_harness
@@ -89,6 +92,7 @@ from .custom_providers import discover as discover_endpoint, test_endpoint, tran
 from .providers import CATALOG, ProviderStore, price_of
 from .skills import SkillRegistry, covers, render_skill
 
+
 def allowed_origins(env: "os._Environ[str] | dict[str, str]") -> list[str]:
     """CORS origins for the local API. The "null" origin is what file:// pages AND every sandboxed iframe (on any website) send;
     allowing it would let any web page read this local, unauthenticated API (settings, chats, keys), so it is off unless the
@@ -97,6 +101,7 @@ def allowed_origins(env: "os._Environ[str] | dict[str, str]") -> list[str]:
         "http://localhost:3100", "http://127.0.0.1:3100",  # Next dev / static server
         "app://agent-studio",                               # Electron packaged (custom scheme)
     ] + [o.strip() for o in env.get("AGENT_STUDIO_EXTRA_ORIGINS", "").split(",") if o.strip()]   # e.g. a second dev UI port
+    out += own_origins(env)                                   # desktop build: the UI is served by this server
     if env.get("AGENT_STUDIO_ALLOW_NULL_ORIGIN", "").strip().lower() in ("1", "true", "yes"):
         out.append("null")
     return out
@@ -164,6 +169,8 @@ class State:
         self.wf_sources = OpenApiSources(self.db, usage=self.workflows.uses)          # APIs imported as workflow components
         self.wf_runner = Runner(self, self.workflows, self.wf_sources)
         self.chat.workflows = self.wf_runner
+        self.wf_schedule = Scheduler(self)                 # the Schedule trigger's clock (started with the server, see lifespan)
+        self.notifications = NotificationStore(self.db)    # the bell: messages from Notify boxes and the scheduler (nothing leaves the computer)
         self.data = DataService(self.db)                    # read-only data sources (databases, warehouses, Salesforce), data products, audit
         self.chat.data = self.data
         self.apps.data = self.app_runner.data = self.data     # apps may be connected to data sources (read-only, audited, only the ones their manifest lists)
@@ -476,7 +483,9 @@ def _maybe_auto_debug(s: "State", issue: dict) -> None:
 def create_app(state: State | None = None) -> FastAPI:
     @contextlib.asynccontextmanager
     async def lifespan(a: FastAPI):
+        a.state.s.wf_schedule.start()        # scheduled workflows (catches up once on a time missed while the app was closed)
         yield
+        await a.state.s.wf_schedule.stop()
         a.state.s.ocsf.close()               # send what is still queued
         a.state.s.redteam.close()            # red-team tools cannot outlive the address they attack
         a.state.s.app_runner.stop_all()      # containers of running server apps
@@ -486,7 +495,7 @@ def create_app(state: State | None = None) -> FastAPI:
         await a.state.s.acp.close_all()     # never leave agent subprocesses behind
         a.state.s.acp.stop()
 
-    app = FastAPI(title="Agent Studio", version="0.3.0", lifespan=lifespan)
+    app = FastAPI(title="Agent Studio", version="0.1.0", lifespan=lifespan)
     app.state.s = state or State()
     app.add_middleware(A2AMiddleware)    # /a2a/{agent}/...: A2A protocol, behind the API-key check (added first = innermost: the host check below still runs before it)
     # Local-only server: reject foreign Host headers (DNS-rebinding) and foreign origins.
@@ -1487,6 +1496,7 @@ def create_app(state: State | None = None) -> FastAPI:
     register_ocsf(app)      # /api/ocsf/*: the OCSF security export (sinks, preview, test)
     register_guardrails(app)  # /api/guardrails/*: safety models and cloud services that check inputs, outputs and tool calls
     register_evals(app)       # /api/evals/*: test sets, runs, exports (promptfoo, Inspect, DeepEval, Ragas, CSV, JSONL)
+    register_notifications(app)   # /api/notifications: the bell (list, read, delete)
     register_security(app)    # /api/security/* (scorecard) and /api/redteam/* (red-team runners)
     register_artifacts(app)   # /api/artifacts/*: files agents produced, storages, search, preview, download
     register_apps(app)        # /api/apps/*: apps agents build with you (files, versions, run, export, git)
@@ -1510,5 +1520,6 @@ def create_app(state: State | None = None) -> FastAPI:
     register_frameworks(app)    # /api/frameworks/*: agent frameworks (matrix, install); /internal/fw/*: a framework worker's private gateway
     catalog_api.register(app)   # /api/catalog/*: domain skills, public MCP servers, cloud ML accounts
     register_easy(app)      # /api/easy/*: system check, onboarding, one-click Ollama + coding-agent installs, model library, agent wizard
+    mount_web(app, os.environ)  # desktop build only: the static UI at "/" (mounted last, so every API route wins)
     return app
 

@@ -80,3 +80,23 @@ describe("Scorecard", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("offline"));
   });
 });
+
+describe("Scorecard: Science Lab section", () => {
+  it("shows the science checks on their own when the lab is on, and nothing when it is off", async () => {
+    const sci = { enabled: true, note: "Science checks are shown on their own and do not change the overall score.", checks: [
+      { id: "science-safety", title: "The science safety screen is at its strictest level", maps: ["LLM05"], status: "warn", detail: "Level 'standard'.", fix: "Raise it.", link: "/science/", kind: "setting" },
+      { id: "science-compute", title: "Science code runs in a sandbox without network", maps: ["LLM05"], status: "pass", detail: "No network.", fix: "", link: "/settings/#harness", kind: "setting" }] };
+    routeFetch({ "GET /api/security/scorecard": () => jsonResponse({ ...card(60), science: sci }) });
+    const { unmount } = render(<Scorecard />);
+    const box = await screen.findByTestId("science-checks");
+    expect(within(box).getByText(/do not change the overall score/)).toBeInTheDocument();
+    expect(within(box).getByText("Partly")).toBeInTheDocument();
+    expect(within(box).getByText("Open →")).toHaveAttribute("href", "/science/");
+    expect(within(box).getAllByText(/What to do/)).toHaveLength(1);
+    unmount();
+    routeFetch({ "GET /api/security/scorecard": () => jsonResponse({ ...card(60), science: { enabled: false, checks: [], note: "off" } }) });
+    render(<Scorecard />);
+    await screen.findByLabelText("Score 60 percent");
+    expect(screen.queryByTestId("science-checks")).not.toBeInTheDocument();
+  });
+});

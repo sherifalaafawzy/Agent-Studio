@@ -332,12 +332,14 @@ class WorkflowStore:
         last = {r["wf_id"]: r for r in self.db.query("SELECT wf_id,status,started,cost_usd FROM workflow_runs WHERE rowid IN (SELECT MAX(rowid) FROM workflow_runs GROUP BY wf_id)")}
         drafts = {r["wf_id"] for r in self.db.query("SELECT wf_id FROM workflow_drafts")}
         hooks = {r["wf_id"] for r in self.db.query("SELECT wf_id FROM workflow_hooks")}
+        sched = {r["wf_id"]: r for r in self.db.query("SELECT wf_id,enabled,next_run FROM workflow_schedules")}
         for r in self.db.query("SELECT id,name,doc,version,updated FROM workflows ORDER BY updated DESC"):
             d = json.loads(r["doc"])
             lr = last.get(r["id"])
             out.append(dict(id=r["id"], name=r["name"], description=d.get("description", ""), version=r["version"], updated=r["updated"], nodes=sum(1 for n in d["nodes"] if n["type"] != "note"),
                             autonomy=d["autonomy"], last_run=dict(status=lr["status"], started=lr["started"], cost_usd=lr["cost_usd"]) if lr else None, has_draft=r["id"] in drafts,
                             trigger=next((n["type"] for n in d["nodes"] if n["type"] in NODES.ENTRY), "input"), has_hook=r["id"] in hooks,
+                            schedule=dict(enabled=bool(sched[r["id"]]["enabled"]), next_run=sched[r["id"]]["next_run"] if sched[r["id"]]["enabled"] else None) if r["id"] in sched else None,
                             uses=sorted({n["config"]["workflow"] for n in d["nodes"] if n["type"] in ("sub_workflow", "for_each")})))
         return out
 
@@ -400,7 +402,7 @@ class WorkflowStore:
     def delete(self, wid: str) -> None:
         if self.db.one("SELECT id FROM workflows WHERE id=?", (wid,)) is None:
             raise KeyError(wid)
-        for t in ("workflows", "workflow_versions", "workflow_drafts", "workflow_hooks"):
+        for t in ("workflows", "workflow_versions", "workflow_drafts", "workflow_hooks", "workflow_schedules"):
             self.db.execute(f"DELETE FROM {t} WHERE {'id' if t == 'workflows' else 'wf_id'}=?", (wid,))
         self.db.execute("DELETE FROM workflow_runs WHERE wf_id=?", (wid,))
 

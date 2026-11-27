@@ -134,6 +134,13 @@ def test_status_reports_daemon_down(monkeypatch):
     assert st["docker"] is False and "daemon not running" in st["detail"]
 
 
+def test_status_reports_ready_or_missing_image_without_a_real_docker(monkeypatch):
+    for image_rc, detail in ((0, "ready"), (1, "image missing")):
+        monkeypatch.setattr(sbx, "_docker", lambda args, timeout=30, rc=image_rc: subprocess.CompletedProcess(args, 0 if args[0] == "version" else rc, "27.1.0\n", ""))
+        st = sbx.status()
+        assert st["docker"] is True and st["server"] == "27.1.0" and st["image"] is (image_rc == 0) and st["detail"].startswith(detail)
+
+
 def test_clip_truncates_middle_of_huge_output():
     s = "A" * (sbx.MAX_OUT // 2) + "MIDDLE" + "B" * (sbx.MAX_OUT)
     out, truncated = sbx._clip(s)

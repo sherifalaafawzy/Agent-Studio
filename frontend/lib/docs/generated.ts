@@ -907,7 +907,7 @@ export const DOC_PAGES: DocPage[] = [
     "id": "start-a-new-workflow",
     "level": 2,
     "heading": "Start a new workflow",
-    "body": "Press **New workflow**, give it a name, and choose how to start:\n\n![New workflow: build it yourself, talk to an agent, or start from a template](shot:workflows-new)\n\n\n- **Build it myself** in the editor, starting from a blank canvas.\n- **Talk to an agent** that proposes the workflow in your own words. It shows exactly what would change and nothing happens until you press **Apply**. It can never tick \"I confirm\", create keys or run anything.\n- **Start from a template.**"
+    "body": "Press **New workflow**, give it a name, and choose how to start:\n\n![New workflow: build it yourself, talk to an agent, or start from a template](shot:workflows-new)\n\n\n- **Build it myself** in the editor, starting from a blank canvas.\n- **Talk to an agent** that proposes the workflow in your own words. It shows exactly what would change and nothing happens until you press **Apply**. It can never tick \"I confirm\", create keys or run anything.\n- **Start from a template:** research and summarise, draft-approve-send, classify and route, daily report, and the Science debate (propose, critique, judge)."
    },
    {
     "id": "the-editor",
@@ -952,6 +952,18 @@ export const DOC_PAGES: DocPage[] = [
     "body": "Switch the start of a workflow to **Webhook**, save a version, then press **Make the address**. The address is shown **once**; only a hash is kept. Webhooks are **off** until you switch them on in Workflows, Settings (an import never switches them on). Calls are rate-limited and size-limited."
    },
    {
+    "id": "schedules",
+    "level": 2,
+    "heading": "Schedules",
+    "body": "Switch the start of a workflow to **Schedule**, choose every N minutes, every day at a time, or a cron pattern, save a version, then press **Switch on** in the box's panel. The panel shows the next three times and how the last scheduled run went; the Flows table shows **scheduled · next …** or **schedule off**. Rules: runs only while the app is running, a missed time runs once, at most N runs a day, never two at once, off after 3 failures in a row. Pause every schedule at once in Workflows, Settings. Details: [Workflow boxes](doc:workflow-boxes#schedules)."
+   },
+   {
+    "id": "notifications",
+    "level": 2,
+    "heading": "Notifications",
+    "body": "A **Notify me** box, and the scheduler when a scheduled run fails, put a message under the **bell** in the sidebar footer. The bell shows how many are unread; each message can open the run it came from. A notification can also ask for a desktop pop-up: press **Allow desktop pop-ups** under the bell once. Nothing is sent outside this computer."
+   },
+   {
     "id": "safety-defaults",
     "level": 2,
     "heading": "Safety defaults",
@@ -965,7 +977,7 @@ export const DOC_PAGES: DocPage[] = [
    "workflows-openapi",
    "workflows-runs"
   ],
-  "words": 897
+  "words": 1076
  },
  {
   "slug": "workflow-boxes",
@@ -988,17 +1000,21 @@ export const DOC_PAGES: DocPage[] = [
    "http",
    "mcp",
    "webhook",
+   "schedule",
+   "cron",
+   "notify",
+   "notification",
    "data",
    "filter",
    "merge"
   ],
-  "intro": "The editor has **42 kinds of box** that the engine really runs, plus a sticky note. Press `/` in the editor to add one.",
+  "intro": "The editor has **44 kinds of box** that the engine really runs, plus a sticky note. Press `/` in the editor to add one.",
   "sections": [
    {
     "id": "triggers",
     "level": 2,
     "heading": "Triggers",
-    "body": "- **Task input:** the normal start. The text or details you give when you run it.\n- **Webhook:** starts when something calls its secret address. Off until switched on in Workflows, Settings.\n- **On error:** starts when another box fails and nothing caught it."
+    "body": "- **Task input:** the normal start. The text or details you give when you run it.\n- **Webhook:** starts when something calls its secret address. Off until switched on in Workflows, Settings.\n- **Schedule:** starts on its own: every N minutes, every day at a time, or on a cron pattern such as `0 9 * * 1-5` (9:00 on weekdays), in the computer's local time. Save the workflow, then press **Switch on** in the box's panel. See [Schedules](#schedules).\n- **On error:** starts when another box fails and nothing caught it."
    },
    {
     "id": "ai",
@@ -1028,7 +1044,7 @@ export const DOC_PAGES: DocPage[] = [
     "id": "output",
     "level": 2,
     "heading": "Output",
-    "body": "- **Result:** the final answer of the run.\n- **Respond to webhook:** the reply a webhook caller receives (the caller can be answered immediately, when done, or from this box).\n- **Save as artifact:** keep something as an [artifact](doc:artifacts)."
+    "body": "- **Result:** the final answer of the run.\n- **Respond to webhook:** the reply a webhook caller receives (the caller can be answered immediately, when done, or from this box).\n- **Save as artifact:** keep something as an [artifact](doc:artifacts).\n- **Notify me:** puts a message under the bell in the sidebar (and, if you tick it and allowed pop-ups, a desktop pop-up). Nothing is sent outside this computer: no e-mail, chat or push service."
    },
    {
     "id": "notes",
@@ -1037,14 +1053,20 @@ export const DOC_PAGES: DocPage[] = [
     "body": "A **sticky note** is not run. It is only for you."
    },
    {
+    "id": "schedules",
+    "level": 2,
+    "heading": "Schedules",
+    "body": "- A schedule runs only while Agent Studio is running. A time missed while it was closed runs **once** when it starts again, or is skipped if the box says so; never once per missed time.\n- Every model call in a scheduled run uses your [spend caps](doc:billing-and-limits) like any other run. On top of that a schedule starts at most **N runs a day** (the box's setting), never starts a run while its previous one is still working, and **switches itself off after 3 failed runs in a row**. Each failure lands under the bell.\n- **Workflows, Settings, \"Let scheduled workflows run\"** pauses every schedule at once.\n- Schedules are never exported or imported: an imported workflow never starts running on its own.\n- Scheduled runs show \"Schedule\" as what started them on the [Runs tab](doc:runs)."
+   },
+   {
     "id": "not-built",
     "level": 2,
     "heading": "Not built",
-    "body": "A schedule trigger (there is no scheduler yet), a code box, and a separate \"notify me\" box (use Save as artifact)."
+    "body": "A code box, on purpose: running code written into a workflow would bypass the sandbox and the read-only guards every other box goes through. Use an agent with the sandbox, or a Tool box."
    }
   ],
   "shots": [],
-  "words": 386
+  "words": 620
  },
  {
   "slug": "apps",
@@ -1175,16 +1197,22 @@ export const DOC_PAGES: DocPage[] = [
     "body": "A screen runs on every request. It **blocks** asking for ways to make, scale up, obtain, weaponise or strengthen chemical-weapon agents, toxins, dangerous pathogens or explosives, and **asks you to confirm** other risky wet-lab procedures. Education, medicine, history and detection are allowed. The level can be raised but never lowered, and there is no switch that turns it off. Blocks are recorded by text length only.\n\n> The screen is a set of word patterns, so it can be bypassed. It reduces risk and is not a guarantee. Hazardous work needs institutional review."
    },
    {
+    "id": "debates-tests-and-the-scorecard",
+    "level": 2,
+    "heading": "Debates, tests and the scorecard",
+    "body": "- **Debate workflow:** Workflows, New, **Science debate (propose, critique, judge)**. A proposer argues, a sceptic attacks, the proposer answers, and a judge labels every claim. Swap its AI boxes for your Science Lab agents to have each role call the data sources.\n- **Ready-made test sets:** on [Evaluations](doc:evaluations), **Ready-made sets** adds *Science: citation validity* (real DOIs and arXiv ids, an invented paper that must not be \"found\", claim labels) and *Science: refusal behaviour* (requests the safety screen blocks must be refused; safety, medical and history questions must still be answered).\n- **Scorecard:** the [Security](doc:security) page shows a **Science Lab** section while the lab is on: the safety level, whether science code runs without network, the call budget, and whether the two test sets were run. It does not change the overall score."
+   },
+   {
     "id": "limits",
     "level": 2,
     "heading": "Limits",
-    "body": "There are no retrosynthesis, reaction prediction or sequence design tools, and no 3D molecule viewers yet. The suggest, approve, autonomous mode is stored but does not gate steps yet. Full detail is in `docs/SCIENCE-LAB.md`."
+    "body": "There are no retrosynthesis, reaction prediction or sequence design tools, and no 3D molecule viewers. The suggest, approve, autonomous mode is stored but does not gate steps. Named science sandbox images and Edison or AlphaEvolve adapters are out of scope for this release. Full detail is in `docs/SCIENCE-LAB.md`."
    }
   ],
   "shots": [
    "science-home"
   ],
-  "words": 564
+  "words": 716
  },
  {
   "slug": "skills",
@@ -1610,7 +1638,7 @@ export const DOC_PAGES: DocPage[] = [
     "id": "overall",
     "level": 2,
     "heading": "Overall",
-    "body": "Each risk is mapped to controls with a live status: pass, partly or missing, computed from your real settings (26 live checks). Each one says what to do about it. You can download a Markdown report."
+    "body": "Each risk is mapped to controls with a live status: pass, partly or missing, computed from your real settings (26 live checks). Each one says what to do about it. You can download a Markdown report.\n\nWhile the [Science Lab](doc:science-lab) is on, a separate **Science Lab** section adds five checks (safety level, network-free science code, call budget, and whether the ready-made citation and refusal test sets were run). They do not change the overall score."
    },
    {
     "id": "per-agent",
@@ -1640,7 +1668,7 @@ export const DOC_PAGES: DocPage[] = [
   "shots": [
    "security"
   ],
-  "words": 330
+  "words": 369
  },
  {
   "slug": "guardrails",
@@ -1787,7 +1815,7 @@ export const DOC_PAGES: DocPage[] = [
     "id": "build-a-test-set",
     "level": 2,
     "heading": "Build a test set",
-    "body": "1. Open **Evaluations** and create a set.\n2. Add cases: a prompt and one or more checks.\n3. Choose the checks: **contains**, **equals**, **regex**, **JSON valid**, **length**, or a **judge model** that grades the answer."
+    "body": "1. Open **Evaluations** and create a set.\n2. Add cases: a prompt and one or more checks.\n3. Choose the checks: **contains**, **equals**, **regex**, **JSON valid**, **length**, or a **judge model** that grades the answer.\n\n**Ready-made sets** (below the list) add a finished set in one click: *Science: citation validity* and *Science: refusal behaviour*. They become ordinary sets you can edit; **Reset** puts the original back. Their checks are free; only the agent's replies use credits."
    },
    {
     "id": "run-it",
@@ -1811,7 +1839,7 @@ export const DOC_PAGES: DocPage[] = [
   "shots": [
    "evals"
   ],
-  "words": 138
+  "words": 179
  },
  {
   "slug": "ai-bom",

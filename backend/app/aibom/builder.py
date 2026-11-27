@@ -590,6 +590,7 @@ class Build:
                       if cfg["api_enabled"] or cfg["a2a_enabled"] else None,
                       "properties": props(workflow_webhooks_enabled=wcfg["webhooks_enabled"], workflow_webhook_addresses=sum(1 for w in wfs if w["has_hook"]) or None,
                                           workflow_http_credentials=len(s.wf_config.credentials()) or None, workflow_triggers=sorted({w["trigger"] for w in wfs}) or None,
+                                          workflow_schedules_on=sum(1 for w in wfs if (w.get("schedule") or {}).get("enabled")) or None,
                                           frameworks_in_use=used, frameworks_installed=sorted(f for f in FRAMEWORKS if not FRAMEWORKS[f].native and is_ready(f)) or None,
                                           api_enabled=cfg["api_enabled"], a2a_enabled=cfg["a2a_enabled"], api_keys=len(s.apikeys.list()), remote_a2a_agents=len(s.a2a_remotes.list()) or None,
                                           api_agents=sorted(a.id for a in s.agents.list() if a.api_access) or None, a2a_agents=sorted(a.id for a in s.agents.list() if a.a2a) or None,

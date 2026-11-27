@@ -28,3 +28,9 @@ backend/.cov_*
 
 frontend/.next-shots
 .next-shots
+
+# desktop build output
+!electron/build/
+electron/stage/
+electron/dist/
+frontend/.next-pack

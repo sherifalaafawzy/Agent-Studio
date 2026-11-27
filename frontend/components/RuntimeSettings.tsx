@@ -28,7 +28,7 @@ function TargetCard({ t, onSave }: { t: Target; onSave: (id: string, body: Recor
         <label className="switch"><input type="checkbox" aria-label={`${t.id} on`} checked={t.enabled} onChange={(e) => save(e.target.checked)} /><i /></label>
       </div>
       <div className="small mut" style={{ marginTop: 4 }}>{t.cost_note}</div>
-      {t.side_effects.length > 0 && <ul className="small" style={{ margin: "6px 0", paddingLeft: 18, color: "var(--warn)" }}>{t.side_effects.map((s) => <li key={s}>{s}</li>)}</ul>}
+      {t.side_effects.length > 0 && <ul className="small" style={{ margin: "6px 0", paddingLeft: 18, color: "var(--warn-text)" }}>{t.side_effects.map((s) => <li key={s}>{s}</li>)}</ul>}
       <div className="grid" style={{ marginTop: 6 }}>
         {t.fields.map((f) => (
           <label key={f.name}>{f.label}{!f.required && " (optional)"}
@@ -38,7 +38,7 @@ function TargetCard({ t, onSave }: { t: Target; onSave: (id: string, body: Recor
             {f.help && <span className="small mut">{f.help}</span>}
           </label>))}
       </div>
-      {!t.configured && t.enabled && <div className="small" role="alert" style={{ color: "var(--warn)", marginTop: 6 }}>{t.problem}</div>}
+      {!t.configured && t.enabled && <div className="small" role="alert" style={{ color: "var(--warn-text)", marginTop: 6 }}>{t.problem}</div>}
       <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
         <button className="pri small" onClick={() => save(t.enabled)}>Save</button>
         <button className="small" onClick={runTest}>Test</button>
