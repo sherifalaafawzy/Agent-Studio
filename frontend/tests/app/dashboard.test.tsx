@@ -104,7 +104,7 @@ describe("Dashboard", () => {
     expect(container.querySelector(".viz-tip")).toBeNull();
   });
 
-  it("shows the day table in reverse order", async () => {
+  it("shows the day table in reverse order, leaving out days with no calls", async () => {
     routeFetch({ "GET /api/dashboard": () => jsonResponse(dash()) });
     render(<DashboardPage />);
     await screen.findByText("$12.50");
@@ -112,7 +112,9 @@ describe("Dashboard", () => {
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows[0]).toHaveTextContent("2026-11-21");
     expect(rows[0]).toHaveTextContent("1,200 → 300");
-    expect(rows[2]).toHaveTextContent("2026-11-19");
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent("2026-11-19");
+    expect(screen.getByText("Days with no model calls are left out.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Chart" }));
     expect(screen.getByRole("img", { name: "Model spend per day" })).toBeInTheDocument();
   });
@@ -122,6 +124,32 @@ describe("Dashboard", () => {
     routeFetch({ "GET /api/dashboard": () => jsonResponse(dash({ daily })) });
     render(<DashboardPage />);
     expect(await screen.findByText("No model spend in this period.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Table" }));
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByText("No model spend in this period.")).toBeInTheDocument();
+  });
+
+  it("draws the chart at the width it has, when the browser can tell it", async () => {
+    let seen: (() => void) | null = null;
+    const disconnect = vi.fn();
+    vi.stubGlobal("ResizeObserver", class { constructor(cb: () => void) { seen = cb; } observe() {} disconnect() { disconnect(); } });
+    routeFetch({ "GET /api/dashboard": () => jsonResponse(dash()) });
+    const { container, unmount } = render(<DashboardPage />);
+    await screen.findByText("$12.50");
+    const svg = container.querySelector("svg[role=img]")!;
+    expect(svg.getAttribute("viewBox")).toBe("0 0 720 200");
+    Object.defineProperty(svg.parentElement!, "clientWidth", { configurable: true, value: 343 });
+    await act(async () => { seen!(); });
+    expect(svg.getAttribute("viewBox")).toBe("0 0 343 200");
+    Object.defineProperty(svg.parentElement!, "clientWidth", { configurable: true, value: 120 });
+    await act(async () => { seen!(); });
+    expect(svg.getAttribute("viewBox")).toBe("0 0 240 200");                 // never narrower than the axis needs
+    Object.defineProperty(svg.parentElement!, "clientWidth", { configurable: true, value: 0 });
+    await act(async () => { seen!(); });
+    expect(svg.getAttribute("viewBox")).toBe("0 0 240 200");                 // a hidden chart keeps its last width
+    unmount();
+    expect(disconnect).toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it("flags providers near or over their caps, and missing authentication", async () => {

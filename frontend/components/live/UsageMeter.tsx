@@ -14,7 +14,7 @@ export default function UsageMeter({ u }: { u: Usage | null }) {
     <div className="card" data-testid="usage-meter" aria-live="off">
       <div className="card-head"><b>Cost and usage</b><span className={`pill ${u.level === "stop" ? "bad" : u.level === "warn" ? "warn" : ""}`} data-testid="usage-level">{u.level === "stop" ? "budget reached" : u.level === "warn" ? "80% of budget" : mmss(u.elapsed_s)}</span></div>
       <div className="row" style={{ alignItems: "baseline" }}>
-        <b style={{ fontSize: 26 }} data-testid="usage-cost">{u.cloud ? `${approx}${usd(u.cost_usd)}` : "$0.00"}</b>
+        <b style={{ fontSize: 28 }} data-testid="usage-cost">{u.cloud ? `${approx}${usd(u.cost_usd)}` : "$0.00"}</b>
         <span className="small mut">{u.cloud ? "so far" : "cloud cost"}</span><span className="grow" />
         <span className="small" data-testid="usage-permin">{u.per_min_usd != null ? `${approx}${usd(u.per_min_usd)} per minute` : "per minute: soon"}</span>
       </div>

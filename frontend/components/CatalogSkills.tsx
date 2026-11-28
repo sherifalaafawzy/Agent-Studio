@@ -51,11 +51,11 @@ export default function CatalogSkills({ domain, q }: { domain: string; q: string
           const has = !!on && (on.skills.includes(s.name) || on.skills.includes("*") || on.skills.map((x) => x.toLowerCase()).includes(`group:${s.group}`.toLowerCase()));
           return (
             <div key={s.name} className="card cat-card" data-skill={s.name}>
-              <div className="card-head"><IBook size={16} /><b>{s.name}</b><span className="grow" /><span className="pill">{s.group}</span></div>
+              <div className="card-head"><IBook size={16} /><div className="cat-title"><b>{s.name}</b></div><span className="pill">{s.group}</span></div>
               <p className="small" style={{ margin: "8px 0" }}>{s.description}</p>
               {s.mcp.length > 0 && <div className="small mut">Works with: {s.mcp.map((m) => <span key={m} className="pill" style={{ marginRight: 4 }}>{m}</span>)}</div>}
               <div className="small mut" style={{ marginTop: 6 }}>{s.used_by.length ? `Used by ${s.used_by.map((a) => a.name).join(", ")}` : "No agent uses it yet"}</div>
-              <div className="row" style={{ marginTop: 10, flexWrap: "wrap" }}>
+              <div className="row cat-actions" style={{ flexWrap: "wrap" }}>
                 <select aria-label={`Agent for ${s.name}`} value={target[s.name] || agents[0]?.id || ""} onChange={(e) => setTarget({ ...target, [s.name]: e.target.value })}>
                   {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>

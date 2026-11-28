@@ -77,7 +77,7 @@ export default function SkillsPage() {
         <button className="acc" onClick={() => { setDraft({ ...blank }); setPreview(false); }} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><IPlus size={15} />New skill</button></div>
       <p className="page-sub">Reusable know-how agents load on demand. Agents only see each skill&apos;s name and description until they decide to load it, so write the description as “use this when…”. A skill can bring MCP servers with it. Group them (Coding, Security…) so an agent can attach a whole group at once. Agents can also author skills themselves (<code>create_skill</code>).</p>
       {msg && <p className="err">{msg}</p>}
-      <div className="two">
+      <div className="two skills-two">
         <div className="list">
           <div style={{ position: "relative" }}>
             <input className="search" placeholder="Search skills" value={q} onChange={(e) => setQ(e.target.value)} style={{ paddingLeft: 32 }} />
@@ -89,7 +89,7 @@ export default function SkillsPage() {
                 <button className="sk-gh" aria-expanded={open} onClick={() => toggleGroup(g)}><span className={`chev ${open ? "open" : ""}`}>▶</span>{g}<span className="n">{list.length}</span></button>
                 {open && list.map((s) => (
                   <div key={s.name} className={`li ${sel === s.name && !draft ? "on" : ""}`} onClick={() => { setDraft(null); setSel(s.name); }}>
-                    <IBook size={15} /><span className="t">{s.name}</span><span className={`pill ${s.source === "builtin" ? "" : "acc"}`}>{s.source === "builtin" ? "built-in" : "yours"}</span>
+                    <IBook size={15} /><span className="t" title={s.name}>{s.name}</span><span className={`pill ${s.source === "builtin" ? "" : "acc"}`}>{s.source === "builtin" ? "built-in" : "yours"}</span>
                   </div>))}
               </div>);
           })}
@@ -109,7 +109,7 @@ export default function SkillsPage() {
                 <datalist id="skill-groups">{groupNames.map((g) => <option key={g} value={g} />)}</datalist></label>
               <label style={{ marginTop: 10 }}>Use this skill when…<input value={draft.description} placeholder="the user asks to cut a release or bump versions" onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></label>
               <label style={{ marginTop: 10 }}>Instructions (Markdown)</label>
-              {preview ? <div className="card" style={{ marginTop: 6, boxShadow: "none", fontFamily: "var(--serif)", fontSize: 15 }}><Markdown text={draft.body} /></div>
+              {preview ? <div className="card" style={{ marginTop: 6, boxShadow: "none", fontFamily: "var(--serif)", fontSize: 16 }}><Markdown text={draft.body} /></div>
                 : <textarea rows={14} style={{ width: "100%", marginTop: 6, fontFamily: "var(--mono)", fontSize: 13 }} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />}
               <div style={{ marginTop: 12 }} className="small mut">MCP servers this skill brings along</div>
               <div className="row" style={{ marginTop: 6 }}>{mcp.map((m) => (
@@ -121,7 +121,7 @@ export default function SkillsPage() {
             </div>
           ) : detail ? (
             <div className="card">
-              <div className="card-head"><IBook /><b style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 500 }}>{detail.name}</b>
+              <div className="card-head"><IBook /><b style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 500 }}>{detail.name}</b>
                 <span className={`pill ${detail.source === "builtin" ? "" : "acc"}`}>{detail.source === "builtin" ? "built-in" : "yours / agent-made"}</span><span className="grow" />
                 <div className="sk-actions">
                   <button className="icon-btn" title={detail.source === "builtin" ? "Duplicate to customise" : "Duplicate"} onClick={() => duplicate(detail.name)}><ICopy size={15} /></button>
@@ -137,7 +137,7 @@ export default function SkillsPage() {
                 <span>Brings MCP</span><span>{detail.mcp.length ? detail.mcp.join(", ") : "—"}</span>
                 <span>Used by</span><span className="sk-used">{detail.used_by?.length ? detail.used_by.map((a) => <span key={a} className="pill">{a}</span>) : "no agent yet"}</span>
               </div>
-              <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 14, fontFamily: "var(--serif)", fontSize: 15, lineHeight: 1.7 }}>
+              <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 14, fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.7 }}>
                 <Markdown text={detail.body ?? ""} /></div>
             </div>
           ) : <div className="empty">Select a skill, or create one.</div>}

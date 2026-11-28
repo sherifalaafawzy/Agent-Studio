@@ -41,7 +41,7 @@ Severity: **P0** unusable or misleading; **P1** clearly wrong, hurts use or fail
 | Phone controls under 36px (excluding links inside sentences, checkboxes with a label, and the small "i") | on every screen (the Assistant button was 31px on all 90) | 0 |
 | Console errors | 0 | 0 |
 
-Counts by severity over both passes (one row of the tables below = one finding): **0 P0, 40 P1 and 32 P2 found. All 40 P1 are fixed. Of the P2, 31 are fixed and 1 is left. Five more small things turned up at the very end; they are in the "Left" list** (listed at the end).
+Counts by severity over the first two passes (one row of the tables below = one finding): **0 P0, 40 P1 and 32 P2 found. All 40 P1 are fixed. Of the P2, 31 are fixed and 1 is left. Five more small things turned up at the very end; they are in the "Left" list** (listed at the end).
 
 ## Cross-cutting issues
 
@@ -150,28 +150,90 @@ except the composer's pickers (S9).
 
 **200% zoom:** every page falls back to the phone layout and none scrolls sideways.
 
+## Third pass
+
+The second pass left six items and a list of things nobody had looked at. The third pass closed those, looked at every
+screen again with stricter eyes, and added what was asked for on top of defect fixing: brand marks for well-known
+services, tables that never scroll sideways, and one spacing and type scale.
+
+**Captured:** 104 screens and states at 1440 × 900, 768 × 1024 and 375 × 812, in light and dark: 624 captures before
+the changes (from a clean copy of the last commit) and 624 after. New this time: a real tool-using chat with Ollama
+`qwen3:8b`, the three kinds of approval card in a chat (drawn into the page with the app's own markup, because only an
+external agent can raise them), the Schedule box, the bell with notes in it, the ready-made test sets, the simple app
+builder on a phone, and the workflow settings and import dialogs. The script in the page now also lists every area
+that scrolls on its own, every card's padding, each page's gutter and any text under 12px.
+
+| # | Finding | Sev | Fix | Status |
+|---|---|---|---|---|
+| T1 | **A switch could not be seen by keyboard.** Its checkbox had no size, so Tab landed on nothing and no ring showed (this was the "zero-size Tab stop" on MCP servers; it was every switch in the app). | P1 | The checkbox covers the switch; the switch shows the focus ring. | Fixed |
+| T2 | **Settings: sixteen sections in one row that scrolled sideways,** ten of them out of sight on a 1440px window. | P1 | From 1101px up the sections are a list down the left; the page is wider to make room. Below that the row stays, with the selected tab scrolled into view. | Fixed |
+| T3 | **Tables wider than their room.** On a tablet: "Which agent does what" was 3,902px wide inside a 694px card, the frameworks table 1,164px, agent identities 1,075px, science data sources 894px. On a phone the Runs list cut its titles. | P1 | New `components/TableFx.tsx`: a table that does not fit (and, on a phone, every table of three or more columns) is drawn as one small card per row, the first cell as the title and the rest as "Name: value". Tables in answers, documents and the canvas keep their own scrolling. | Fixed |
+| T4 | Approval card in a chat: a long command was cut at the card's edge (you approve what you cannot read), and "Allow once" and "Always allow" were two equal main buttons. | P1 | The command wraps; only "Allow once" is the main button (`lib/asks.ts`). | Fixed |
+| T5 | Phone: the Assistant button covered the close button of the artifact panel. | P1 | The panel sits above it, like dialogs. | Fixed |
+| T6 | The bell: a read note was faded to 70%, taking its grey text below 4.5:1; a long message filled the panel. | P1 | A read note has a lighter title instead; messages show three lines (the rest on hover). | Fixed |
+| T7 | **Service tiles.** MCP servers had a coloured square with two letters; providers, external agents, cloud accounts, runtimes, frameworks and red-team tools had nothing. | P2 | New `components/BrandIcon.tsx`: one neutral tile everywhere, with the service's own mark where one is bundled (83 marks), a plain glyph for built-in tools, initials otherwise. See "Icons" below. | Fixed |
+| T8 | Catalog cards (servers, skills, ML tools, cloud accounts, red-team tools): different heights in a row, the state pill wrapping under the name, "Read" alone on its own line. | P2 | Equal heights, name and state on one line, actions on the last line; the access label moved to the tag row. | Fixed |
+| T9 | Agent editor: 64 tool checkboxes and 17 server checkboxes wrapped at random; agent names were cut ("Security A…") in a 240px list. | P2 | A column grid; a 280px list; cut names have a tooltip. | Fixed |
+| T10 | Workflows and their runs below 1100px: one value per line, about 290px a row. | P2 | Compact cards: the values flow beside each other (about 130px a row). | Fixed |
+| T11 | Workflow runs: one long workflow name stretched a picker across the page and pushed the other filters to a second line. | P2 | Filters keep sensible widths. | Fixed |
+| T12 | Dashboard: tick labels shrank with the chart (6px on a phone); the day table scrolled inside its card; long provider names were cut with no tooltip; the external-agent figures wrapped onto three lines. | P2 | The chart is drawn at the width it has (labels stay 12px); the table lists only days with calls and scrolls with the page; tiles and tooltips on the meters; more room for the figures. | Fixed |
+| T13 | Type: eight sizes between 11 and 19px, text at 10–11px in badges, inline code at 10.9px. | P2 | One scale: 12, 13, 14, 16, 18, 20, 24, 28, 32 (plus 40, 56, 72 for display). 11px only inside two SVG charts. A test keeps it. | Fixed |
+| T14 | Settings › Artifacts: the "i" sat on the last word of a long label. | P2 | A stacked label with an "i" gives it its own column. | Fixed |
+| T15 | Artifact preview: "Delete…" alone and centred under the details. | P2 | In the action row, at the right, in the danger colour. | Fixed |
+| T16 | Buttons that start with an icon had no gap ("+Add store"); the file chooser was the browser's grey button. | P2 | One gap for every icon button; the chooser is drawn like the app's buttons. | Fixed |
+| T17 | Schedule box: all three ways of repeating showed their fields at once, and the choices were raw values ("cron", "run_once"). | P2 | Only the fields of the chosen way; the choices in words. | Fixed |
+| T18 | External agents: the page sat in a narrower, centred column, and its agent picker was blank when no agent was chosen. | P2 | Same left edge as every page; "Choose an agent…". | Fixed |
+| T19 | Small layout faults: provider note squeezed beside the "enabled" box; a form grid with one field cut a long address at 220px; Evaluations' list too narrow for its text; Skills names cut; Billing's state pill wrapping under long names; Telemetry's three "top" lists running into each other; a lone "Canvas" at the left of an empty phone chat; a paragraph squeezed beside "Add an API" on a phone. | P2 | Each fixed in place. | Fixed |
+
+Counts for this pass: **0 P0; 6 P1, all fixed; 13 P2, all fixed** (T19 groups eight small ones). The six items the
+second pass left are among them (T1, T3, T12, T13, T14, T15).
+
+Measured on the 624 after-captures: **0 texts below 4.5:1 in either theme, 0 pages that scroll sideways at any of the
+three widths, 0 console errors, 0 "i" icons on top of a label.** The only tables still wider than their room are
+inside documents and the component gallery, which keep their own scrolling on purpose. 811 of 832 cards measured have
+the same padding (18 × 20px); the rest are compact cards inside other cards.
+
+### Icons
+
+- **Source:** Simple Icons 16.37.0 (simpleicons.org), licence **CC0 1.0 Universal**. Only the path data of 83 marks was
+  copied into `frontend/lib/brandIcons.ts`; the package is not a dependency and nothing is fetched at run time.
+- **Glyphs for built-in tools** (folder, globe, cloud, clock…) are drawn in the app's own icon style in
+  `frontend/components/BrandIcon.tsx`; they are ours.
+- **Colour:** a mark uses the brand's own colour only where it has at least 3:1 on the tile in that theme (47 marks in
+  light, 50 in dark, checked by a test); otherwise it is drawn in the text colour.
+- **Deliberately absent:** OpenAI, AWS, Microsoft and Azure, Oracle, Slack and Playwright asked Simple Icons to remove
+  their marks; they get initials (or a plain glyph) here too. xAI, Groq, Kiro, Aider, OpenHands, RunPod, promptfoo,
+  Semgrep, Tavily, Pinecone and Context7 have no mark in the set.
+- The marks are trademarks of their owners and are used only to name the service beside its visible name; every tile
+  is hidden from screen readers.
+
 ## Left, with reasons
 
-1. **Settings › Artifacts, the "i" beside a long field label** overlaps the label's last word when the label fills its column. The "i" is placed at the label's right edge; fixing it properly means making the label's text and its "i" one row in the shared field markup, which touches every form.
-2. **Chart tick labels shrink with the chart** on a phone and a tablet (the SVG scales as a whole), down to about 6px on the Dashboard at 375px. The two hand-drawn charts need to be drawn at the width they have: a rework, not a style fix.
-3. **MCP servers by keyboard:** one Tab stop lands on an element with no size (a hidden copy of the selected row). Not yet traced.
-4. **Runs list on a phone** scrolls its table sideways inside the card and cuts long chat titles; it should become cards like the workflows table.
-5. **Type scale:** now whole pixels, but still eight sizes between 11 and 19px. Fewer sizes is a redesign of the scale.
-6. **Artifact preview:** "Delete…" sits alone, centred, under the details.
-7. **Not a design issue, but seen:** with Auto, the "fast" pick was `ollama/llama3.2`, which was not installed on the test copy; the chat said so and fell back. Auto should prefer installed local models.
+1. **Settings on a tablet and a phone** still has its sixteen sections in one row that scrolls sideways (the selected
+   one is brought into view). A picker or a drawer would be better there.
+2. **Science Lab** keeps its title inside the left column, with the tabs beside it; every other page has the title
+   across the top. Moving it means rebuilding that page's frame.
+3. **Lists beside a detail pane** (MCP servers, Skills, the docs contents, a settings list) still scroll on their own.
+   That is deliberate: it keeps the detail in view. Tables do not.
+4. **A form row where one label wraps onto two lines** leaves its field a line lower than its neighbours (seen on
+   Settings › Artifacts and the external-agent limits). Aligning the fields broke rows that have a hint under a field.
+5. **Tool steps in a chat** are raw text (`explorer → list_dir({'path': '.'})`). Readable, not pretty.
+6. **The workflow canvas's "React Flow" credit** is 10px: it is the library's own.
+7. **Not a design issue, but seen:** with Auto, the "fast" pick was `ollama/llama3.2`, which was not installed on the test copy.
 
 ## Not reviewed
 
-- **Live sessions in progress** (microphone, avatar video, the cost meter while running): need a real microphone and a paid session.
-- **A tool running and an approval card inside a chat:** the streaming capture caught "Thinking…" and finished answers; the plain assistant used no tools. (The workflow approval card was reviewed.)
+- **Live sessions in progress** (microphone, avatar video, the cost meter while running).
+- **A real approval card from an external agent:** the three kinds were drawn with the app's markup and styles, not raised by a running agent.
+- **Toasts:** the capture missed them (they are gone within a second or two).
 - **Screens that need installed extras or cloud accounts:** red-team runs and results, a filled security activity log, runtime deploys, data-source results, knowledge-base documents and search, voice once installed, Git on an app.
-- **The simple app builder on a phone** (reviewed on desktop only), and the artifact list row opened on a phone.
-- **Tablet and 200% zoom** covered 59 of the 97 screens (the main page of each area and every Settings tab), light theme only.
-- **Screen-reader output, Windows high-contrast mode,** and keyboard order beyond the six pages above.
+- **Hover states** (only focus and selected states show in still captures), **screen-reader output, Windows high-contrast mode,** and keyboard order beyond the pages walked in the second pass.
 - **The packaged desktop window** (same pages; not re-captured).
+- **By eye:** roughly half of the light desktop and phone captures were looked at one by one (every page at least once at one width), and a handful of tablet and dark ones; the rest rely on the measurements above.
 
 ## How to repeat it
 
 The docs capture (`npm run docs:shots -- --serve --ollama` in `frontend/`) starts the throw-away copy on ports 8777 and
 3199. The review drove headless Chrome over the DevTools protocol against that copy; the palette's contrast is now
-also checked by `frontend/tests/components/design-review.test.tsx` on every test run.
+also checked by `frontend/tests/components/design-review.test.tsx` on every test run, and the third pass's rules (tiles, tables,
+type scale) by `frontend/tests/components/design-pass3.test.tsx`. The third pass's captures are in `H:\as-test\design3\before` and `after`.

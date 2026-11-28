@@ -1,8 +1,9 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api, usd } from "@/lib/api";
 import InfoTip from "@/components/InfoTip";
+import BrandIcon from "@/components/BrandIcon";
 
 type Day = { day: string; cost_usd: number; calls: number; input_tokens: number; output_tokens: number };
 type Prov = { provider: string; label: string; kind: string; enabled: boolean; cap_usd: number; cap_period: string; spent_usd: number;
@@ -30,22 +31,34 @@ function SpendChart({ days }: { days: Day[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const max = Math.max(...days.map((d) => d.cost_usd), 0);
-  const W = 720, H = 200, L = 56, B = 22, T = 10, R = 6;
+  // Drawn at the width it really has (not scaled as a picture), so the tick labels keep their size on a phone and a tablet.
+  const box = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(720);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => { const w = Math.round(el.clientWidth); if (w > 0) setW(Math.max(240, w)); });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [table]);
+  const H = 200, L = 60, B = 24, T = 10, R = 6;
   const bw = (W - L - R) / days.length;
   const nice = (v: number) => { if (v <= 0) return 0.01; const e = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map((m) => m * e).find((x) => x >= v)!; };
   const top = nice(max);
   const y = (v: number) => T + (H - T - B) * (1 - v / top);
   const ticks = [0, top / 2, top];
+  const active = [...days].reverse().filter((d) => d.calls > 0 || d.cost_usd > 0);
   return (
     <div className="card dash-chart">
       <div className="row"><b>Model spend per day</b><span className="mut small">last {days.length} days · all providers · capped calls</span><span className="grow" />
         <div className="seg"><button className={!table ? "on" : ""} onClick={() => setTable(false)}>Chart</button><button className={table ? "on" : ""} onClick={() => setTable(true)}>Table</button></div></div>
       {table ? (
-        <div style={{ maxHeight: 240, overflow: "auto", marginTop: 8 }}><table><thead><tr><th>Day</th><th>Spend</th><th>Calls</th><th>Tokens in → out</th></tr></thead>
-          <tbody>{[...days].reverse().map((d) => <tr key={d.day}><td>{d.day}</td><td>{usd(d.cost_usd)}</td><td>{d.calls}</td><td>{d.input_tokens.toLocaleString()} → {d.output_tokens.toLocaleString()}</td></tr>)}</tbody></table></div>
+        <div style={{ marginTop: 8 }}>{active.length === 0 ? <div className="small mut" style={{ padding: "18px 0" }}>No model spend in this period.</div> : <><table className="dash-days"><thead><tr><th>Day</th><th>Spend</th><th>Calls</th><th>Tokens in → out</th></tr></thead>
+          <tbody>{active.map((d) => <tr key={d.day}><td>{d.day}</td><td>{usd(d.cost_usd)}</td><td>{d.calls}</td><td>{d.input_tokens.toLocaleString()} → {d.output_tokens.toLocaleString()}</td></tr>)}</tbody></table>
+          {active.length < days.length && <div className="small mut" style={{ marginTop: 6 }}>Days with no model calls are left out.</div>}</>}</div>
       ) : (
-        <div style={{ position: "relative" }}>
-          <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Model spend per day" onMouseLeave={() => setHover(null)}>
+        <div ref={box} style={{ position: "relative" }}>
+          <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block", maxWidth: "100%" }} role="img" aria-label="Model spend per day" onMouseLeave={() => setHover(null)}>
             {ticks.map((t) => <g key={t}><line x1={L} x2={W - R} y1={y(t)} y2={y(t)} className="viz-grid" /><text x={L - 6} y={y(t) + 3} textAnchor="end" className="viz-tick">{money(t)}</text></g>)}
             {days.map((d, i) => {
               const h = Math.max(0, H - B - y(d.cost_usd));
@@ -81,7 +94,7 @@ function CapMeters({ provs }: { provs: Prov[] }) {
         const sev = pct >= 90 ? "b" : pct >= 70 ? "w" : "";
         return (
           <div key={p.provider} className="meter-row">
-            <div className="meter-name"><span>{p.label}</span>{!p.auth_ready && p.kind !== "ollama" && p.kind !== "mock" && <span className="pill bad" title="authentication incomplete">auth</span>}</div>
+            <div className="meter-name" title={p.label}><BrandIcon id={p.provider} label={p.label} size={24} /><span>{p.label}</span>{!p.auth_ready && p.kind !== "ollama" && p.kind !== "mock" && <span className="pill bad" title="authentication incomplete">auth</span>}</div>
             <div className="bar"><i className={sev} style={{ width: `${pct}%` }} /></div>
             <div className="meter-fig">{money(p.spent_usd)} <span className="mut">of {money(p.cap_usd)}{p.cap_period !== "total" ? `/${p.cap_period === "daily" ? "day" : "mo"}` : ""}</span>
               {sev && <span className={`pill ${sev === "b" ? "bad" : "warn"}`}>{sev === "b" ? "⚠ near cap" : "70%+"}</span>}
@@ -105,7 +118,7 @@ function ExternalList({ ext }: { ext: Ext[] }) {
         const pct = cap ? Math.min(100, (a.month.turns / cap) * 100) : 0;
         return (
           <div key={a.id} className="meter-row">
-            <div className="meter-name"><span>{a.label}</span>{!a.enabled && <span className="pill">off</span>}</div>
+            <div className="meter-name" title={a.label}><BrandIcon id={a.id} label={a.label} size={24} /><span>{a.label}</span>{!a.enabled && <span className="pill">off</span>}</div>
             <div className="bar">{cap ? <i className={pct >= 90 ? "b" : pct >= 70 ? "w" : ""} style={{ width: `${pct}%` }} /> : null}</div>
             <div className="meter-fig">{a.month.turns} turn{a.month.turns === 1 ? "" : "s"}{cap ? <span className="mut"> of {cap}</span> : <span className="mut"> · no turn limit</span>}
               <div className="small mut">{a.month.minutes} min · {a.month.cost_reported_turns ? `${usd(a.month.reported_cost ?? 0)} reported` : "cost not reported"}</div></div>

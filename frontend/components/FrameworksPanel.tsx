@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "./Nav";
 import InfoTip from "./InfoTip";
+import BrandIcon from "./BrandIcon";
 
 type Fw = { id: string; label: string; blurb: string; strengths: string[]; licence: string; native: boolean; caps: Record<string, string>; packages: string[]; size_mb: number;
   notes: string; billing: string; models: string; state: string; version: string | null; error: string | null };
@@ -43,7 +44,7 @@ export default function FrameworksPanel() {
             <tbody>
               {m.frameworks.map((f) => (
                 <tr key={f.id}>
-                  <td><b>{f.label}</b><div className="small mut">{f.native ? "built in" : f.state === "ready" ? `installed${f.version ? ` ${f.version}` : ""}` : f.state === "installing" ? "installing…" : f.state === "failed" ? "install failed" : `${f.licence}, about ${f.size_mb} MB`}</div></td>
+                  <td><div className="row" style={{ gap: 10, flexWrap: "nowrap" }}><BrandIcon id={f.id} label={f.label} size={30} /><div style={{ minWidth: 0 }}><b>{f.label}</b><div className="small mut">{f.native ? "built in" : f.state === "ready" ? `installed${f.version ? ` ${f.version}` : ""}` : f.state === "installing" ? "installing…" : f.state === "failed" ? "install failed" : `${f.licence}, about ${f.size_mb} MB`}</div></div></div></td>
                   {m.columns.map((c) => <td key={c.id} title={`${c.label}: ${WORD[f.caps[c.id]]}`} aria-label={`${f.label} ${c.label}: ${WORD[f.caps[c.id]]}`}><span aria-hidden="true">{MARK[f.caps[c.id]]}</span><span className="sr-only"> {WORD[f.caps[c.id]]}</span></td>)}
                   <td style={{ whiteSpace: "nowrap" }}>
                     {!f.native && f.state !== "ready" && f.state !== "installing" && <button onClick={() => { setOpen(open === f.id ? null : f.id); setOk(false); }}>Install</button>}

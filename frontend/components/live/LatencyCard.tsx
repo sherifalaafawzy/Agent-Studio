@@ -19,7 +19,7 @@ export function Breakdown({ m, title }: { m: Partial<Metrics>; title: string }) 
   return (
     <div data-testid="live-breakdown">
       <div className="row" style={{ alignItems: "baseline" }}><b>{title}</b><span className="grow" />
-        <span className="small mut">first sound after you stop</span><b style={{ fontSize: 22 }} data-testid="live-ttfa">{sec(m.heard_ms ?? m.user_perceived_ms)}</b></div>
+        <span className="small mut">first sound after you stop</span><b style={{ fontSize: 24 }} data-testid="live-ttfa">{sec(m.heard_ms ?? m.user_perceived_ms)}</b></div>
       {m.heard_ms == null && m.user_perceived_ms != null && <div className="small mut">Measured on the server; add a few tens of milliseconds for your speakers.</div>}
       <table className="small" style={{ width: "100%", marginTop: 6 }}><tbody>
         {STAGES.filter(([k]) => m[k] != null).map(([k, label, tip]) => (

@@ -72,7 +72,7 @@ export default function EvalsPage() {
       <div className="page-head"><h2>Evaluations</h2><InfoTip id="evals" /></div>
       <p className="page-sub">A test set is a list of prompts with simple pass/fail checks. Run it against an agent before and after you change its instructions or model. Every prompt uses model credits, and the agent&apos;s guardrails and spend limits apply.</p>
       {err && <p className="err" role="alert">{err}</p>}
-      <div className="ag-layout">
+      <div className="ag-layout evals-layout">
         <div className="ag-side"><div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}><b>Test sets</b><button onClick={() => { setIsNew(true); setF(blankSet()); setSel(""); setRun(null); }}>+ New</button></div>
           {sets.length === 0 && <p className="small mut">None yet.</p>}

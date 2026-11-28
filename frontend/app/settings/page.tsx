@@ -33,6 +33,7 @@ import SandboxSettings from "@/components/SandboxSettings";
 import DataSources from "@/components/DataSources";
 import { BackupPanel, NumField, ResetLink, SettingsSearch, useRegistry } from "@/components/SettingsKit";
 import { confirmDiscard, useDirty } from "@/lib/dirty";
+import BrandIcon from "@/components/BrandIcon";
 
 function ProviderCard({ p, onSaved }: { p: Provider; onSaved: () => void }) {
   const [f, setF] = useState<Record<string, any>>({});
@@ -64,13 +65,13 @@ function ProviderCard({ p, onSaved }: { p: Provider; onSaved: () => void }) {
   return (
     <div className="card">
       <div className="row">
-        <b>{p.label}</b>
+        <BrandIcon id={p.id} label={p.label} size={30} /><b>{p.label}</b>
         <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <input type="checkbox" checked={!!val("enabled")} onChange={(e) => set("enabled", e.target.checked)} /> enabled
         </label>
-        <span className="mut small grow">{p.catalog.note}</span>
       </div>
-      <div className="grid" style={{ marginTop: 10 }}>
+      {p.catalog.note && <p className="small mut" style={{ margin: "6px 0 0" }}>{p.catalog.note}</p>}
+      <div className="grid" style={{ marginTop: 12 }}>
         <label>Spend cap (USD)<input type="number" min="0" step="0.01" value={val("cap_usd")} onChange={(e) => set("cap_usd", e.target.value)} /><InfoTip id="spend-caps" /></label>
         <label>Cap window
           <select value={val("cap_period")} onChange={(e) => set("cap_period", e.target.value)}>
@@ -82,8 +83,8 @@ function ProviderCard({ p, onSaved }: { p: Provider; onSaved: () => void }) {
         <label>Flash-tier model (fast, cheap)<ModelSelect key={"f" + mv} provider={p.id} value={val("flash_model")} onChange={(v) => set("flash_model", v)} emptyLabel="Same as default" /></label>
         {p.kind === "ollama" && <label>Context window (tokens)
           <select value={String(val("context_window") || 16384)} onChange={(e) => set("context_window", Number(e.target.value))}>
-            {[4096, 8192, 16384, 32768, 65536, 131072].map((n) => <option key={n} value={n}>{n.toLocaleString()}{n === 16384 ? " (default)" : ""}</option>)}</select><InfoTip id="context-window" />
-          <span className="small mut">Bigger = longer chats but much more GPU/RAM. If Ollama reports “bad_alloc” / out of memory, lower this.</span></label>}
+            {[4096, 8192, 16384, 32768, 65536, 131072].map((n) => <option key={n} value={n}>{n.toLocaleString()}{n === 16384 ? " (default)" : ""}</option>)}</select><InfoTip id="context-window" /></label>}
+        {p.kind === "ollama" && <p className="small mut" style={{ gridColumn: "1 / -1", margin: 0 }}>Context window: bigger means longer chats but much more GPU memory and RAM. If Ollama reports “bad_alloc” or runs out of memory, lower it.</p>}
         {p.kind === "ollama" && <OllamaPull pid={p.id} onPulled={() => setMv((x) => x + 1)} />}
         {p.kind !== "ollama" && (p as any).credits && <CreditsPanel pid={p.id} credits={(p as any).credits} onChange={onSaved} />}
         <label>Authentication
@@ -161,7 +162,7 @@ function AcpRow({ a, onSaved }: { a: AcpCfg; onSaved: () => void }) {
   return (
     <div className="card">
       <div className="row">
-        <b>{a.label}</b>
+        <BrandIcon id={a.id} label={a.label} size={30} /><b>{a.label}</b>
         <span className={`pill ${a.installed ? "ok" : "bad"}`}>{a.installed ? "installed" : "not found on PATH"}</span>
         <label style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><input type="checkbox" checked={a.enabled} onChange={(e) => save({ enabled: e.target.checked })} /> enabled</label>
         <span className="grow" />
@@ -408,7 +409,7 @@ export default function SettingsPage() {
   const prov = ps.find((p) => p.id === selP);
   const ext = acp.find((a) => a.id === selA);
   return (
-    <div>
+    <div className="settings-page">
       <div className="page-head"><h2>Settings</h2><span className="grow" /><SettingsSearch reg={reg} tabs={TABS} go={jump} /></div>
       {err && <p className="err">{err}</p>}
       <div className="tabs" role="tablist" data-tour="settings-tabs">{TABS.map(([k, label]) => (
@@ -416,13 +417,14 @@ export default function SettingsPage() {
           {k === "providers" && <span className="count">{ps.filter((p) => p.enabled).length}/{ps.length}</span>}
           {k === "external" && <span className="count">{acp.filter((a) => a.installed).length}/{acp.length}</span>}</button>))}</div>
 
+      <div className="settings-body">
       {tab === "providers" && (<>
         <p className="page-sub">Each provider has its own hard spend cap: a call is refused <b>before</b> it is sent if its worst-case cost (estimated input + the full max output) would exceed what is left. Pro / Flash are the models agents resolve their tier to.</p>
         <div className="two">
           <div className="list">{ps.map((p) => (
             <div key={p.id} className={`li ${selP === p.id && !adding ? "on" : ""}`} onClick={() => { setAdding(false); setSelP(p.id); }}>
               <span className={`dot ${p.enabled && (p.auth_ready || p.kind === "mock") ? "ok" : p.enabled ? "bad" : ""}`} />
-              <span className="t">{p.label}</span><span className="s">{p.custom ? "custom · " : ""}{p.enabled ? `$${Number(p.cap_usd).toFixed(2)}` : "off"}</span></div>))}
+              <BrandIcon id={p.custom ? "custom" : p.id} label={p.label} size={24} /><span className="t" title={p.label}>{p.label}</span><span className="s">{p.custom ? "custom · " : ""}{p.enabled ? `$${Number(p.cap_usd).toFixed(2)}` : "off"}</span></div>))}
             <button style={{ marginTop: 8, width: "100%" }} onClick={() => { if (confirmDiscard()) setAdding(true); }}>+ Add OpenAI-compatible endpoint</button></div>
           <div style={{ minWidth: 0 }}>{adding ? <CustomEndpointForm onCancel={() => setAdding(false)} onCreated={(id) => { setAdding(false); setSelP(id); load(); }} />
             : prov && (prov.custom ? <CustomProviderCard key={prov.id} p={prov} onSaved={load} onDeleted={() => { setSelP(""); load(); }} /> : <ProviderCard key={prov.id} p={prov} onSaved={load} />)}</div>
@@ -516,7 +518,7 @@ export default function SettingsPage() {
             {acp.map((a) => (
               <div key={a.id} className={`li ${selA === a.id ? "on" : ""}`} onClick={() => setSelA(a.id)}>
                 <span className={`dot ${a.installed && a.enabled ? "ok" : a.installed ? "" : "bad"}`} />
-                <span className="t">{a.label}</span><span className="s">{!a.installed ? "not installed" : a.enabled ? "" : "off"}</span></div>))}
+                <BrandIcon id={a.id} label={a.label} size={24} /><span className="t" title={a.label}>{a.label}</span><span className="s">{!a.installed ? "not installed" : a.enabled ? "" : "off"}</span></div>))}
             <div className={`li ${selA === "__add" ? "on" : ""}`} onClick={() => setSelA("__add")}><span className="t" style={{ color: "var(--acc-text)" }}>+ Add custom agent</span></div>
           </div>
           <div>{selA === "__add" ? <AddAcp onSaved={load} /> : ext && <AcpRow key={ext.id + ext.command + ext.args.join()} a={ext} onSaved={load} />}</div>
@@ -543,6 +545,7 @@ export default function SettingsPage() {
         <OtelCard />
         <OcsfSettings />
       </>)}
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ import JsonViewer from "@/components/rich/JsonViewer";
 import MediaBlock from "@/components/rich/MediaBlock";
 import { toast } from "@/components/Nav";
 import InfoTip from "@/components/InfoTip";
-import { IDownload, IFile, ISearch, IX } from "@/components/Icons";
+import { IDownload, IFile, ISearch, ITrash, IX } from "@/components/Icons";
 
 type List = { total: number; items: Artifact[] };
 type Preview = { kind: string; text: string; truncated: boolean };
@@ -57,6 +57,8 @@ function Detail({ a, onClose, onChanged }: { a: Artifact; onClose: () => void; o
           <button onClick={copyLink}>Copy link</button>
           {a.session_id && <Link className="btn" href={`/?s=${a.session_id}`}>Open the chat</Link>}
           {a.session_id && <Link className="btn" href={`/runs/?s=${a.session_id}`}>Open the run</Link>}
+          <span className="grow" />
+          {!confirming && <button className="ghost danger-quiet" onClick={() => setConfirming(true)}><ITrash size={14} /> Delete…</button>}
         </div>
         <div className="kv small">
           <span className="mut">Kind</span><span>{TYPE_LABEL[a.type] ?? a.type} · {a.mime}</span>
@@ -78,7 +80,7 @@ function Detail({ a, onClose, onChanged }: { a: Artifact; onClose: () => void; o
             <b>Delete “{a.name}”?</b><div className="small">It is removed from every storage that holds a copy. This cannot be undone.</div>
             <div className="row" style={{ marginTop: 8 }}><button className="danger" onClick={del}>Delete for good</button><button onClick={() => setConfirming(false)}>Keep it</button></div>
           </div>
-        ) : <button className="ghost" onClick={() => setConfirming(true)}>Delete…</button>}
+        ) : null}
       </div>
     </aside>
   );

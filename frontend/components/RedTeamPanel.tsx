@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "./Nav";
 import InfoTip from "./InfoTip";
+import BrandIcon from "./BrandIcon";
 
 type Tool = { id: string; label: string; blurb: string; licence: string; size_mb: number; notes: string; options: string; default_options: string[]; state: string; version: string | null; error: string | null };
 type Status = { tools: Tool[]; install: { running: boolean; tool: string | null; log: string[]; error: string | null }; runs_running: number };
@@ -61,11 +62,11 @@ export default function RedTeamPanel() {
         {err && <p className="err" role="alert">{err}</p>}
         <div className="cat-grid">{st.tools.map((t) => (
           <div key={t.id} className="card cat-card" data-testid="rt-tool">
-            <div className="card-head"><b>{t.label}</b><span className={`pill ${t.state === "ready" ? "ok" : t.state === "failed" ? "bad" : ""}`}>{t.state === "ready" ? `installed ${t.version ?? ""}` : t.state.replace("_", " ")}</span></div>
+            <div className="card-head"><BrandIcon id={t.id} label={t.label} size={30} /><div className="cat-title"><b>{t.label}</b></div><span className={`pill ${t.state === "ready" ? "ok" : t.state === "failed" ? "bad" : ""}`}>{t.state === "ready" ? `installed ${t.version ?? ""}` : t.state.replace("_", " ")}</span></div>
             <div className="small">{t.blurb}</div>
             <div className="small mut">{t.licence} · about {t.size_mb} MB · {t.notes}</div>
             {t.error && <div className="small err">{t.error}</div>}
-            <div className="row" style={{ marginTop: 8 }}>
+            <div className="row cat-actions">
               {t.state === "ready"
                 ? <button className="small" onClick={() => { if (confirm(`Remove ${t.label}?`)) call("/api/redteam/uninstall", { method: "POST", body: JSON.stringify({ tool: t.id }) }, `${t.label} removed`); }}>Remove</button>
                 : t.state === "installing" ? <span className="small mut">Installing…</span> : <button className="small" onClick={() => open(t.id)}>Install…</button>}

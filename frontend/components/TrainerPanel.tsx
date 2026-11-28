@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { toast } from "@/components/Nav";
 import InfoTip from "@/components/InfoTip";
 import { ITrash } from "@/components/Icons";
+import BrandIcon from "@/components/BrandIcon";
 
 type Fw = { id: string; label: string; blurb: string; licence: string; size_mb: number; packages: string[]; notes: string; state: "not_installed" | "installing" | "ready" | "failed"; version: string | null; error: string | null };
 type TrainerStatus = { frameworks: Fw[]; install: { running: boolean; framework: string | null; log: string[]; error: string | null }; jobs_running: number };
@@ -76,12 +77,12 @@ export default function TrainerPanel() {
       <div className="cat-grid">
         {(st?.frameworks ?? []).map((f) => (
           <div key={f.id} className="card cat-card" data-framework={f.id} style={{ boxShadow: "none" }}>
-            <div className="card-head"><b>{f.label}</b><span className="grow" /><span className={`pill ${f.state === "ready" ? "ok" : f.state === "failed" ? "bad" : ""}`}>{STATE_TEXT[f.state]}{f.version ? ` ${f.version}` : ""}</span></div>
+            <div className="card-head"><BrandIcon id={f.id} label={f.label} size={30} /><div className="cat-title"><b>{f.label}</b></div><span className={`pill ${f.state === "ready" ? "ok" : f.state === "failed" ? "bad" : ""}`}>{STATE_TEXT[f.state]}{f.version ? ` ${f.version}` : ""}</span></div>
             <p className="small">{f.blurb}</p>
             <div className="small mut">Download about {size(f.size_mb)} · {f.licence}</div>
             {f.error && <p className="err small">{f.error}</p>}
             {f.state === "installing" && st && <pre className="small log" aria-label="install log">{st.install.log.slice(-4).join("\n")}</pre>}
-            <div className="row" style={{ marginTop: 8 }}>
+            <div className="row cat-actions">
               {f.state === "ready"
                 ? <button className="ghost" onClick={() => uninstall(f)} aria-label={`Remove ${f.label}`}><ITrash size={14} /> Remove</button>
                 : <button className="acc" disabled={f.state === "installing" || !!st?.install.running} onClick={() => { setPlan(plan === f.id ? null : f.id); setAccepted(false); }}>{f.state === "failed" ? "Try again" : "Install…"}</button>}

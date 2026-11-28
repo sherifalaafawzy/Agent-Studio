@@ -161,6 +161,7 @@ export default function ExternalPage() {
       <div className="row ext-bar" style={{ marginBottom: 8 }}>
         <label>Agent
           <select value={agent} disabled={!!session} onChange={(e) => setAgent(e.target.value)}>
+            {!agent && <option value="">Choose an agent…</option>}
             {agents.map((a) => <option key={a.id} value={a.id} disabled={!a.installed || !a.enabled}>{a.label}{!a.installed ? " (not installed)" : !a.enabled ? " (disabled)" : ""}</option>)}
           </select></label>
         <label>Permissions

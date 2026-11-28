@@ -43,21 +43,21 @@ export default function NotificationBell() {
     <span style={{ position: "relative" }}>
       <button className="icon-btn" onClick={() => setOpen((o) => !o)} aria-label={`Notifications${data.unread ? `, ${data.unread} unread` : ""}`} aria-expanded={open} title="Notifications" data-testid="bell">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-        {data.unread > 0 && <span className="pill bad" data-testid="bell-count" style={{ position: "absolute", top: -6, right: -8, fontSize: 10, padding: "0 4px" }}>{data.unread > 99 ? "99+" : data.unread}</span>}
+        {data.unread > 0 && <span className="pill bad" data-testid="bell-count" style={{ position: "absolute", top: -6, right: -8, fontSize: 11, padding: "0 4px" }}>{data.unread > 99 ? "99+" : data.unread}</span>}
       </button>
       {open && (
-        <div className="card" role="dialog" aria-label="Notifications" data-testid="bell-panel" style={{ position: "absolute", bottom: 30, left: 0, width: "min(340px, 90vw)", maxHeight: 420, overflow: "auto", zIndex: 50 }}>
-          <div className="row"><b className="grow">Notifications</b>
+        <div className="card bell-panel" role="dialog" aria-label="Notifications" data-testid="bell-panel">
+          <div className="row bell-head"><b className="grow">Notifications</b>
             {data.unread > 0 && <button className="ghost small" onClick={() => act("/api/notifications/read-all")}>Mark all read</button>}
             {data.items.length > 0 && <button className="ghost small" onClick={() => act("/api/notifications", "DELETE")}>Clear</button>}</div>
           {perm === "default" && <button className="small" style={{ marginTop: 6 }} onClick={allow}>Allow desktop pop-ups</button>}
           {data.items.length === 0 && <p className="small mut">Nothing yet. Add a "Notify me" box to a workflow, or switch on a schedule.</p>}
           {data.items.map((n) => (
-            <div key={n.id} data-testid="note" style={{ padding: "6px 0", borderTop: "1px solid var(--line)", opacity: n.read ? 0.7 : 1 }}>
+            <div key={n.id} data-testid="note" className={`bell-note ${n.read ? "read" : ""}`}>
               <div className="row"><span className={`pill ${n.level === "error" ? "bad" : n.level === "warning" ? "warn" : n.level === "success" ? "ok" : ""}`}>{n.level}</span>
                 <b className="grow small">{n.title}</b><span className="small mut">{ago(n.created)}</span></div>
-              {n.body && <div className="small" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{n.body.length > 300 ? `${n.body.slice(0, 300)}…` : n.body}</div>}
-              <div className="row">
+              {n.body && <div className="small bell-body" title={n.body.length > 160 ? n.body.slice(0, 600) : undefined}>{n.body.length > 300 ? `${n.body.slice(0, 300)}…` : n.body}</div>}
+              <div className="row bell-actions">
                 {n.link && <Link className="small" href={n.link} onClick={() => { if (!n.read) act(`/api/notifications/${n.id}/read`); setOpen(false); }}>Open</Link>}
                 {!n.read && <button className="ghost small" onClick={() => act(`/api/notifications/${n.id}/read`)}>Mark read</button>}
                 <button className="ghost small" aria-label={`Delete ${n.title}`} onClick={() => act(`/api/notifications/${n.id}`, "DELETE")}>Delete</button>

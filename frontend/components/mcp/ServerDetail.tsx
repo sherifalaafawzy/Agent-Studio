@@ -10,7 +10,8 @@ import DecisionModelPanel from "./DecisionModelPanel";
 import TimeSeriesPanel from "@/components/TimeSeriesPanel";
 import TrainerPanel from "@/components/TrainerPanel";
 import CloudAccounts from "@/components/CloudAccounts";
-import { access, ago, initials, leavesPc, tint, type Issue, type Row, type Test } from "./shared";
+import BrandIcon from "@/components/BrandIcon";
+import { access, ago, leavesPc, type Issue, type Row, type Test } from "./shared";
 
 type Tab = "overview" | "settings" | "tools" | "health";
 const TABS: [Tab, string][] = [["overview", "Overview"], ["settings", "Settings"], ["tools", "Tools"], ["health", "Health & logs"]];
@@ -54,7 +55,7 @@ export default function ServerDetail({ row, issues, onChange, onBack, onAdd, hea
     <div className="mcp-dhead">
       <button className="ghost small mcp-back" onClick={onBack}>← All servers</button>
       <div className="mcp-dtitle">
-        <div className="mono" style={{ background: tint(row.id) }} aria-hidden>{initials(row.label)}</div>
+        <BrandIcon id={row.id} label={row.label} size={44} />
         <div className="grow" style={{ minWidth: 0 }}>
           <h3 ref={headRef} tabIndex={-1}>{row.label}</h3>
           <div className="mcp-row-badges">

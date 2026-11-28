@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ProviderBilling, usd } from "@/lib/api";
 import InfoTip from "@/components/InfoTip";
+import BrandIcon from "@/components/BrandIcon";
 
 type Summary = { providers: ProviderBilling[]; by_model: any[]; total_spent_usd: number };
 
@@ -33,7 +34,7 @@ export default function BillingPage() {
             const pct = Math.min(100, p.pct_used);
             return (
               <div className="card" key={p.provider}>
-                <div className="row"><b>{p.label}</b><span className={`pill ${p.enabled ? "ok" : ""}`}>{p.enabled ? "on" : "off"}</span></div>
+                <div className="row bill-head"><BrandIcon id={p.provider} label={p.label} size={28} /><b title={p.label}>{p.label}</b><span className={`pill ${p.enabled ? "ok" : ""}`}>{p.enabled ? "on" : "off"}</span></div>
                 <div className="bar" style={{ margin: "8px 0" }}><i className={pct > 90 ? "b" : pct > 70 ? "w" : ""} style={{ width: pct + "%" }} /></div>
                 <div className="small">{usd(p.spent_usd)} of {usd(p.cap_usd)} <span className="mut">({p.cap_period})</span></div>
                 <div className="small mut">remaining {usd(p.remaining_usd)}{p.reserved_usd > 0 ? ` · in flight ${usd(p.reserved_usd)}` : ""}</div>

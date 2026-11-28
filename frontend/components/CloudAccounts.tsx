@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "@/components/Nav";
 import InfoTip from "@/components/InfoTip";
+import BrandIcon from "@/components/BrandIcon";
 
 type CField = { name: string; label: string; secret: boolean; required: boolean; help: string; set: boolean };
 type Prov = { id: string; label: string; docs: string; cost_note: string; deploy_help: string; kinds: string[]; deletes: string[]; fields: CField[]; configured: boolean };
@@ -52,10 +53,10 @@ export default function CloudAccounts() {
       <div className="cat-grid">
         {(c?.providers ?? []).map((p) => (
           <div key={p.id} className="card cat-card" data-provider={p.id} style={{ boxShadow: "none" }}>
-            <div className="card-head"><b>{p.label}</b><span className="grow" /><span className={`pill ${p.configured ? "ok" : ""}`}>{p.configured ? "Connected" : "Not connected"}</span></div>
+            <div className="card-head"><BrandIcon id={p.id} label={p.label} size={30} /><div className="cat-title"><b>{p.label}</b></div><span className={`pill ${p.configured ? "ok" : ""}`}>{p.configured ? "Connected" : "Not connected"}</span></div>
             <div className="small mut">Can look at: {p.kinds.join(", ")}</div>
             <p className="small" style={{ margin: "6px 0", color: "var(--warn-text)" }}>Cost: {p.cost_note}</p>
-            <div className="row"><button className={p.configured ? "ghost" : "acc"} onClick={() => { setOpen(open === p.id ? null : p.id); setVals({}); setClear([]); }}>{open === p.id ? "Close" : p.configured ? "Change keys" : "Connect"}</button>
+            <div className="row cat-actions"><button className={p.configured ? "ghost" : "acc"} onClick={() => { setOpen(open === p.id ? null : p.id); setVals({}); setClear([]); }}>{open === p.id ? "Close" : p.configured ? "Change keys" : "Connect"}</button>
               <a className="small" href={p.docs} target="_blank" rel="noreferrer">API reference</a></div>
             {open === p.id && (
               <div className="cat-panel">

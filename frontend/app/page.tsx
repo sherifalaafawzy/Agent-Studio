@@ -16,6 +16,7 @@ import Link from "next/link";
 import { buildLanes, fmtDur, RunThread, RunTimeline, type Run as TRun } from "@/components/Runs";
 import { IAgents, IArrowUp, ICheck, IChevron, ICopy, IFolder, ISave, IStop, ITimeline, ITool, IX, Spark } from "@/components/Icons";
 import InfoTip from "@/components/InfoTip";
+import { mainOption } from "@/lib/asks";
 import UiBlock from "@/components/uikit/UiBlock";
 import { PlainRichContext } from "@/components/rich/PlainContext";
 import { ArtifactList, KeepContext, ReplyContext, StatePanel, type RunState } from "@/components/RichBlocks";
@@ -554,7 +555,7 @@ function ChatPage() {
                       {q.input && <pre className="small" style={{ maxHeight: 140 }}>{typeof q.input === "string" ? q.input : JSON.stringify(q.input)}</pre>}
                       {q.ask === "plan_approval" && <pre className="small" style={{ maxHeight: 200 }}>{q.plan}</pre>}
                       <div className="row" style={{ marginTop: 8 }}>
-                        {q.ask === "permission" && (q.options ?? []).map((o: any) => <button key={o.id} className={String(o.kind).startsWith("allow") ? "acc" : ""} onClick={() => answer(q, { option_id: o.id })}>{o.name}</button>)}
+                        {q.ask === "permission" && (q.options ?? []).map((o: any) => <button key={o.id} className={o.id === mainOption(q.options ?? []) ? "acc" : ""} onClick={() => answer(q, { option_id: o.id })}>{o.name}</button>)}
                         {q.ask === "question" && (q.questions ?? []).flatMap((qq: any) => (qq.options ?? []).map((o: any) =>
                           <button key={qq.id + o.id} onClick={() => answer(q, { answers: [{ questionId: qq.id, selectedOptionIds: [o.id] }] })}>{o.label}</button>))}
                         {q.ask === "question" && <button className="ghost" onClick={() => answer(q, { skip: true })}>Skip</button>}

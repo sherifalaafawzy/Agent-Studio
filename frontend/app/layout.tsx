@@ -5,6 +5,7 @@ import SideAgent from "@/components/SideAgent";
 import TourRunner from "@/components/TourRunner";
 import OnboardingGate from "@/components/OnboardingGate";
 import TabStripFx from "@/components/TabStripFx";
+import TableFx from "@/components/TableFx";
 
 export const metadata: Metadata = { title: "Agent Studio", description: "Model-agnostic agent workbench" };
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <TourRunner />
         <OnboardingGate />
         <TabStripFx />
+        <TableFx />
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "./Nav";
 import InfoTip from "./InfoTip";
+import BrandIcon from "./BrandIcon";
 
 type Field = { name: string; label: string; secret: boolean; required: boolean; help: string; default: string };
 export type Target = { id: string; label: string; docs: string; remote: boolean; cost_note: string; platform: string; side_effects: string[]; fields: Field[];
@@ -23,7 +24,7 @@ function TargetCard({ t, onSave }: { t: Target; onSave: (id: string, body: Recor
   return (
     <div className="card" data-testid={`runtime-${t.id}`}>
       <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-        <b>{t.label}</b><span className={`pill ${t.enabled ? "ok" : ""}`}>{t.enabled ? "on" : "off"}</span>
+        <BrandIcon id={t.id} label={t.label} size={30} /><b>{t.label}</b><span className={`pill ${t.enabled ? "ok" : ""}`}>{t.enabled ? "on" : "off"}</span>
         <span className="pill">image: {t.platform}</span><span className="grow" />
         <label className="switch"><input type="checkbox" aria-label={`${t.id} on`} checked={t.enabled} onChange={(e) => save(e.target.checked)} /><i /></label>
       </div>

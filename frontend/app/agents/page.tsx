@@ -125,7 +125,7 @@ export default function AgentsPage() {
                 onClick={() => { closePanes(); setIsNew(false); setSel(a.id); setMsg(""); }}
                 onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); closePanes(); setIsNew(false); setSel(a.id); setMsg(""); } }}>
                 <div className="ag-item-top">
-                  <span className="ag-item-name">{a.name}</span> <span className={`pill ${a.tier === "pro" ? "ok" : ""}`}>{a.tier}</span>
+                  <span className="ag-item-name" title={a.name}>{a.name}</span> <span className={`pill ${a.tier === "pro" ? "ok" : ""}`}>{a.tier}</span>
                   <span className="grow" />
                   {scores[a.id] && <a className={`pill ag-score ${SCORE_TONE[scores[a.id].band] ?? ""}`} href={`/security/?agent=${a.id}`} onClick={(e) => e.stopPropagation()}
                     title="Security score: open this agent's scorecard" aria-label={`Security score ${scores[a.id].percent} percent: open the scorecard of ${a.name}`}>{scores[a.id].percent}%</a>}
@@ -188,16 +188,16 @@ export default function AgentsPage() {
             <textarea rows={6} value={f.instruction} onChange={(e) => set("instruction", e.target.value)} /><InfoTip id="instructions" /></label>
 
           <h3 id="ag-tools">Tools <InfoTip id="tools" /></h3>
-          <div className="row">{tools.map((t) => (
-            <label key={t.name} title={t.description} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <input type="checkbox" checked={f.tools.includes(t.name)} onChange={() => set("tools", toggle(f.tools, t.name))} />{t.name}{!t.read_only && <span className="tool-writes" title="Can change files, run commands or send something" aria-label="can make changes"><IEdit size={12} /></span>}
+          <div className="check-grid">{tools.map((t) => (
+            <label key={t.name} title={t.description}>
+              <input type="checkbox" checked={f.tools.includes(t.name)} onChange={() => set("tools", toggle(f.tools, t.name))} /><span className="check-name">{t.name}</span>{!t.read_only && <span className="tool-writes" title="Can change files, run commands or send something" aria-label="can make changes"><IEdit size={12} /></span>}
             </label>))}</div>
           <p className="small mut tool-legend"><IEdit size={12} /> marks a tool that can change files, run commands or send something. The others only read.</p>
           <h3 id="ag-mcp">MCP servers <InfoTip id="mcp" /></h3>
-          <div className="row">{mcp.map((m) => (
-            <label key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <div className="check-grid wide">{mcp.map((m) => (
+            <label key={m.id} title={m.label}>
               <input type="checkbox" checked={f.mcp.includes(m.id)} onChange={() => set("mcp", toggle(f.mcp, m.id))} />
-              {m.label} <span className={`pill ${m.ready ? "ok" : ""}`}>{m.ready ? "ready" : m.status === "pending_approval" ? "pending" : "off"}</span>
+              <span className="check-name">{m.label}</span> <span className={`pill ${m.ready ? "ok" : ""}`}>{m.ready ? "ready" : m.status === "pending_approval" ? "pending" : "off"}</span>
             </label>))}</div>
           <h3>Skills <InfoTip id="skills" /></h3>
           <div className="row">

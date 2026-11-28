@@ -83,7 +83,7 @@ export default function RunsTab() {
 
   return (
     <div data-testid="runs-tab">
-      <div className="row" style={{ marginBottom: 10, flexWrap: "wrap" }}>
+      <div className="row filter-bar" style={{ marginBottom: 10, flexWrap: "wrap" }}>
         <input value={q} placeholder="Search runs (task, error, workflow)" aria-label="Search runs" style={{ minWidth: 220 }} onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
         <select value={workflow} aria-label="Workflow" onChange={(e) => change(setWorkflow)(e.target.value)}><option value="">Any workflow</option>{flows.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
         <select value={origin} aria-label="Started by" onChange={(e) => change(setOrigin)(e.target.value)}><option value="">Anything started it</option>{Object.entries(ORIGIN_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>

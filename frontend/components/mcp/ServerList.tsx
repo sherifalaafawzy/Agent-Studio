@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { ISearch } from "@/components/Icons";
-import { GROUPS, access, initials, leavesPc, tint, type Filter, type GroupId, type Row } from "./shared";
+import BrandIcon from "@/components/BrandIcon";
+import { GROUPS, access, leavesPc, type Filter, type GroupId, type Row } from "./shared";
 
 export type AccessFilter = "any" | "read" | "write";
 type Props = {
@@ -72,17 +73,17 @@ export default function ServerList(p: Props) {
                   return (
                     <div key={r.id} role="option" aria-selected={on} tabIndex={on || (!p.sel && order[0]?.id === r.id) ? 0 : -1} data-row={r.id} className={`mcp-row ${on ? "on" : ""} ${r.m && !r.m.enabled ? "off" : ""}`}
                       onClick={() => p.onSelect(r.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); p.onSelect(r.id); } }}>
-                      <span className="mono" style={{ background: tint(r.id) }} aria-hidden>{initials(r.label)}</span>
+                      <BrandIcon id={r.id} label={r.label} size={34} />
                       <span className="mcp-row-main">
                         <span className="mcp-row-name"><span className={`dot ${r.tone}`} title={r.statusText} /><span className="mcp-name">{r.label}</span>
-                          {p.issueSources.has(r.id) && <span className="pill bad" title="The harness raised an issue for this server">issue</span>}</span>
+                          {p.issueSources.has(r.id) && <span className="pill bad" title="The harness raised an issue for this server">issue</span>}
+                          <span className="grow" />{r.m ? <span className={`pill ${r.tone}`}>{r.statusText}</span> : <span className="pill">{r.statusText}</span>}</span>
                         <span className="mcp-row-desc">{r.description || "No description."}</span>
-                        <span className="mcp-row-badges">
-                          {r.m ? <span className={`pill ${r.tone}`}>{r.statusText}</span> : <span className="pill">{r.statusText}</span>}
+                        {(acc !== "unknown" || leavesPc(r.m, r.c)) && <span className="mcp-row-badges">
                           {acc === "read" && <span className="pill ok">read-only</span>}
                           {acc === "write" && <span className="pill warn">can write</span>}
                           {leavesPc(r.m, r.c) && <span className="pill">data leaves PC</span>}
-                        </span>
+                        </span>}
                       </span>
                     </div>
                   );

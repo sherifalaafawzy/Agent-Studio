@@ -110,7 +110,7 @@ function One({ f, value, onChange, ctx, type, cfg }: { f: Field; value: any; onC
     case "workflow": return <label>{f.label}<select value={value ?? ""} aria-label={f.label} onChange={(e) => onChange(e.target.value)}><option value="">choose…</option>{ctx.workflows.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>;
     case "textarea": case "expr": return <label>{f.label}<textarea rows={f.kind === "expr" ? 2 : 4} value={value ?? ""} aria-label={f.label} onChange={(e) => onChange(e.target.value)} />{hint}</label>;
     case "number": return <label>{f.label}<input type="number" min={f.min} max={f.max} value={value ?? 0} aria-label={f.label} onChange={(e) => onChange(Number(e.target.value))} /></label>;
-    case "select": return <label>{f.label}<select value={value ?? ""} aria-label={f.label} onChange={(e) => onChange(e.target.value)}>{(f.options ?? []).map((o) => <option key={o}>{o}</option>)}</select></label>;
+    case "select": return <label>{f.label}<select value={value ?? ""} aria-label={f.label} onChange={(e) => onChange(e.target.value)}>{(f.options ?? []).map((o) => <option key={o} value={o}>{optionWord(type, o)}</option>)}</select></label>;
     case "bool": {
       const risky = f.name === "confirmed";
       return <label className="check"><input type="checkbox" checked={!!value} aria-label={f.label} onChange={(e) => onChange(e.target.checked)} /> {f.label}{risky && type === "tool" && cfg.tool && SAFE.has(cfg.tool) ? " (not needed for a read-only tool)" : ""}</label>;
@@ -139,9 +139,18 @@ function One({ f, value, onChange, ctx, type, cfg }: { f: Field; value: any; onC
   }
 }
 
+/** A Schedule box says its choices in words; the saved values stay the short ones ("cron", "run_once"). */
+const SCHEDULE_WORDS: Record<string, string> = { interval: "Every few minutes", daily: "Every day at a set time", cron: "A cron pattern (advanced)", run_once: "Run it once when the app is open again", skip: "Skip it" };
+export const optionWord = (type: string, option: string) => (type === "schedule" && SCHEDULE_WORDS[option]) || option;
+
+/** Fields that do not apply to the chosen way of repeating are left out of a Schedule box (their saved values are kept). */
+const SCHEDULE_ONLY: Record<string, string> = { every_minutes: "interval", at: "daily", cron: "cron" };
+export const fieldApplies = (type: string, cfg: Record<string, unknown>, name: string) =>
+  type !== "schedule" || !SCHEDULE_ONLY[name] || SCHEDULE_ONLY[name] === String(cfg.mode ?? "interval");
+
 export default function Fields({ spec, node, onChange, ctx }: { spec: NodeSpec; node: WNode; onChange: (config: any) => void; ctx: Ctx }) {
   const cfg = node.config ?? {};
-  const kinds = spec.fields;
+  const kinds = spec.fields.filter((f) => fieldApplies(node.type, cfg, f.name));
   if (!kinds.length) return <div className="small mut">{spec.desc}</div>;
   return (
     <div className="stack" data-testid="node-fields">

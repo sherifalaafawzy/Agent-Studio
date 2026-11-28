@@ -27,7 +27,7 @@ function MemCard({ m, onChanged, review }: { m: Mem; onChanged: () => void; revi
   const body = (text: string | undefined) => JSON.stringify(text === undefined ? {} : { text });
   return (
     <div className="card mem-card" data-testid="mem-card">
-      {edit === null ? <div style={{ fontSize: 15 }}>{m.text}</div>
+      {edit === null ? <div style={{ fontSize: 16 }}>{m.text}</div>
         : <textarea rows={3} value={edit} aria-label="Memory text" onChange={(e) => setEdit(e.target.value)} />}
       <div className="row small mut" style={{ flexWrap: "wrap", gap: 8, marginTop: 6 }}>
         <span className="pill">{TYPES.find(([k]) => k === m.type)?.[1] ?? m.type}</span>

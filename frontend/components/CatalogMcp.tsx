@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "@/components/Nav";
 import InfoTip from "@/components/InfoTip";
-import { ICheck, IPlug } from "@/components/Icons";
+import { ICheck } from "@/components/Icons";
+import BrandIcon from "@/components/BrandIcon";
 
 type Field = { name: string; label: string; secret: boolean; required: boolean; where: string; help: string; placeholder: string; default: string };
 export type CatalogServer = {
@@ -102,12 +103,11 @@ export default function CatalogMcp({ domain, q }: { domain: string; q: string })
           const mode_ = MODE_LABEL[s.read_only];
           return (
             <div key={s.id} className="card cat-card" data-server={s.id}>
-              <div className="card-head"><IPlug size={16} /><b>{s.label}</b><span className="grow" />
-                <span className={`pill ${mode_.tone}`}>{mode_.text}</span></div>
-              <div className="small mut">{s.publisher}{s.official ? " · official" : " · community"}</div>
+              <div className="card-head"><BrandIcon id={s.id} label={s.label} size={36} />
+                <div className="cat-title"><b>{s.label}</b><div className="small mut">{s.publisher}{s.official ? " · official" : " · community"}</div></div></div>
               <p className="small" style={{ margin: "8px 0" }}>{s.description}</p>
-              <div className="row" style={{ flexWrap: "wrap", gap: 4 }}>{s.domains.map((d) => <span key={d} className="pill">{DOMAIN_LABEL[d] ?? d}</span>)}</div>
-              <div className="row" style={{ marginTop: 10, flexWrap: "wrap" }}>
+              <div className="row" style={{ flexWrap: "wrap", gap: 4 }}><span className={`pill ${mode_.tone}`}>{mode_.text}</span>{s.domains.map((d) => <span key={d} className="pill">{DOMAIN_LABEL[d] ?? d}</span>)}</div>
+              <div className="row cat-actions" style={{ flexWrap: "wrap" }}>
                 {s.installed
                   ? <><span className={`pill ${s.ready ? "ok" : "warn"}`}>{s.ready ? <><ICheck size={12} /> Added</> : "Added · needs setup"}</span>
                     <button onClick={() => check(s)}>Test</button>
