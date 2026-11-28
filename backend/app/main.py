@@ -495,7 +495,7 @@ def create_app(state: State | None = None) -> FastAPI:
         await a.state.s.acp.close_all()     # never leave agent subprocesses behind
         a.state.s.acp.stop()
 
-    app = FastAPI(title="Agent Studio", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Agent Studio", version="0.1.1", lifespan=lifespan)
     app.state.s = state or State()
     app.add_middleware(A2AMiddleware)    # /a2a/{agent}/...: A2A protocol, behind the API-key check (added first = innermost: the host check below still runs before it)
     # Local-only server: reject foreign Host headers (DNS-rebinding) and foreign origins.

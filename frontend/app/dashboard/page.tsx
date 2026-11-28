@@ -63,7 +63,7 @@ function SpendChart({ days }: { days: Day[] }) {
             <div className="viz-tip" style={{ left: `${((L + hover * bw + bw / 2) / W) * 100}%` }}>
               <b>{days[hover].day}</b><div>{usd(days[hover].cost_usd)} · {days[hover].calls} call{days[hover].calls === 1 ? "" : "s"}</div>
               <div className="mut">{days[hover].input_tokens.toLocaleString()} → {days[hover].output_tokens.toLocaleString()} tokens</div></div>)}
-          {max === 0 && <div className="small mut" style={{ textAlign: "center", marginTop: -110, marginBottom: 90 }}>No model spend in this period.</div>}
+          {max === 0 && <div className="small mut" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>No model spend in this period.</div>}
         </div>
       )}
     </div>

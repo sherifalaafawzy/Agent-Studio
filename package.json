@@ -1,6 +1,6 @@
 {
   "name": "agent-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Model-agnostic desktop agent app (Next.js + FastAPI/ADK + Electron shell)",
   "scripts": {

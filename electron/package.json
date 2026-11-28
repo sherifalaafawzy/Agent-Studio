@@ -1,7 +1,7 @@
 {
   "name": "agent-studio-desktop",
   "productName": "Agent Studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent Studio: build, run and test AI agents on your own PC",
   "author": "Agent Studio",
   "license": "UNLICENSED",

@@ -245,7 +245,7 @@ def test_helpers(monkeypatch, tmp_path):
     assert B.props(some_name=3) == [{"name": "agentstudio:some-name", "value": "3"}]
     assert B.clean_id("a/b c") .startswith("a-b-c-") and B.clean_id("ok.id-1") == "ok.id-1" and B.clean_id("///") .startswith("x-")
     assert B.purl_docker("qdrant/qdrant:v1.20.0") == ("qdrant/qdrant", "v1.20.0", "pkg:docker/qdrant/qdrant@v1.20.0") and B.purl_docker("redis")[2] == "pkg:docker/redis@latest"
-    assert B.app_version() == "0.1.0"
+    assert B.app_version() == "0.1.1"
     monkeypatch.setattr(B.Path, "read_text", lambda self, *a, **k: (_ for _ in ()).throw(OSError("x")))
     assert B.app_version() == "0.0.0"
 
